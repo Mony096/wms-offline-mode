@@ -1,0 +1,11 @@
+<svg width="64" height="64" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+    <path fill="#000000" d="M5 7a1 1 0 0 0-1 1v22a1 1 0 0 0 2 0V8a1 1 0 0 0-1-1Z" class="clr-i-outline clr-i-outline-path-1"/>
+    <path fill="#000000" d="M9 7a1 1 0 0 0-1 1v18a1 1 0 0 0 2 0V8a1 1 0 0 0-1-1Z" class="clr-i-outline clr-i-outline-path-2"/>
+    <path fill="#000000" d="M13 7a1 1 0 0 0-1 1v18a1 1 0 0 0 2 0V8a1 1 0 0 0-1-1Z" class="clr-i-outline clr-i-outline-path-3"/>
+    <path fill="#000000" d="M17 7a1 1 0 0 0-1 1v18a1 1 0 0 0 2 0V8a1 1 0 0 0-1-1Z" class="clr-i-outline clr-i-outline-path-4"/>
+    <path fill="#000000" d="M21 7a1 1 0 0 0-1 1v18a1 1 0 0 0 2 0V8a1 1 0 0 0-1-1Z" class="clr-i-outline clr-i-outline-path-5"/>
+    <path fill="#000000" d="M25 7a1 1 0 0 0-1 1v18a1 1 0 0 0 2 0V8a1 1 0 0 0-1-1Z" class="clr-i-outline clr-i-outline-path-6"/>
+    <path fill="#000000" d="M29 7a1 1 0 0 0-1 1v18a1 1 0 0 0 2 0V8a1 1 0 0 0-1-1Z" class="clr-i-outline clr-i-outline-path-7"/>
+    <path fill="#000000" d="M33 7a1 1 0 0 0-1 1v22a1 1 0 0 0 2 0V8a1 1 0 0 0-1-1Z" class="clr-i-outline clr-i-outline-path-8"/>
+    <path fill="none" d="M0 0h36v36H0z"/>
+</svg>
