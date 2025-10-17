@@ -143,8 +143,8 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
     goTo(context, GoodIssueSelectPage()).then((value) {
       if (value == null) return;
 
-      giType.text = getDataFromDynamic((value as GoodIssueSelectEntity).code);
-      giTypeName.text = getDataFromDynamic((value).name);
+      giType.text = getDataFromDynamic(value["Code"]);
+      giTypeName.text = getDataFromDynamic(value["Name"]);
     });
   }
 
@@ -415,16 +415,16 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
       if (value == null) return;
       MaterialDialog.loading(context);
       FocusScope.of(context).requestFocus(FocusNode());
-      final state = _blocBin.state;
-      // If state is not BinData, just return (no data yet)
-      if (state is! BinData) {
-        debugPrint("BinCubit has no data yet.");
-        return;
-      }
-      final bins = state.entities;
-      if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-        isBin.clear();
-      }
+      // final state = _blocBin.state;
+      // // If state is not BinData, just return (no data yet)
+      // if (state is! BinData) {
+      //   debugPrint("BinCubit has no data yet.");
+      //   return;
+      // }
+      // final bins = state.entities;
+      // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
+      //   isBin.clear();
+      // }
       itemCode.text = getDataFromDynamic(value['ItemCode']);
       itemName.text = getDataFromDynamic(value['ItemName']);
       // quantity.text = '0';

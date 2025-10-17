@@ -283,8 +283,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     goTo(context, GrtPage()).then((value) {
       if (value == null) return;
 
-      grType.text = getDataFromDynamic((value as GrtEntity).code);
-      grTypeName.text = getDataFromDynamic((value).name);
+      grType.text = getDataFromDynamic(value["Code"]);
+      grTypeName.text = getDataFromDynamic(value["Name"]);
     });
   }
 

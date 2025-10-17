@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:wms_mobile/download.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/feature/middleware/presentation/login_screen.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
@@ -42,7 +43,7 @@ class _MainScreenState extends State<MainScreen> {
           );
         } else if (state is AuthorizationSuccess) {
           _navigatorKey.currentState?.pushReplacement(
-            MaterialPageRoute(builder: (context) => WarehousePage(isPicker: true)),
+            MaterialPageRoute(builder: (context) => DownloadScreen()),
           );
         }
       },
@@ -59,7 +60,7 @@ class _MainScreenState extends State<MainScreen> {
         home: BlocBuilder<AuthorizationBloc, AuthorizationState>(
           builder: (context, state) {
             if (state is AuthorizationSuccess) {
-              return WarehousePage(isPicker: true);
+              return DownloadScreen() ;
             } else {
               return const LoginScreen();
             }

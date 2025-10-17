@@ -3,14 +3,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:wms_mobile/download.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/business_partner/presentation/cubit/bussinessPartner_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/counting.dart';
+import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
+import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
+import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/screen/batch_list_page.dart';
 import 'package:wms_mobile/feature/list_serial/presentation/screen/Serial_list_page.dart';
 import 'package:wms_mobile/feature/lookup/lookup.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
 import 'package:wms_mobile/feature/outbounce/outbound.dart';
 import 'package:wms_mobile/feature/serial/good_receip_serial_screen.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
 import 'package:wms_mobile/form/datePicker.dart';
 import 'package:wms_mobile/feature/middleware/presentation/login_screen.dart';
 import 'package:wms_mobile/helper/helper.dart';
@@ -167,8 +177,8 @@ class _DashboardState extends State<Dashboard> {
                     ),
                   ],
                 ),
-              ),  
-                ElevatedButton(
+              ),
+              ElevatedButton(
                 child: Text("Download & Save"),
                 onPressed: () async {
                   // await Future.delayed(Duration(seconds: 2));
@@ -178,10 +188,29 @@ class _DashboardState extends State<Dashboard> {
                 },
               ),
               ElevatedButton(
-                child: Text("Deee"),
+                child: Text("Show"),
                 onPressed: () async {
-                  await Future.delayed(Duration(seconds: 2));
-                  context.read<PurchaseOrderOfflineCubit>().printAllData();
+                  context.read<ReceiptTypeOfflineCubit>().printAllData();
+                  context.read<IssueTypeOfflineCubit>().printAllData();
+
+                  // Navigator.pop(context);
+                },
+              ),
+              ElevatedButton(
+                child: Text("Clear"),
+                onPressed: () async {
+                  context.read<PurchaseOrderOfflineCubit>().clearData();
+                  context.read<BusinessOfflineCubit>().clearData();
+                  context.read<WarehouseOfflineCubit>().clearData();
+                  context.read<BinOfflineCubit>().clearData();
+                  context.read<ItemOfflineCubit>().clearData();
+                  context.read<UOMGroupOfflineCubit>().clearData();
+                  context.read<UOMOfflineCubit>().clearData();
+                  context.read<ItemBarcodeOfflineCubit>().clearData();
+                  context.read<BatchListOfflineCubit>().clearData();
+                  context.read<ReceiptTypeOfflineCubit>().clearData();
+                  context.read<IssueTypeOfflineCubit>().clearData();
+
                   // Navigator.pop(context);
                 },
               ),

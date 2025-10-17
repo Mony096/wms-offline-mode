@@ -1,4 +1,4 @@
-// package com.example.wmsmobiles
+// package com.example.wmsmobiles_offline_mode
 
 // import io.flutter.embedding.engine.plugins.FlutterPlugin
 // import io.flutter.plugin.common.MethodCall

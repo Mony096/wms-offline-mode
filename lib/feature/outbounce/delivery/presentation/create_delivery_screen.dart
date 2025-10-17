@@ -625,16 +625,16 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       // });
       // Show loading indicator
       if (mounted) MaterialDialog.loading(context);
-      final state = _blocBin.state;
-      // If state is not BinData, just return (no data yet)
-      if (state is! BinData) {
-        debugPrint("BinCubit has no data yet.");
-        return;
-      }
-      final bins = state.entities;
-      if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-        isBin.clear();
-      }
+      // final state = _blocBin.state;
+      // // If state is not BinData, just return (no data yet)
+      // if (state is! BinData) {
+      //   debugPrint("BinCubit has no data yet.");
+      //   return;
+      // }
+      // final bins = state.entities;
+      // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
+      //   isBin.clear();
+      // }
       // Initialize the list of items
       List<Map<String, dynamic>> rawItems = [];
 

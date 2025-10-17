@@ -1,198 +1,37 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// import '../../domain/entity/grt_entity.dart';
-// import '../cubit/grt_cubit.dart';
-// import '/constant/style.dart';
-
-// class GrtPage extends StatefulWidget {
-//   const GrtPage({
-//     super.key,
-//   });
-
-//   @override
-//   State<GrtPage> createState() => _GrtPageState();
-// }
-
-// class _GrtPageState extends State<GrtPage> {
-//   String query = "?\$top=100&\$select=Code,Name";
-
-//   int check = 1;
-//   List<GrtEntity> data = [];
-//   late GrtCubit _bloc;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     if (mounted) {
-//       _bloc = context.read<GrtCubit>();
-//       final state = context.read<GrtCubit>().state;
-
-//       if (state is GrtData) {
-//         data = state.entities;
-//       }
-
-//       if (data.isEmpty) {
-//         _bloc.get(query).then((value) {
-//           setState(() => data = value);
-//           _bloc.set(value);
-//         });
-//       }
-
-//       setState(() {
-//         data;
-//       });
-//       print(data);
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     super.dispose();
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: PRIMARY_COLOR,
-//         iconTheme: IconThemeData(color: Colors.white),
-//         title: const Text(
-//           'Good Receipt Type Lists',
-//           style: TextStyle(
-//               fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
-//         ),
-//       ),
-//       // bottomNavigationBar: MyBottomSheet(),
-//       body: Container(
-//         width: double.infinity,
-//         height: double.infinity,
-//         color: Color.fromARGB(255, 243, 243, 243),
-//         child: Column(
-//           children: [
-//             const Divider(thickness: 0.1, height: 15),
-//             Expanded(
-//               child: BlocConsumer<GrtCubit, GrtState>(
-//                 listener: (context, state) {},
-//                 builder: (context, state) {
-//                   if (state is RequestingGrt) {
-//                     return Center(child: CircularProgressIndicator());
-//                   }
-
-//                   return ListView(
-//                     children: [
-//                       ...data
-//                           .map(
-//                             (Grt) => GestureDetector(
-//                               onTap: () => Navigator.of(context).pop(Grt),
-//                               child: Container(
-//                                 padding: const EdgeInsets.all(12),
-//                                 decoration: BoxDecoration(
-//                                   color: Colors.white,
-//                                 ),
-//                                 margin: const EdgeInsets.only(bottom: 8),
-//                                 child: Column(
-//                                   crossAxisAlignment: CrossAxisAlignment.start,
-//                                   children: [
-//                                     Row(
-//                                       children: [
-//                                         Text(
-//                                           Grt.code,
-//                                           style: TextStyle(
-//                                             fontWeight: FontWeight.w800,
-//                                           ),
-//                                         ),
-//                                         SizedBox(
-//                                           width: 5,
-//                                         ),
-//                                         Text(
-//                                           "-",
-//                                           style: TextStyle(
-//                                             fontWeight: FontWeight.w800,
-//                                           ),
-//                                         ),
-//                                         SizedBox(
-//                                           width: 5,
-//                                         ),
-//                                         Text(
-//                                           Grt.name,
-//                                           style: TextStyle(
-//                                             fontWeight: FontWeight.w800,
-//                                           ),
-//                                         ),
-//                                       ],
-//                                     )
-//                                   ],
-//                                 ),
-//                               ),
-//                             ),
-//                           )
-//                           .toList(),
-//                       if (state is RequestingPaginationGrt)
-//                         Container(
-//                           margin: const EdgeInsets.symmetric(vertical: 20),
-//                           child: Center(
-//                             child: SizedBox(
-//                               width: 30,
-//                               height: 30,
-//                               child: CircularProgressIndicator(
-//                                 strokeWidth: 3,
-//                               ),
-//                             ),
-//                           ),
-//                         )
-//                     ],
-//                   );
-//                 },
-//               ),
-//             )
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/entity/grt_entity.dart';
-import '../cubit/grt_cubit.dart';
-import '/constant/style.dart';
+import 'package:wms_mobile/constant/style.dart';
+import '../cubit/receipt_type_offline_cubit.dart';
 
 class GrtPage extends StatefulWidget {
   const GrtPage({super.key});
 
   @override
-  State<GrtPage> createState() => _GrtPageState();
+  State<GrtPage> createState() => _GrtOfflinePageState();
 }
 
-class _GrtPageState extends State<GrtPage> {
-  String query = "?\$top=100&\$select=Code,Name";
-  List<GrtEntity> data = [];
-  List<GrtEntity> filteredData = [];
+class _GrtOfflinePageState extends State<GrtPage> {
+  List<dynamic> data = [];
+  List<dynamic> filteredData = [];
 
-  late GrtCubit _bloc;
   final TextEditingController _filter = TextEditingController();
 
   @override
   void initState() {
     super.initState();
 
-    _bloc = context.read<GrtCubit>();
-    final state = _bloc.state;
+    // Listen to cubit state (list of receipt types from Hive)
+    final state = context.read<ReceiptTypeOfflineCubit>().state;
+    data = state;
+    filteredData = data;
 
-    if (state is GrtData) {
-      data = state.entities;
-      filteredData = data;
-    }
-
-    if (data.isEmpty) {
-      _bloc.get(query).then((value) {
-        setState(() {
-          data = value;
-          filteredData = value;
-        });
-        _bloc.set(value);
+    // Listen for updates (optional but useful if data changes in background)
+    context.read<ReceiptTypeOfflineCubit>().stream.listen((items) {
+      setState(() {
+        data = items;
+        filteredData = items;
       });
-    }
+    });
 
     // 🔹 Live Search Filter
     _filter.addListener(() {
@@ -200,8 +39,10 @@ class _GrtPageState extends State<GrtPage> {
       setState(() {
         filteredData = data
             .where((item) =>
-                item.code.toLowerCase().contains(text) ||
-                item.name.toLowerCase().contains(text))
+                (item['Code']?.toString().toLowerCase().contains(text) ??
+                    false) ||
+                (item['Name']?.toString().toLowerCase().contains(text) ??
+                    false))
             .toList();
       });
     });
@@ -231,7 +72,7 @@ class _GrtPageState extends State<GrtPage> {
               child: Row(
                 children: [
                   const Text(
-                    "Good Receipt Types",
+                    "Goods Receipt Types",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(width: 20),
@@ -269,15 +110,12 @@ class _GrtPageState extends State<GrtPage> {
               ),
             ),
 
-            // const SizedBox(height: 10),
-
             // 🔹 Data List
             Expanded(
-              child: BlocConsumer<GrtCubit, GrtState>(
-                listener: (context, state) {},
+              child: BlocBuilder<ReceiptTypeOfflineCubit, List<dynamic>>(
                 builder: (context, state) {
-                  if (state is RequestingGrt) {
-                    return const Center(child: CircularProgressIndicator());
+                  if (state.isEmpty) {
+                    return const Center(child: Text("No Data Available"));
                   }
 
                   return ListView.builder(
@@ -299,7 +137,7 @@ class _GrtPageState extends State<GrtPage> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  "${item.code} - ${item.name}",
+                                  "${item['Code']} - ${item['Name']}",
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w800,
                                   ),

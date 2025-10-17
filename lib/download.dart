@@ -2,13 +2,27 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/business_partner/presentation/cubit/bussinessPartner_offline_cubit.dart';
+import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
+import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
 
 // 🧱 Example Cubits (replace with your real ones)
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
+import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
+import 'package:wms_mobile/helper/helper.dart';
+import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 
 class DownloadItem {
   final String name;
   final String url;
+  final Map<String, String>? queryParams;
 
   /// 🔹 The function that knows how to save data
   final Future<void> Function(BuildContext context, dynamic data) onSave;
@@ -20,6 +34,7 @@ class DownloadItem {
   DownloadItem({
     required this.name,
     required this.url,
+    this.queryParams,
     required this.onSave,
     this.isLoading = false,
     this.success = false,
@@ -41,34 +56,98 @@ class _DownloadScreenState extends State<DownloadScreen> {
   late final List<DownloadItem> _downloads = [
     DownloadItem(
       name: 'Purchase Orders',
-      url: 'https://jsonplaceholder.typicode.com/posts',
+      url: 'PurchaseOrders',
+      queryParams: {
+        '\$filter': "DocumentStatus eq 'bost_Open'",
+        '\$select':
+            "CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
+      },
       onSave: (context, data) async =>
           context.read<PurchaseOrderOfflineCubit>().addData(data),
     ),
-    // DownloadItem(
-    //   name: 'Suppliers',
-    //   url: 'https://jsonplaceholder.typicode.com/users',
-    //   onSave: (context, data) async =>
-    //       context.read<SupplierOfflineCubit>().addData(data),
-    // ),
-    // DownloadItem(
-    //   name: 'Products',
-    //   url: 'https://jsonplaceholder.typicode.com/todos',
-    //   onSave: (context, data) async =>
-    //       context.read<ProductOfflineCubit>().addData(data),
-    // ),
-    // DownloadItem(
-    //   name: 'Categories',
-    //   url: 'https://jsonplaceholder.typicode.com/comments',
-    //   onSave: (context, data) async =>
-    //       context.read<CategoryOfflineCubit>().addData(data),
-    // ),
-    // DownloadItem(
-    //   name: 'Warehouses',
-    //   url: 'https://jsonplaceholder.typicode.com/albums',
-    //   onSave: (context, data) async =>
-    //       context.read<WarehouseOfflineCubit>().addData(data),
-    // ),
+    DownloadItem(
+      name: 'Suppliers',
+      url: 'BusinessPartners',
+      queryParams: {'\$select': "CardCode,CardName,CardType"},
+      onSave: (context, data) async =>
+          context.read<BusinessOfflineCubit>().addData(data),
+    ),
+    DownloadItem(
+      name: 'Warehouses',
+      url: 'Warehouses',
+      queryParams: {'\$select': "WarehouseCode,WarehouseName"},
+      onSave: (context, data) async =>
+          context.read<WarehouseOfflineCubit>().addData(data),
+    ),
+    DownloadItem(
+      name: 'Bin Locations',
+      url: 'BinLocations',
+      queryParams: {
+        '\$select': "AbsEntry,Warehouse,Sublevel1,Sublevel2,Sublevel3,BinCode"
+      },
+      onSave: (context, data) async =>
+          context.read<BinOfflineCubit>().addData(data),
+    ),
+    DownloadItem(
+      name: 'Items',
+      url: 'Items',
+      queryParams: {
+        '\$select':
+            "ItemCode,ItemName,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry, ManageSerialNumbers, ManageBatchNumbers"
+      },
+      onSave: (context, data) async =>
+          context.read<ItemOfflineCubit>().addData(data),
+    ),
+      DownloadItem(
+      name: 'UnitOfMeasurementGroups',
+      url: 'UnitOfMeasurementGroups',
+      // queryParams: {
+      //   '\$select':
+      //       "ItemCode,ItemName,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry, ManageSerialNumbers, ManageBatchNumbers"
+      // },
+      onSave: (context, data) async =>
+          context.read<UOMGroupOfflineCubit>().addData(data),
+    ),
+    DownloadItem(
+      name: 'UnitOfMeasurements',
+      url: 'UnitOfMeasurements',
+      // queryParams: {
+      //   '\$select':
+      //       "ItemCode,ItemName,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry, ManageSerialNumbers, ManageBatchNumbers"
+      // },
+      onSave: (context, data) async =>
+          context.read<UOMOfflineCubit>().addData(data),
+    ),
+      DownloadItem(
+      name: 'Item Barcode',
+      url: 'view.svc/WMS_ITEM_BARCODEB1SLQuery',
+      // queryParams: {
+      //   '\$select':
+      //       "ItemCode,ItemName,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry, ManageSerialNumbers, ManageBatchNumbers"
+      // },
+      onSave: (context, data) async =>
+          context.read<ItemBarcodeOfflineCubit>().addData(data),
+    ),
+    
+    DownloadItem(
+      name: 'Batch Lists',
+      url: 'view.svc/WMS_SERIAL_BATCHB1SLQuery',
+      onSave: (context, data) async =>
+          context.read<BatchListOfflineCubit>().addData(data),
+    ),
+     
+    DownloadItem(
+      name: 'Goods Issue Type',
+      url: 'LK_OIGE',
+      onSave: (context, data) async =>
+          context.read<IssueTypeOfflineCubit>().addData(data),
+    ),
+      DownloadItem(
+      name: 'Goods Receipt Type',
+      url: 'LK_OIGN',
+      onSave: (context, data) async =>
+          context.read<ReceiptTypeOfflineCubit>().addData(data),
+    ),
   ];
 
   /// -----------------------------
@@ -82,30 +161,28 @@ class _DownloadScreenState extends State<DownloadScreen> {
     });
 
     try {
-      final response = await http.get(Uri.parse(item.url));
+      final host = await LocalStorageManger.getString('host');
+      final port = await LocalStorageManger.getString('port');
+      final token = await LocalStorageManger.getString('SessionId');
 
-      if (response.statusCode == 200) {
-        //  if (true) {
-        final data = jsonDecode(response.body);
+      // ✅ Use the SAP GET helper instead of raw http.get
+      final data = await getFromSAP(
+        host: host, // your SAP host (e.g., http://192.168.1.10)
+        port: port, // your SAP port (e.g., 50000)
+        token: token, // your SAP session token
+        endpoint: item.url, // e.g., 'PurchaseOrders'
+        queryParams: item.queryParams, // optional map like {'\$top': '10'}
+      );
+      // 🔹 Dynamically call your Cubit’s save method
+      await item.onSave(context, data["value"]);
 
-        // ✅ Handle both list and map
-        final parsedData = (data is List) ? data : [data];
+      setState(() {
+        item.success = true;
+      });
 
-        // 🔹 Dynamically call the correct Cubit function
-        await item.onSave(context, parsedData);
-        // await item.onSave(context, parsedData);
-        setState(() {
-          item.success = true;
-        });
-
-        return true;
-      } else {
-        setState(() {
-          item.failed = true;
-        });
-        return false;
-      }
+      return true;
     } catch (e) {
+      debugPrint('❌ Fetch failed for ${item.url}: $e');
       setState(() {
         item.failed = true;
       });
@@ -177,6 +254,9 @@ class _DownloadScreenState extends State<DownloadScreen> {
       ),
       body: Column(
         children: [
+          GestureDetector(
+              onTap: () => goTo(context, WarehousePage(isPicker: true)),
+              child: Text("Go")),
           Container(
             margin: const EdgeInsets.all(16),
             width: double.infinity,

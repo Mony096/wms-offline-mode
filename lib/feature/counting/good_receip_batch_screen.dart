@@ -244,7 +244,7 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
   void onNavigateBatchList() async {
     if (widget.alcQty > 0 && widget.isQuickCount) return;
     if (quantity.text.isEmpty) {
-      MaterialDialog.success(
+      MaterialDialog.warning(
         context,
         title: 'Failed',
         body: "Opps, Quantity not found can't generate batch number!",
@@ -267,7 +267,7 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
           0, (sum, item) => sum + double.parse(item['Quantity']).toInt());
       if (totalAddedQuantity > double.parse(widget.quantity).toInt()) {
         items = [];
-        MaterialDialog.success(context,
+        MaterialDialog.warning(context,
             title: 'Failed',
             body:
                 'Quantity exceeds available. Remaining quantity is ${double.parse(widget.quantity).toInt() - totalAddedQuantity}.');

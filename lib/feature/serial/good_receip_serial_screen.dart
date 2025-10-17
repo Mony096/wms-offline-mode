@@ -143,7 +143,7 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
 
   void onNavigateSerialList() async {
     if (quantity.text.isEmpty) {
-      MaterialDialog.success(
+      MaterialDialog.warning(
         context,
         title: 'Failed',
         body: "Opps, Quantity not found can't generate serial number!",
@@ -169,7 +169,7 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
 
         // Check for duplicates
         if (serialNumbers.contains(serial)) {
-          MaterialDialog.success(
+          MaterialDialog.warning(
             context,
             title: 'Failed',
             body: 'Duplicate found for SerialNumber: $serial.',

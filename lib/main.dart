@@ -2,21 +2,29 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/business_partner/presentation/cubit/business_partner_cubit.dart';
+import 'package:wms_mobile/feature/business_partner/presentation/cubit/bussinessPartner_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/binlocation_count_cubit.dart';
 import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_cubit.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/grt_cubit.dart';
+import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/grt_cubit.dart';
+import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/good_receipt_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/purchase_good_receipt_cubit.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/component/item/presentation/cubit/item_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/cubit/item_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_cubit.dart';
+import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
 import 'package:wms_mobile/feature/list_serial/presentation/cubit/serialNumber_list_cubit.dart';
+import 'package:wms_mobile/feature/list_serial/presentation/cubit/serial_list_offline_cubit.dart';
 import 'package:wms_mobile/feature/lookup/bin_lookup/presentation/cubit/binlocation_lookup_cubit.dart';
 import 'package:wms_mobile/feature/lookup/product_lookup/presentation/cubit/product_lookup_cubit.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
@@ -24,7 +32,10 @@ import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/
 import 'package:wms_mobile/feature/pick_and_pack/bin_transfer/presentation/cubit/bin_transfer_cubit.dart';
 import 'package:wms_mobile/feature/pick_and_pack/warehouse_transfer/presentation/cubit/warehouse_transfer_cubit.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_cubit.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/cubit/warehouse_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
 import 'package:wms_mobile/main_screen.dart';
 import 'package:wms_mobile/download.dart';
 import 'core/disble_ssl.dart';
@@ -48,7 +59,17 @@ void main() async {
   HttpOverrides.global = DisableSSL();
   await Hive.initFlutter();
   await Hive.openBox("purchase_order");
-
+  await Hive.openBox("partner");
+  await Hive.openBox("warehouse");
+  await Hive.openBox("bin");
+  await Hive.openBox("item");
+  await Hive.openBox("item_barcode");
+  await Hive.openBox("uom_group");
+  await Hive.openBox("uom");
+  await Hive.openBox("batch_list");
+  await Hive.openBox("serial_list");
+  await Hive.openBox("issue_type");
+  await Hive.openBox("receipt_type");
   // (Optional) Only print directory AFTER Hive init
   final dir = await getApplicationDocumentsDirectory();
   print("📁 App directory: $dir");
@@ -108,6 +129,17 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => getIt<BinTransferCubit>()),
         BlocProvider(create: (_) => getIt<WarehouseTransferCubit>()),
         BlocProvider(create: (_) => PurchaseOrderOfflineCubit()),
+        BlocProvider(create: (_) => BusinessOfflineCubit()),
+        BlocProvider(create: (_) => WarehouseOfflineCubit()),
+        BlocProvider(create: (_) => BinOfflineCubit()),
+        BlocProvider(create: (_) => ItemOfflineCubit()),
+        BlocProvider(create: (_) => UOMGroupOfflineCubit()),
+        BlocProvider(create: (_) => UOMOfflineCubit()),
+        BlocProvider(create: (_) => ItemBarcodeOfflineCubit()),
+        BlocProvider(create: (_) => BatchListOfflineCubit()),
+        BlocProvider(create: (_) => SerialListOfflineCubit()),
+        BlocProvider(create: (_) => IssueTypeOfflineCubit()),
+        BlocProvider(create: (_) => ReceiptTypeOfflineCubit()),
       ],
       child: const MainScreen(),
     );

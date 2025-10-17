@@ -1,12 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
-class PurchaseOrderOfflineCubit extends Cubit<List<dynamic>> {
-  PurchaseOrderOfflineCubit() : super([]) {
+class WarehouseOfflineCubit extends Cubit<List<dynamic>> {
+  WarehouseOfflineCubit() : super([]) {
     loadData();
   }
 
-  final Box box = Hive.box('purchase_order');
+  final Box box = Hive.box('warehouse');
 
   // Load existing data from Hive
   void loadData() {

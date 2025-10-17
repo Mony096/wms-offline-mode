@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/core/enum/global.dart';
+import 'package:http/http.dart' as http;
 
 Future<dynamic> goTo<T extends Widget>(BuildContext context, T route,
     {bool removeAllPreviousRoutes = false}) async {
@@ -103,4 +106,52 @@ String fractionDigits(double value, {int digit = 4}) {
 String convertQuantityUoM(double baseQty, double alternativeQty, double qty) {
   String totalQty = fractionDigits(baseQty / alternativeQty, digit: 6);
   return fractionDigits(qty * double.parse(totalQty), digit: 4);
+}
+Future<dynamic> getFromSAP({
+  required String host,
+  required String port,
+  required String token,
+  required String endpoint,
+  Map<String, String>? queryParams,
+}) async {
+  try {
+    // Build query string
+    final queryString = _buildQueryString(queryParams);
+    final uri = Uri.parse('$host:$port/b1s/v1/$endpoint$queryString');
+
+    // 🧠 Log for debugging
+    debugPrint('📡 [SAP GET] Endpoint: /b1s/v1/$endpoint');
+    if (queryString.isNotEmpty) {
+      debugPrint('🔍 [Query Params] $queryString');
+    }
+    debugPrint('🌐 [Full URL] $uri');
+
+    // Send GET request
+    final response = await http.get(uri, headers: {
+      "Cookie": "B1SESSION=$token; ROUTEID=.node3",
+      "Content-Type": "application/json",
+    });
+
+    // Check response
+    if (response.statusCode == 200) {
+      debugPrint('✅ [SAP GET Success] ${response.statusCode}');
+      return jsonDecode(response.body);
+    } else {
+      debugPrint(
+          '❌ [SAP GET Failed] → ${response.statusCode}: ${response.body}');
+      throw Exception('SAP GET request failed: ${response.statusCode}');
+    }
+  } catch (e) {
+    debugPrint('⚠️ [SAP GET Error] $e');
+    rethrow;
+  }
+}
+
+// Helper to build query string manually
+String _buildQueryString(Map<String, String>? params) {
+  if (params == null || params.isEmpty) return '';
+  final query = params.entries
+      .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+      .join('&');
+  return '?$query';
 }

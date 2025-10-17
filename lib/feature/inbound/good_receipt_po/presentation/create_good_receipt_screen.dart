@@ -8,8 +8,11 @@ import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/batch/good_receip_batch_screen.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/duplicateItem_GPO_Screen.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/serial/good_receip_serial_screen.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '/feature/bin_location/domain/entity/bin_entity.dart';
@@ -80,12 +83,13 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
   bool loading = false;
   List<dynamic> itemCodeFilter = [];
   bool isReview = false;
+  //scanner
   bool isClickScanItem = false;
   bool isClickScanBin = false;
   final FocusNode _itemCode = FocusNode();
   final FocusNode _quantity = FocusNode();
   final FocusNode _bin = FocusNode();
-
+//scanner
   @override
   void initState() {
     init();
@@ -123,17 +127,17 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         cardName.text = getDataFromDynamic(widget.po['CardName']);
 
         // Show loading indicator
-        if (mounted) MaterialDialog.loading(context);
-        final state = _blocBin.state;
-        // If state is not BinData, just return (no data yet)
-        if (state is! BinData) {
-          debugPrint("BinCubit has no data yet.");
-          return;
-        }
-        final bins = state.entities;
-        if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-          isBin.clear();
-        }
+        // if (mounted) MaterialDialog.loading(context);
+        // final state = _blocBin.state;
+        // // If state is not BinData, just return (no data yet)
+        // if (state is! BinData) {
+        //   debugPrint("BinCubit has no data yet.");
+        //   return;
+        // }
+        // final bins = state.entities;
+        // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
+        //   isBin.clear();
+        // }
         // Initialize the list of items
         List<Map<String, dynamic>> rawItems = [];
         final openLines = widget.po['DocumentLines']
@@ -587,17 +591,16 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
   void onSetItemTemp(dynamic value) async {
     try {
       if (value == null) return;
-      // print(value);
-      final state = _blocBin.state;
-      // If state is not BinData, just return (no data yet)
-      if (state is! BinData) {
-        debugPrint("BinCubit has no data yet.");
-        return;
-      }
-      final bins = state.entities;
-      if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-        isBin.clear();
-      }
+      // final state = _blocBin.state;
+      // // If state is not BinData, just return (no data yet)
+      // if (state is! BinData) {
+      //   debugPrint("BinCubit has no data yet.");
+      //   return;
+      // }
+      // final bins = state.entities;
+      // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
+      //   isBin.clear();
+      // }
       isSerialOrBatch = false;
       MaterialDialog.loading(context);
       FocusScope.of(context).requestFocus(FocusNode());
@@ -668,54 +671,72 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         onEdit(item, index);
       } else {
         quantity.text = '';
-        MaterialDialog.loading(context);
-        final barcodeRes = await dio.get(
-            "/view.svc/WMS_ITEM_BARCODEB1SLQuery?\$filter=BarCode eq '${barCode.text}' ");
-        if (barcodeRes.statusCode == 200) {
-          if (barcodeRes.data["value"].length == 0) {
-            MaterialDialog.close(
-              context,
-            );
-            clear();
-            MaterialDialog.success(context, title: 'Opps.', body: "No Item");
-            return;
-          }
-          if (barcodeRes.data["value"].length > 1) {
-            for (var element in barcodeRes.data["value"]) {
-              itemCodeFilter.add(element['ItemCode']);
-            }
-            goTo(
-                    context,
-                    ItemByCodePage(
-                        type: ItemType.purchase,
-                        itemCode: itemCodeFilter
-                            .map((item) => "ItemCode eq '$item'")
-                            .join(' or ')))
-                .then((value) {
-              if (value == null) return;
-              if (mounted) {
-                MaterialDialog.close(context);
-              }
-              print(barcodeRes.data["value"]);
-              uom.text =
-                  getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomCode"]);
-              uomAbEntry.text =
-                  getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomEntry"]);
-              onSetItemTemp(value);
-            });
-            return;
-          }
-          final item = await _blocItem
-              .find("('${barcodeRes.data["value"]?[0]?["ItemCode"]}')");
-          if (mounted) {
-            MaterialDialog.close(context);
-          }
-          uom.text =
-              getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomCode"]);
-          uomAbEntry.text =
-              getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomEntry"]);
-          onSetItemTemp(item);
+        // Get all offline barcode data
+        final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+
+        // Find matching barcodes
+        final matchedBarcodes =
+            barcodeList.where((e) => e['BarCode'] == barCode.text).toList();
+
+        if (matchedBarcodes.isEmpty) {
+          clear();
+          MaterialDialog.success(context, title: 'Oops.', body: "No Item");
+          return;
         }
+
+        if (matchedBarcodes.length > 1) {
+          for (var element in matchedBarcodes) {
+            itemCodeFilter.add(element['ItemCode']);
+          }
+
+          goTo(
+            context,
+            ItemByCodePage(
+              type: ItemType.purchase,
+              itemCode: itemCodeFilter
+                  .map((item) => "ItemCode eq '$item'")
+                  .join(' or '),
+            ),
+          ).then((value) {
+            if (value == null) return;
+            if (mounted) MaterialDialog.close(context);
+
+            final first = matchedBarcodes.first;
+            uom.text = getDataFromDynamic(first['UomCode']);
+            uomAbEntry.text = getDataFromDynamic(first['UomEntry']);
+            onSetItemTemp(value);
+          });
+
+          return;
+        }
+
+        // Only one barcode match
+        final first = matchedBarcodes.first;
+        final itemList = context.read<ItemOfflineCubit>().state;
+        final matchedItem = itemList.firstWhere(
+            (e) => e['ItemCode'] == first['ItemCode'],
+            orElse: () => null);
+
+        if (matchedItem == null) {
+          MaterialDialog.success(context,
+              title: 'Oops.', body: "Item not found");
+          return;
+        }
+        final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+        final uomGroup = uomGroupCubit.state.firstWhere(
+          (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+          orElse: () => {},
+        );
+        final itemMapped = {
+          ...matchedItem,
+          "BaseUoM": uomGroup['BaseUoM'],
+          "UoMGroupDefinitionCollection":
+              uomGroup['UoMGroupDefinitionCollection']
+        };
+
+        uom.text = getDataFromDynamic(first['UomCode']);
+        uomAbEntry.text = getDataFromDynamic(first['UomEntry']);
+        onSetItemTemp(itemMapped);
       }
     } catch (e) {
       if (mounted) {
@@ -795,7 +816,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       // Check which input currently has focus
       if (_itemCode.hasFocus) {
         // ✅ If filter input is focused → set scanned value
-        itemCode.text = barcode;
+        barCode.text = barcode;
+        onCompleteTextEditItem();
         isClickScanItem = false;
       } else if (_bin.hasFocus) {
         // ✅ If secondary input is focused → clear it
