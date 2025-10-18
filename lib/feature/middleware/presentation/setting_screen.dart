@@ -188,7 +188,7 @@ class _SettingScreenState extends State<SettingScreen> {
   Future<void> init() async {
     final host = await LocalStorageManger.getString('host');
     final port = await LocalStorageManger.getString('port');
-    final db = await LocalStorageManger.getString('CONNECT_COMPANY');
+    final db = await LocalStorageManger.getString('db');
 
     setState(() {
       _hostConfig.text = host.isEmpty ? 'https://192.168.1.11' : host;
@@ -206,7 +206,7 @@ class _SettingScreenState extends State<SettingScreen> {
 
     await LocalStorageManger.setString('host', _hostConfig.text);
     await LocalStorageManger.setString('port', _portConfig.text);
-    await LocalStorageManger.setString('CONNECT_COMPANY', _dbConfig.text);
+    await LocalStorageManger.setString('db', _dbConfig.text);
 
     if (mounted) {
       setState(() => loading = false);

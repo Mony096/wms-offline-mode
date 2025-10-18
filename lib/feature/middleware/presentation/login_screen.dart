@@ -38,8 +38,8 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Load saved username & password if "Remember Me" was used
   Future<void> _loadSavedLogin() async {
     final remember = await LocalStorageManger.getString('remember_me');
-    final user = await LocalStorageManger.getString('saved_username');
-    final pass = await LocalStorageManger.getString('saved_password');
+    final user = await LocalStorageManger.getString('username');
+    final pass = await LocalStorageManger.getString('password');
 
     setState(() {
       _rememberMe = remember == 'true';
@@ -53,25 +53,23 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _postData() async {
     try {
       if (mounted) {
-        final loginEntity = LoginEntity(
-          username: _userName.text,
-          password: _password.text,
-          db: CONNECT_COMPANY,
-        );
-
-        // Handle Remember Me storage
         if (_rememberMe) {
           await LocalStorageManger.setString('remember_me', 'true');
-          await LocalStorageManger.setString('saved_username', _userName.text);
-          await LocalStorageManger.setString('saved_password', _password.text);
+          await LocalStorageManger.setString('username', _userName.text);
+          await LocalStorageManger.setString('password', _password.text);
         } else {
           await LocalStorageManger.setString('remember_me', 'false');
-          await LocalStorageManger.removeString('saved_username');
-          await LocalStorageManger.removeString('saved_password');
+          await LocalStorageManger.setString('username', _userName.text);
+          await LocalStorageManger.setString('password', _password.text);
         }
-
-        BlocProvider.of<AuthorizationBloc>(context).add(
-          RequestLoginOnlineEvent(entity: loginEntity),
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const DownloadScreen(
+              fromDashboard: false,
+            ),
+          ),
+          (Route<dynamic> route) => false, // removes all previous routes
         );
       }
     } catch (e) {

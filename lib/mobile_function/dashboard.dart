@@ -24,6 +24,7 @@ import 'package:wms_mobile/feature/serial/good_receip_serial_screen.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/form/datePicker.dart';
 import 'package:wms_mobile/feature/middleware/presentation/login_screen.dart';
 import 'package:wms_mobile/helper/helper.dart';
@@ -59,7 +60,7 @@ class _DashboardState extends State<Dashboard> {
   String warehouseName = '';
   void _logout(BuildContext context) {
     MaterialDialog.loading(context);
-
+    _clearAllData();
     const timeoutDuration = Duration(milliseconds: 200);
     Future.delayed(timeoutDuration, () {
       BlocProvider.of<AuthorizationBloc>(context)
@@ -110,31 +111,8 @@ class _DashboardState extends State<Dashboard> {
       warehouseName = name;
     });
   }
+
   Future<void> _clearAllData() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: const Text("Login and Clear All Data?"),
-        content: const Text(
-            "This will remove all offline data and reset download states. Are you sure?"),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text("No"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Ok"),
-          ),
-        ],
-      ),
-    );
-
-    // User canceled
-    if (confirm != true) return;
-
     // 1️⃣ Clear all Cubits
     context.read<PurchaseOrderOfflineCubit>().clearData();
     context.read<BusinessOfflineCubit>().clearData();
@@ -165,7 +143,6 @@ class _DashboardState extends State<Dashboard> {
     await LocalStorageManger.removeString("saleOrders");
     await LocalStorageManger.removeString("purchaseReturnRequests");
 
-
     // 4️⃣ Save cleared download state
 
     // 5️⃣ Update UI
@@ -174,15 +151,6 @@ class _DashboardState extends State<Dashboard> {
       LocalStorageManger.setString('warehouse', "");
       LocalStorageManger.setString('warehouseName', "No Warehouse");
     });
-
-    // 6️⃣ Optional: feedback
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text("✅ All offline data cleared"),
-        backgroundColor: Colors.blueAccent,
-        duration: Duration(seconds: 2),
-      ),
-    );
   }
 
   @override
@@ -257,20 +225,63 @@ class _DashboardState extends State<Dashboard> {
                         ),
                       ],
                     ),
-                    ElevatedButton(
-                      child: Text("Download"),
-                      onPressed: () async {
-                        // await Future.delayed(Duration(seconds: 2));
-                        // context.read<PurchaseOrderOfflineCubit>().addData("asasas");
-                        goTo(
+                    Container(
+                      margin: EdgeInsets.only(right: 15),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: PRIMARY_COLOR, // 🔴 Red background
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(10), // 🔘 Rounded corners
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 11),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.refresh,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            SizedBox(
+                              width: 5,
+                            ),
+                            const Text(
+                              "Refresh Data",
+                              style: TextStyle(
+                                color: Colors.white, // ⚪ White text
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        onPressed: () async {
+                          goTo(
                             context,
-                            DownloadScreen(
-                              fromDashboard: true,
-                            )).then((e)=>{
-                              init()
-                            });
-                        // Navigator.pop(context);
-                      },
+                            DownloadScreen(fromDashboard: true),
+                          ).then((_) async {
+                            final orders = context
+                                .read<ItemBarcodeOfflineCubit>()
+                                .getJsonData();
+                            final warehouse =
+                                await LocalStorageManger.getString('warehouse');
+
+                            if (warehouse.isEmpty && orders.length > 0) {
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const WarehousePage(isPicker: true),
+                                ),
+                                (Route<dynamic> route) => false,
+                              );
+                            } else {
+                              init();
+                            }
+                          });
+                        },
+                      ),
                     ),
                   ],
                 ),
