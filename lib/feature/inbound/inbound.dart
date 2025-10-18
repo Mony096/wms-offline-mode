@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:wms_mobile/feature/bin_location/domain/entity/bin_entity.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/create_put_away_screen.dart';
-import 'package:wms_mobile/utilies/dialog/dialog.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 import '/feature/inbound/good_receipt_po/presentation/create_good_receipt_screen.dart';

@@ -9,6 +9,7 @@ import 'package:wms_mobile/feature/counting/counting.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
@@ -17,6 +18,8 @@ import 'package:wms_mobile/feature/list_serial/presentation/screen/Serial_list_p
 import 'package:wms_mobile/feature/lookup/lookup.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
 import 'package:wms_mobile/feature/outbounce/outbound.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/serial/good_receip_serial_screen.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_offline_cubit.dart';
@@ -107,6 +110,80 @@ class _DashboardState extends State<Dashboard> {
       warehouseName = name;
     });
   }
+  Future<void> _clearAllData() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("Login and Clear All Data?"),
+        content: const Text(
+            "This will remove all offline data and reset download states. Are you sure?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("No"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text("Ok"),
+          ),
+        ],
+      ),
+    );
+
+    // User canceled
+    if (confirm != true) return;
+
+    // 1️⃣ Clear all Cubits
+    context.read<PurchaseOrderOfflineCubit>().clearData();
+    context.read<BusinessOfflineCubit>().clearData();
+    context.read<WarehouseOfflineCubit>().clearData();
+    context.read<BinOfflineCubit>().clearData();
+    context.read<ItemOfflineCubit>().clearData();
+    context.read<UOMGroupOfflineCubit>().clearData();
+    context.read<UOMOfflineCubit>().clearData();
+    context.read<ItemBarcodeOfflineCubit>().clearData();
+    context.read<BatchListOfflineCubit>().clearData();
+    context.read<ReceiptTypeOfflineCubit>().clearData();
+    context.read<IssueTypeOfflineCubit>().clearData();
+    context.read<ReturnReceiptRequestOfflineCubit>().clearData();
+    context.read<SaleOrderOfflineCubit>().clearData();
+    context.read<PurchaseReturnRequestOfflineCubit>().clearData();
+
+    // 2️⃣ Remove all keys from LocalStorage
+    await LocalStorageManger.removeString("warehouse");
+    await LocalStorageManger.removeString("businessPartners");
+    await LocalStorageManger.removeString("items");
+    await LocalStorageManger.removeString("batches");
+    await LocalStorageManger.removeString("uomGroups");
+    await LocalStorageManger.removeString("uoms");
+    await LocalStorageManger.removeString("barcodes");
+    await LocalStorageManger.removeString("receiptTypes");
+    await LocalStorageManger.removeString("issueTypes");
+    await LocalStorageManger.removeString("returnReceipts");
+    await LocalStorageManger.removeString("saleOrders");
+    await LocalStorageManger.removeString("purchaseReturnRequests");
+
+
+    // 4️⃣ Save cleared download state
+
+    // 5️⃣ Update UI
+    setState(() {
+      LocalStorageManger.setString('isDownloaded', 'false');
+      LocalStorageManger.setString('warehouse', "");
+      LocalStorageManger.setString('warehouseName', "No Warehouse");
+    });
+
+    // 6️⃣ Optional: feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("✅ All offline data cleared"),
+        backgroundColor: Colors.blueAccent,
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,57 +240,79 @@ class _DashboardState extends State<Dashboard> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(15, 20, 0, 10),
                 child: Row(
-                  children: const [
-                    Icon(Icons.circle,
-                        color: Color.fromARGB(255, 217, 217, 222)),
-                    SizedBox(width: 8),
-                    Text(
-                      "Main Menu",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w400,
-                        fontSize: 20,
-                        color: PRIMARY_COLOR,
-                      ),
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.circle,
+                            color: Color.fromARGB(255, 217, 217, 222)),
+                        SizedBox(width: 8),
+                        Text(
+                          "Main Menu",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w400,
+                            fontSize: 20,
+                            color: PRIMARY_COLOR,
+                          ),
+                        ),
+                      ],
+                    ),
+                    ElevatedButton(
+                      child: Text("Download"),
+                      onPressed: () async {
+                        // await Future.delayed(Duration(seconds: 2));
+                        // context.read<PurchaseOrderOfflineCubit>().addData("asasas");
+                        goTo(
+                            context,
+                            DownloadScreen(
+                              fromDashboard: true,
+                            )).then((e)=>{
+                              init()
+                            });
+                        // Navigator.pop(context);
+                      },
                     ),
                   ],
                 ),
               ),
-              ElevatedButton(
-                child: Text("Download & Save"),
-                onPressed: () async {
-                  // await Future.delayed(Duration(seconds: 2));
-                  // context.read<PurchaseOrderOfflineCubit>().addData("asasas");
-                  goTo(context, DownloadScreen());
-                  // Navigator.pop(context);
-                },
-              ),
-              ElevatedButton(
-                child: Text("Show"),
-                onPressed: () async {
-                  context.read<ReceiptTypeOfflineCubit>().printAllData();
-                  context.read<IssueTypeOfflineCubit>().printAllData();
+              // ElevatedButton(
+              //   child: Text("Download & Save"),
+              //   onPressed: () async {
+              //     // await Future.delayed(Duration(seconds: 2));
+              //     // context.read<PurchaseOrderOfflineCubit>().addData("asasas");
+              //     goTo(context, DownloadScreen());
+              //     // Navigator.pop(context);
+              //   },
+              // ),
+              // ElevatedButton(
+              //   child: Text("Show"),
+              //   onPressed: () async {
+              //     context.read<PurchaseReturnRequestOfflineCubit>().printAllData();
 
-                  // Navigator.pop(context);
-                },
-              ),
-              ElevatedButton(
-                child: Text("Clear"),
-                onPressed: () async {
-                  context.read<PurchaseOrderOfflineCubit>().clearData();
-                  context.read<BusinessOfflineCubit>().clearData();
-                  context.read<WarehouseOfflineCubit>().clearData();
-                  context.read<BinOfflineCubit>().clearData();
-                  context.read<ItemOfflineCubit>().clearData();
-                  context.read<UOMGroupOfflineCubit>().clearData();
-                  context.read<UOMOfflineCubit>().clearData();
-                  context.read<ItemBarcodeOfflineCubit>().clearData();
-                  context.read<BatchListOfflineCubit>().clearData();
-                  context.read<ReceiptTypeOfflineCubit>().clearData();
-                  context.read<IssueTypeOfflineCubit>().clearData();
+              //     // Navigator.pop(context);
+              //   },
+              // ),
+              // ElevatedButton(
+              //   child: Text("Clear"),
+              //   onPressed: () async {
+              //     context.read<PurchaseOrderOfflineCubit>().clearData();
+              //     context.read<BusinessOfflineCubit>().clearData();
+              //     context.read<WarehouseOfflineCubit>().clearData();
+              //     context.read<BinOfflineCubit>().clearData();
+              //     context.read<ItemOfflineCubit>().clearData();
+              //     context.read<UOMGroupOfflineCubit>().clearData();
+              //     context.read<UOMOfflineCubit>().clearData();
+              //     context.read<ItemBarcodeOfflineCubit>().clearData();
+              //     context.read<BatchListOfflineCubit>().clearData();
+              //     context.read<ReceiptTypeOfflineCubit>().clearData();
+              //     context.read<IssueTypeOfflineCubit>().clearData();
+              //     context.read<ReturnReceiptRequestOfflineCubit>().clearData();
+              //     context.read<SaleOrderOfflineCubit>().clearData();
+              //     context.read<PurchaseReturnRequestOfflineCubit>().clearData();
 
-                  // Navigator.pop(context);
-                },
-              ),
+              //     // Navigator.pop(context);
+              //   },
+              // ),
               Expanded(
                 // 👈 this makes the list scrollable
                 child: ListView.builder(

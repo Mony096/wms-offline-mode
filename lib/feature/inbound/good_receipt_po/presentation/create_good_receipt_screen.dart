@@ -127,7 +127,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         cardName.text = getDataFromDynamic(widget.po['CardName']);
 
         // Show loading indicator
-        // if (mounted) MaterialDialog.loading(context);
+        if (mounted) MaterialDialog.loading(context);
         // final state = _blocBin.state;
         // // If state is not BinData, just return (no data yet)
         // if (state is! BinData) {

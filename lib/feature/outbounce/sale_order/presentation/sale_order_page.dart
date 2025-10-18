@@ -1,252 +1,10 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// import '/constant/style.dart';
-// import '/feature/inbound/good_receipt_po/presentation/create_good_receipt_screen.dart';
-// import '/utilies/storage/locale_storage.dart';
-
-// import '../../../../helper/helper.dart';
-// import 'cubit/sale_order_cubit.dart';
-
-// class SaleOrderPage extends StatefulWidget {
-//   const SaleOrderPage({
-//     super.key,
-//   });
-
-//   @override
-//   State<SaleOrderPage> createState() => _SaleOrderPageState();
-// }
-
-// class _SaleOrderPageState extends State<SaleOrderPage> {
-//   final ScrollController _scrollController = ScrollController();
-
-//   String query = "?\$top=10&\$skip=0";
-
-//   int check = 1;
-//   TextEditingController filter = TextEditingController();
-//   List<dynamic> data = [];
-//   late SaleOrderCubit _bloc;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     init(context);
-//   }
-
-//   void init(BuildContext context) async {
-//     try {
-//       final warehouse = await LocalStorageManger.getString('warehouse');
-
-//       // _bloc = context.read<SaleOrderCubit>();
-//       // _bloc
-//       //     .get(
-//       //         "$query&\$filter=DocumentStatus eq 'bost_Open' and U_tl_whsdesc= eq '$warehouse'")
-//       //     .then((value) => setState(() => data = value));
-//       _bloc = context.read<SaleOrderCubit>();
-//       _bloc
-//           .get("$query&\$filter=DocumentStatus eq 'bost_Open'")
-//           .then((value) => setState(() => data = value));
-//       _scrollController.addListener(() {
-//         if (_scrollController.position.pixels ==
-//             _scrollController.position.maxScrollExtent) {
-//           final state = BlocProvider.of<SaleOrderCubit>(context).state;
-//           if (state is SaleOrderData && data.length > 0) {
-//             // _bloc
-//             //     .next(
-//             //         "?\$top=10&\$skip=${data.length}&\$filter=DocumentStatus eq 'bost_Open' and U_tl_whsdesc eq '$warehouse' and contains(CardCode,'${filter.text}')")
-//             //     .then((value) {
-//             //   if (!mounted) return;
-
-//             //   setState(() => data = [...data, ...value]);
-//             // });
-//              _bloc
-//                 .next(
-//                     "?\$top=10&\$skip=${data.length}&\$filter=DocumentStatus eq 'bost_Open' and contains(CardCode,'${filter.text}')")
-//                 .then((value) {
-//               if (!mounted) return;
-
-//               setState(() => data = [...data, ...value]);
-//             });
-//           }
-//         }
-//       });
-//     } catch (err) {
-//       print(err);
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     // TODO: implement dispose
-//     _scrollController.dispose();
-//     filter.dispose();
-
-//     super.dispose();
-//   }
-
-//   void onFilter() async {
-//     setState(() {
-//       data = [];
-//     });
-
-//     // final warehouse = await LocalStorageManger.getString('warehouse');
-//     // _bloc
-//     //     .get(
-//     //         "$query&\$filter=DocumentStatus eq 'bost_Open' and U_tl_whsdesc eq '$warehouse' and contains(CardCode, '${filter.text}')")
-//     //     .then((value) {
-//     //   if (!mounted) return;
-
-//     //   setState(() => data = value);
-//     // });
-//       // final warehouse = await LocalStorageManger.getString('warehouse');
-//     _bloc
-//         .get(
-//             "$query&\$filter=DocumentStatus eq 'bost_Open' and contains(CardCode, '${filter.text}') & \$orderby = DocEntry desc")
-//         .then((value) {
-//       if (!mounted) return;
-
-//       setState(() => data = value);
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: PRIMARY_COLOR,
-//         iconTheme: IconThemeData(color: Colors.white),
-//         title: const Text(
-//           'Sale Order Lists - OPEN',
-//           style: TextStyle(
-//               fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
-//         ),
-//       ),
-//       // bottomNavigationBar: MyBottomSheet(),
-//       body: Container(
-//         width: double.infinity,
-//         height: double.infinity,
-//         color: Color.fromARGB(255, 243, 243, 243),
-//         child: Column(
-//           children: [
-//             Container(
-//               padding:
-//                   const EdgeInsets.only(left: 14, right: 14, bottom: 6, top: 4),
-//               width: double.infinity,
-//               decoration: BoxDecoration(color: Colors.white),
-//               child: TextFormField(
-//                 controller: filter,
-//                 decoration: InputDecoration(
-//                   enabledBorder: UnderlineInputBorder(
-//                       borderSide: BorderSide(color: Colors.transparent)),
-//                   focusedBorder: UnderlineInputBorder(
-//                       borderSide: BorderSide(color: Colors.transparent)),
-//                   contentPadding: const EdgeInsets.only(top: 15),
-//                   hintText: 'Customer Code',
-//                   suffixIcon: IconButton(
-//                     icon: Icon(
-//                       Icons.search,
-//                       color: PRIMARY_COLOR,
-//                     ),
-//                     onPressed: onFilter,
-//                   ),
-//                 ),
-//               ),
-//             ),
-//             // const SizedBox(height: 10),
-//             const Divider(thickness: 0.1, height: 15),
-//             Expanded(
-//               child: BlocConsumer<SaleOrderCubit, SaleOrderState>(
-//                 listener: (context, state) {},
-//                 builder: (context, state) {
-//                   if (state is RequestingSaleOrder) {
-//                     return Center(child: CircularProgressIndicator());
-//                   }
-
-//                   return ListView(
-//                     controller: _scrollController,
-//                     children: [
-//                       ...data
-//                           .map(
-//                             (po) => GestureDetector(
-//                               onTap: () => Navigator.of(context).pop(po),
-//                               child: Container(
-//                                 padding: const EdgeInsets.all(12),
-//                                 decoration: BoxDecoration(
-//                                   color: Colors.white,
-//                                 ),
-//                                 margin: const EdgeInsets.only(bottom: 8),
-//                                 child: Column(
-//                                   children: [
-//                                     Row(
-//                                       mainAxisAlignment:
-//                                           MainAxisAlignment.spaceBetween,
-//                                       children: [
-//                                         Text(
-//                                           "${getDataFromDynamic(po['CardCode'])} - ${getDataFromDynamic(po['DocNum'])}",
-//                                           style: TextStyle(
-//                                             fontWeight: FontWeight.w800,
-//                                           ),
-//                                         ),
-//                                         Text(
-//                                           'Doc Date : ${getDataFromDynamic(po['DocDueDate'], isDate: true)}',
-//                                           style: TextStyle(fontSize: 13),
-//                                         ),
-//                                       ],
-//                                     ),
-//                                     const SizedBox(height: 6),
-//                                     Row(
-//                                       mainAxisAlignment:
-//                                           MainAxisAlignment.spaceBetween,
-//                                       children: [
-//                                         Expanded(
-//                                           child: Text(
-//                                             getDataFromDynamic(po['Comments']),
-//                                             overflow: TextOverflow.ellipsis,
-//                                           ),
-//                                         ),
-//                                         const SizedBox(width: 30),
-//                                         Text(
-//                                           'Dilvery Date : ${getDataFromDynamic(po['DocDate'], isDate: true)}',
-//                                           style: TextStyle(fontSize: 13),
-//                                         ),
-//                                       ],
-//                                     )
-//                                   ],
-//                                 ),
-//                               ),
-//                             ),
-//                           )
-//                           .toList(),
-//                       if (state is RequestingPaginationSaleOrder)
-//                         Container(
-//                           margin: const EdgeInsets.symmetric(vertical: 20),
-//                           child: Center(
-//                             child: SizedBox(
-//                               width: 30,
-//                               height: 30,
-//                               child: CircularProgressIndicator(
-//                                 strokeWidth: 3,
-//                               ),
-//                             ),
-//                           ),
-//                         )
-//                     ],
-//                   );
-//                 },
-//               ),
-//             )
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:wms_mobile/core/enum/global.dart';
+import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
+import 'package:wms_mobile/helper/helper.dart';
+import 'package:wms_mobile/utilies/dialog/dialog.dart';
 import '/constant/style.dart';
-import '/feature/inbound/good_receipt_po/presentation/create_good_receipt_screen.dart';
-import '/utilies/storage/locale_storage.dart';
-import '../../../../helper/helper.dart';
-import 'cubit/sale_order_cubit.dart';
 
 class SaleOrderPage extends StatefulWidget {
   const SaleOrderPage({super.key});
@@ -256,61 +14,67 @@ class SaleOrderPage extends StatefulWidget {
 }
 
 class _SaleOrderPageState extends State<SaleOrderPage> {
-  final ScrollController _scrollController = ScrollController();
-  String query = "?\$top=10&\$skip=0";
-  TextEditingController filter = TextEditingController();
-  List<dynamic> data = [];
-  late SaleOrderCubit _bloc;
+  final TextEditingController filter = TextEditingController();
+  List<dynamic> filteredData = [];
 
   @override
   void initState() {
     super.initState();
-    init(context);
+    // Initial filter on load
+    final offlineData = context.read<SaleOrderOfflineCubit>().state;
+    _applyFilter(offlineData);
   }
 
-  void init(BuildContext context) async {
-    try {
-      _bloc = context.read<SaleOrderCubit>();
-      _bloc
-          .get("$query&\$filter=DocumentStatus eq 'bost_Open'")
-          .then((value) => setState(() => data = value));
+  void _applyFilter(List<dynamic> allData) {
+    final searchText = filter.text.trim().toLowerCase();
 
-      _scrollController.addListener(() {
-        if (_scrollController.position.pixels ==
-            _scrollController.position.maxScrollExtent) {
-          final state = BlocProvider.of<SaleOrderCubit>(context).state;
-          if (state is SaleOrderData && data.isNotEmpty) {
-            _bloc
-                .next(
-                    "?\$top=10&\$skip=${data.length}&\$filter=DocumentStatus eq 'bost_Open' and contains(CardCode,'${filter.text}')")
-                .then((value) {
-              if (!mounted) return;
-              setState(() => data = [...data, ...value]);
-            });
-          }
-        }
-      });
-    } catch (err) {
-      print(err);
+    final results = allData.where((bp) {
+      // final typeMatch =
+      //     getDataFromDynamic(bp['CardType']).toString().toLowerCase() ==
+      //         cardType.toLowerCase();
+      final code = getDataFromDynamic(bp['CardCode']).toLowerCase();
+      final name = getDataFromDynamic(bp['CardName']).toLowerCase();
+
+      // if (searchText.isEmpty) return typeMatch;
+      return (code.contains(searchText) || name.contains(searchText));
+    }).toList();
+
+    setState(() => filteredData = results);
+    debugPrint(
+        "🔎 Filter: '$searchText', → ${filteredData.length} results");
+  }
+
+  // Map enum to SAP CardType
+  String _mapType(BusinessPartnerType type) {
+    switch (type) {
+      case BusinessPartnerType.customer:
+        return "cCustomer"; // or 'C' depending on your API data
+      case BusinessPartnerType.supplier:
+        return "cSupplier";
+      default:
+        return "";
     }
   }
 
-  void onFilter() async {
-    setState(() => data = []);
-    _bloc
-        .get(
-            "$query&\$filter=DocumentStatus eq 'bost_Open' and contains(CardCode, '${filter.text}')&\$orderby=DocEntry desc")
-        .then((value) {
-      if (!mounted) return;
-      setState(() => data = value);
-    });
+  void onFilterPressed() {
+    final allData = context.read<SaleOrderOfflineCubit>().state;
+    _applyFilter(allData);
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    filter.dispose();
-    super.dispose();
+  void onPressed(dynamic bp) async {
+    try {
+      MaterialDialog.loading(context);
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (mounted) {
+        MaterialDialog.close(context);
+        Navigator.pop(context, bp);
+      }
+    } catch (_) {
+      if (mounted) {
+        MaterialDialog.success(context,
+            title: 'Invalid', body: 'Sale order not found.');
+      }
+    }
   }
 
   @override
@@ -319,34 +83,38 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
       appBar: AppBar(
         backgroundColor: PRIMARY_COLOR,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          'Sale Order Lists - OPEN',
-          style: TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+        title: const Center(
+          child: Padding(
+            padding: EdgeInsets.only(right: 70),
+            child: Text(
+              "Sale Order Lists",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+          ),
         ),
       ),
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
         color: Colors.white,
         child: Column(
           children: [
             const SizedBox(height: 10),
-            // 🔹 Modern Search Bar
+            // 🔍 Search Bar
             Container(
               padding: const EdgeInsets.all(8),
-              width: double.infinity,
               child: Row(
                 children: [
                   Expanded(
                     child: TextFormField(
                       controller: filter,
                       decoration: InputDecoration(
-                        hintText: 'Search Customer Code...',
+                        hintText: 'Search Sale Order',
                         filled: true,
                         fillColor: const Color.fromARGB(255, 243, 243, 243),
-                        prefixIcon: Icon(Icons.search,
-                            color: PRIMARY_COLOR), // left icon
+                        prefixIcon: Icon(Icons.search, color: PRIMARY_COLOR),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide:
@@ -360,7 +128,7 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide:
-                              BorderSide(color: PRIMARY_COLOR, width: 0.5),
+                              BorderSide(color: PRIMARY_COLOR, width: 0.2),
                         ),
                         contentPadding: const EdgeInsets.symmetric(
                             vertical: 14, horizontal: 10),
@@ -378,135 +146,100 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
                     child: IconButton(
                       icon:
                           const Icon(Icons.arrow_forward, color: Colors.white),
-                      onPressed: onFilter,
+                      onPressed: onFilterPressed,
                     ),
                   ),
                 ],
               ),
             ),
+
             const SizedBox(height: 10),
 
-            // 🔹 Sale Order List
+            // 🧾 Offline Business Partner List
             Expanded(
-              child: BlocConsumer<SaleOrderCubit, SaleOrderState>(
-                listener: (context, state) {},
+              child: BlocBuilder<SaleOrderOfflineCubit, List<dynamic>>(
                 builder: (context, state) {
-                  if (state is RequestingSaleOrder) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (data.isEmpty) {
-                    return Padding(
-                        padding: EdgeInsets.only(bottom: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(
-                              Icons.file_copy,
-                              size: 50,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(
-                              height: 20,
-                            ),
-                            Column(
-                              children: [
-                                Text(
-                                  "No sale order found !",
-                                  style: TextStyle(
-                                      color: Colors.grey, fontSize: 15),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ));
-                  }
-                  return ListView(
-                    controller: _scrollController,
-                    children: [
-                      ...data.map(
-                        (po) => GestureDetector(
-                          onTap: () => Navigator.of(context).pop(po),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 15, vertical: 5),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: const Color.fromARGB(255, 243, 243, 243),
-                              boxShadow: const [
-                                // BoxShadow(
-                                //   color: Colors.grey.withOpacity(0.15),
-                                //   spreadRadius: 1,
-                                //   blurRadius: 3,
-                                //   offset: const Offset(0, 2),
-                                // ),
-                              ],
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // 🔸 Header row
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "${getDataFromDynamic(po['CardCode'])} - ${getDataFromDynamic(po['DocNum'])}",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Doc Date: ${getDataFromDynamic(po['DocDueDate'], isDate: true)}',
-                                      style: const TextStyle(
-                                          fontSize: 13, color: Colors.black54),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
+                  // final allData = state;
+                  // if (filteredData.isEmpty && filter.text.isEmpty) {
+                  //   _applyFilter(allData);
+                  // }
 
-                                // 🔸 Comment + Date
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        getDataFromDynamic(po['Comments']),
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
+                  // if (filteredData.isEmpty) {
+                  //   return const Center(
+                  //     child: Text("No matching business partners found."),
+                  //   );
+                  // }
+                  // Apply filter only once after first frame
+                  if (filteredData.isEmpty && filter.text.isEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _applyFilter(state);
+                    });
+                  }
+
+                  if (filteredData.isEmpty) {
+                    return const Center(
+                      child: Text("No matching sale order found."),
+                    );
+                  }
+                  return ListView.builder(
+                    itemCount: filteredData.length,
+                    itemBuilder: (context, index) {
+                      final bp = filteredData[index];
+                      return GestureDetector(
+                        onTap: () => onPressed(bp),
+                        child: Container(
+                          padding: const EdgeInsets.all(15),
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 15, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 243, 243, 243),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    getDataFromDynamic(bp['CardCode']),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
                                     ),
-                                    const SizedBox(width: 20),
-                                    Text(
-                                      'Delivery: ${getDataFromDynamic(po['DocDate'], isDate: true)}',
-                                      style: const TextStyle(
-                                          fontSize: 13, color: Colors.black54),
+                                  ),
+                                  Text(
+                                    'Date : ${getDataFromDynamic(bp['DocDate'], isDate: true)}'
+                                    ,
+                                    style: const TextStyle(
+                                        fontSize: 13.5, color: Colors.black54),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      getDataFromDynamic(bp['CardName']),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  ),
+                                  const SizedBox(width: 30),
+                                  Text(
+                                    'Delivery Date : ${getDataFromDynamic(bp['DocDueDate'], isDate: true)}',
+                                    style: const TextStyle(
+                                        fontSize: 13.5, color: Colors.black54),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      if (state is RequestingPaginationSaleOrder)
-                        Container(
-                          margin: const EdgeInsets.symmetric(vertical: 20),
-                          child: const Center(
-                            child: SizedBox(
-                              width: 30,
-                              height: 30,
-                              child: CircularProgressIndicator(strokeWidth: 3),
-                            ),
-                          ),
-                        ),
-                    ],
+                      );
+                    },
                   );
                 },
               ),

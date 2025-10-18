@@ -43,7 +43,7 @@ class _MainScreenState extends State<MainScreen> {
           );
         } else if (state is AuthorizationSuccess) {
           _navigatorKey.currentState?.pushReplacement(
-            MaterialPageRoute(builder: (context) => DownloadScreen()),
+            MaterialPageRoute(builder: (context) => DownloadScreen(fromDashboard: false,)),
           );
         }
       },
@@ -60,7 +60,7 @@ class _MainScreenState extends State<MainScreen> {
         home: BlocBuilder<AuthorizationBloc, AuthorizationState>(
           builder: (context, state) {
             if (state is AuthorizationSuccess) {
-              return DownloadScreen() ;
+              return DownloadScreen(fromDashboard: false,) ;
             } else {
               return const LoginScreen();
             }

@@ -18,6 +18,7 @@ import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/pu
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/component/item/presentation/cubit/item_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/cubit/item_cubit.dart';
@@ -29,6 +30,8 @@ import 'package:wms_mobile/feature/lookup/bin_lookup/presentation/cubit/binlocat
 import 'package:wms_mobile/feature/lookup/product_lookup/presentation/cubit/product_lookup_cubit.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/pick_and_pack/bin_transfer/presentation/cubit/bin_transfer_cubit.dart';
 import 'package:wms_mobile/feature/pick_and_pack/warehouse_transfer/presentation/cubit/warehouse_transfer_cubit.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_cubit.dart';
@@ -70,6 +73,10 @@ void main() async {
   await Hive.openBox("serial_list");
   await Hive.openBox("issue_type");
   await Hive.openBox("receipt_type");
+  await Hive.openBox("return_receipt_request");
+  await Hive.openBox("sale_order");
+  await Hive.openBox("purchase_return_request");
+
   // (Optional) Only print directory AFTER Hive init
   final dir = await getApplicationDocumentsDirectory();
   print("📁 App directory: $dir");
@@ -140,6 +147,9 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => SerialListOfflineCubit()),
         BlocProvider(create: (_) => IssueTypeOfflineCubit()),
         BlocProvider(create: (_) => ReceiptTypeOfflineCubit()),
+        BlocProvider(create: (_) => ReturnReceiptRequestOfflineCubit()),
+        BlocProvider(create: (_) => SaleOrderOfflineCubit()),
+        BlocProvider(create: (_) => PurchaseReturnRequestOfflineCubit()),
       ],
       child: const MainScreen(),
     );

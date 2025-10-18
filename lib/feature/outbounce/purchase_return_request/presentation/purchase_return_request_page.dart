@@ -1,256 +1,16 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_cubit.dart';
-// import '/constant/style.dart';
-// import '/utilies/storage/locale_storage.dart';
-
-// import '../../../../helper/helper.dart';
-
-// class PurchaseReturnRequestPage extends StatefulWidget {
-//   const PurchaseReturnRequestPage({
-//     super.key,
-//   });
-
-//   @override
-//   State<PurchaseReturnRequestPage> createState() =>
-//       _PurchaseReturnRequestPageState();
-// }
-
-// class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
-//   final ScrollController _scrollController = ScrollController();
-
-//   String query = "?\$top=10&\$skip=0";
-
-//   int check = 1;
-//   TextEditingController filter = TextEditingController();
-//   List<dynamic> data = [];
-//   late PurchaseReturnRequestCubit _bloc;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     init(context);
-//   }
-
-//   void init(BuildContext context) async {
-//     try {
-//       // final warehouse = await LocalStorageManger.getString('warehouse');
-
-//       // _bloc = context.read<PurchaseReturnRequestCubit>();
-//       // _bloc
-//       //     .get(
-//       //         "$query&\$filter=DocumentStatus eq 'bost_Open' and U_tl_whsdesc eq '$warehouse'")
-//       //     .then((value) => setState(() => data = value));
-//       _bloc = context.read<PurchaseReturnRequestCubit>();
-//       _bloc
-//           .get(
-//               "$query&\$filter=DocumentStatus eq 'bost_Open'")
-//           .then((value) => setState(() => data = value));
-//       _scrollController.addListener(() {
-//         if (_scrollController.position.pixels ==
-//             _scrollController.position.maxScrollExtent) {
-//           final state =
-//               BlocProvider.of<PurchaseReturnRequestCubit>(context).state;
-//           if (state is PurchaseReturnRequestData && data.length > 0) {
-//             // _bloc
-//             //     .next(
-//             //         "?\$top=10&\$skip=${data.length}&\$filter=DocumentStatus eq 'bost_Open' and U_tl_whsdesc eq '$warehouse' and contains(CardCode,'${filter.text}')")
-//             //     .then((value) {
-//             //   if (!mounted) return;
-
-//             //   setState(() => data = [...data, ...value]);
-//             // });
-//              _bloc
-//                 .next(
-//                     "?\$top=10&\$skip=${data.length}&\$filter=DocumentStatus eq 'bost_Open' and contains(CardCode,'${filter.text}')")
-//                 .then((value) {
-//               if (!mounted) return;
-
-//               setState(() => data = [...data, ...value]);
-//             });
-//           }
-//         }
-//       });
-//     } catch (err) {
-//       print(err);
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     // TODO: implement dispose
-//     _scrollController.dispose();
-//     filter.dispose();
-
-//     super.dispose();
-//   }
-
-//   void onFilter() async {
-//     setState(() {
-//       data = [];
-//     });
-
-//     // final warehouse = await LocalStorageManger.getString('warehouse');
-//     // _bloc
-//     //     .get(
-//     //         "$query&\$filter=DocumentStatus eq 'bost_Open' and U_tl_whsdesc eq '$warehouse' and contains(CardCode, '${filter.text}')")
-//     //     .then((value) {
-//     //   if (!mounted) return;
-
-//     //   setState(() => data = value);
-//     // });
-//      _bloc
-//         .get(
-//             "$query&\$filter=DocumentStatus eq 'bost_Open' and contains(CardCode, '${filter.text}')")
-//         .then((value) {
-//       if (!mounted) return;
-
-//       setState(() => data = value);
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: PRIMARY_COLOR,
-//         iconTheme: IconThemeData(color: Colors.white),
-//         title: const Text(
-//           'Return To Supplier Request Lists - OPEN',
-//           style: TextStyle(
-//               fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-//         ),
-//       ),
-//       // bottomNavigationBar: MyBottomSheet(),
-//       body: Container(
-//         width: double.infinity,
-//         height: double.infinity,
-//         color: Color.fromARGB(255, 243, 243, 243),
-//         child: Column(
-//           children: [
-//             Container(
-//               padding:
-//                   const EdgeInsets.only(left: 14, right: 14, bottom: 6, top: 4),
-//               width: double.infinity,
-//               decoration: BoxDecoration(color: Colors.white),
-//               child: TextFormField(
-//                 controller: filter,
-//                 decoration: InputDecoration(
-//                   enabledBorder: UnderlineInputBorder(
-//                       borderSide: BorderSide(color: Colors.transparent)),
-//                   focusedBorder: UnderlineInputBorder(
-//                       borderSide: BorderSide(color: Colors.transparent)),
-//                   contentPadding: const EdgeInsets.only(top: 15),
-//                   hintText: 'Vendor Code...',
-//                   suffixIcon: IconButton(
-//                     icon: Icon(
-//                       Icons.search,
-//                       color: PRIMARY_COLOR,
-//                     ),
-//                     onPressed: onFilter,
-//                   ),
-//                 ),
-//               ),
-//             ),
-//             // const SizedBox(height: 10),
-//             const Divider(thickness: 0.1, height: 15),
-//             Expanded(
-//               child: BlocConsumer<PurchaseReturnRequestCubit,
-//                   PurchaseReturnRequestState>(
-//                 listener: (context, state) {},
-//                 builder: (context, state) {
-//                   if (state is RequestingPurchaseReturnRequest) {
-//                     return Center(child: CircularProgressIndicator());
-//                   }
-
-//                   return ListView(
-//                     controller: _scrollController,
-//                     children: [
-//                       ...data
-//                           .map(
-//                             (po) => GestureDetector(
-//                               onTap: () => Navigator.of(context).pop(po),
-//                               child: Container(
-//                                 padding: const EdgeInsets.all(12),
-//                                 decoration: BoxDecoration(
-//                                   color: Colors.white,
-//                                 ),
-//                                 margin: const EdgeInsets.only(bottom: 8),
-//                                 child: Column(
-//                                   children: [
-//                                     Row(
-//                                       mainAxisAlignment:
-//                                           MainAxisAlignment.spaceBetween,
-//                                       children: [
-//                                         Text(
-//                                           "${getDataFromDynamic(po['CardCode'])} - ${getDataFromDynamic(po['DocNum'])}",
-//                                           style: TextStyle(
-//                                             fontWeight: FontWeight.w800,
-//                                           ),
-//                                         ),
-//                                         Text(
-//                                           'Doc Date : ${getDataFromDynamic(po['DocDueDate'], isDate: true)}',
-//                                           style: TextStyle(fontSize: 13),
-//                                         ),
-//                                       ],
-//                                     ),
-//                                     const SizedBox(height: 6),
-//                                     Row(
-//                                       mainAxisAlignment:
-//                                           MainAxisAlignment.spaceBetween,
-//                                       children: [
-//                                         Expanded(
-//                                           child: Text(
-//                                             getDataFromDynamic(po['Comments']),
-//                                             overflow: TextOverflow.ellipsis,
-//                                           ),
-//                                         ),
-//                                         const SizedBox(width: 30),
-//                                         Text(
-//                                           'Dilvery Date : ${getDataFromDynamic(po['DocDate'], isDate: true)}',
-//                                           style: TextStyle(fontSize: 13),
-//                                         ),
-//                                       ],
-//                                     )
-//                                   ],
-//                                 ),
-//                               ),
-//                             ),
-//                           )
-//                           .toList(),
-//                       if (state is RequestingPaginationPurchaseReturnRequest)
-//                         Container(
-//                           margin: const EdgeInsets.symmetric(vertical: 20),
-//                           child: Center(
-//                             child: SizedBox(
-//                               width: 30,
-//                               height: 30,
-//                               child: CircularProgressIndicator(
-//                                 strokeWidth: 3,
-//                               ),
-//                             ),
-//                           ),
-//                         )
-//                     ],
-//                   );
-//                 },
-//               ),
-//             )
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_cubit.dart';
+import 'package:wms_mobile/core/enum/global.dart';
+import 'package:wms_mobile/feature/business_partner/presentation/cubit/bussinessPartner_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
+import 'package:wms_mobile/helper/helper.dart';
+import 'package:wms_mobile/utilies/dialog/dialog.dart';
 import '/constant/style.dart';
-import '/utilies/storage/locale_storage.dart';
-import '../../../../helper/helper.dart';
 
 class PurchaseReturnRequestPage extends StatefulWidget {
-  const PurchaseReturnRequestPage({super.key});
+  const PurchaseReturnRequestPage({super.key,});
+
 
   @override
   State<PurchaseReturnRequestPage> createState() =>
@@ -258,63 +18,66 @@ class PurchaseReturnRequestPage extends StatefulWidget {
 }
 
 class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
-  final ScrollController _scrollController = ScrollController();
   final TextEditingController filter = TextEditingController();
-
-  String query = "?\$top=10&\$skip=0";
-  List<dynamic> data = [];
-  late PurchaseReturnRequestCubit _bloc;
+  List<dynamic> filteredData = [];
 
   @override
   void initState() {
     super.initState();
-    init(context);
+    // Initial filter on load
+    final offlineData = context.read<PurchaseReturnRequestOfflineCubit>().state;
+    _applyFilter(offlineData);
   }
 
-  void init(BuildContext context) async {
-    try {
-      _bloc = context.read<PurchaseReturnRequestCubit>();
-      _bloc
-          .get("$query&\$filter=DocumentStatus eq 'bost_Open'")
-          .then((value) => setState(() => data = value));
+  void _applyFilter(List<dynamic> allData) {
+    final searchText = filter.text.trim().toLowerCase();
 
-      _scrollController.addListener(() {
-        if (_scrollController.position.pixels ==
-            _scrollController.position.maxScrollExtent) {
-          final state =
-              BlocProvider.of<PurchaseReturnRequestCubit>(context).state;
-          if (state is PurchaseReturnRequestData && data.isNotEmpty) {
-            _bloc
-                .next(
-                    "?\$top=10&\$skip=${data.length}&\$filter=DocumentStatus eq 'bost_Open' and contains(CardCode,'${filter.text}')")
-                .then((value) {
-              if (!mounted) return;
-              setState(() => data = [...data, ...value]);
-            });
-          }
-        }
-      });
-    } catch (err) {
-      print(err);
+    final results = allData.where((bp) {
+      // final typeMatch =
+      //     getDataFromDynamic(bp['CardType']).toString().toLowerCase() ==
+      //         cardType.toLowerCase();
+      final code = getDataFromDynamic(bp['CardCode']).toLowerCase();
+      final name = getDataFromDynamic(bp['CardName']).toLowerCase();
+
+      // if (searchText.isEmpty) return typeMatch;
+      return (code.contains(searchText) || name.contains(searchText));
+    }).toList();
+
+    setState(() => filteredData = results);
+    debugPrint("🔎 Filter: '$searchText', → ${filteredData.length} results");
+  }
+
+  // Map enum to SAP CardType
+  String _mapType(BusinessPartnerType type) {
+    switch (type) {
+      case BusinessPartnerType.customer:
+        return "cCustomer"; // or 'C' depending on your API data
+      case BusinessPartnerType.supplier:
+        return "cSupplier";
+      default:
+        return "";
     }
   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    filter.dispose();
-    super.dispose();
+  void onFilterPressed() {
+    final allData = context.read<PurchaseReturnRequestOfflineCubit>().state;
+    _applyFilter(allData);
   }
 
-  void onFilter() async {
-    setState(() => data = []);
-    _bloc
-        .get(
-            "$query&\$filter=DocumentStatus eq 'bost_Open' and contains(CardCode, '${filter.text}')")
-        .then((value) {
-      if (!mounted) return;
-      setState(() => data = value);
-    });
+  void onPressed(dynamic bp) async {
+    try {
+      MaterialDialog.loading(context);
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (mounted) {
+        MaterialDialog.close(context);
+        Navigator.pop(context, bp);
+      }
+    } catch (_) {
+      if (mounted) {
+        MaterialDialog.success(context,
+            title: 'Invalid', body: 'Goods Return Request not found.');
+      }
+    }
   }
 
   @override
@@ -323,175 +86,163 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
       appBar: AppBar(
         backgroundColor: PRIMARY_COLOR,
         iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          'Return To Supplier Request - OPEN',
-          style: TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+        title: const Center(
+          child: Padding(
+            padding: EdgeInsets.only(right: 70),
+            child: Text(
+              "Goods Return Request Lists",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: Colors.white,
+              ),
+            ),
+          ),
         ),
       ),
       body: Container(
-        width: double.infinity,
-        height: double.infinity,
         color: Colors.white,
         child: Column(
           children: [
-            // 🔍 Modern Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12.0),
-                      child: Icon(Icons.search,
-                          color: PRIMARY_COLOR.withOpacity(0.8)),
-                    ),
-                    Expanded(
-                      child: TextFormField(
-                        controller: filter,
-                        decoration: const InputDecoration(
-                          hintText: 'Vendor Code...',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 14, horizontal: 10),
+            const SizedBox(height: 10),
+            // 🔍 Search Bar
+            Container(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: filter,
+                      decoration: InputDecoration(
+                        hintText: 'Search Goods Return Request',
+                        filled: true,
+                        fillColor: const Color.fromARGB(255, 243, 243, 243),
+                        prefixIcon: Icon(Icons.search, color: PRIMARY_COLOR),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              BorderSide(color: Colors.grey.shade300, width: 1),
                         ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              BorderSide(color: Colors.grey.shade300, width: 1),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide:
+                              BorderSide(color: PRIMARY_COLOR, width: 0.2),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 14, horizontal: 10),
                       ),
                     ),
-                    Container(
-                      height: 45,
-                      width: 45,
-                      margin: const EdgeInsets.only(right: 6),
-                      decoration: BoxDecoration(
-                        color: PRIMARY_COLOR,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_forward_ios_rounded,
-                            size: 18, color: Colors.white),
-                        onPressed: onFilter,
-                      ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    height: 48,
+                    width: 48,
+                    decoration: BoxDecoration(
+                      color: PRIMARY_COLOR,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
-                ),
+                    child: IconButton(
+                      icon:
+                          const Icon(Icons.arrow_forward, color: Colors.white),
+                      onPressed: onFilterPressed,
+                    ),
+                  ),
+                ],
               ),
             ),
 
-            SizedBox(
-              height: 5,
-            ),
+            const SizedBox(height: 10),
 
+            // 🧾 Offline Business Partner List
             Expanded(
-              child: BlocConsumer<PurchaseReturnRequestCubit,
-                  PurchaseReturnRequestState>(
-                listener: (context, state) {},
+              child:
+                  BlocBuilder<PurchaseReturnRequestOfflineCubit, List<dynamic>>(
                 builder: (context, state) {
-                  if (state is RequestingPurchaseReturnRequest) {
-                    return const Center(child: CircularProgressIndicator());
+                  // final allData = state;
+                  // if (filteredData.isEmpty && filter.text.isEmpty) {
+                  //   _applyFilter(allData);
+                  // }
+
+                  // if (filteredData.isEmpty) {
+                  //   return const Center(
+                  //     child: Text("No matching business partners found."),
+                  //   );
+                  // }
+                  // Apply filter only once after first frame
+                  if (filteredData.isEmpty && filter.text.isEmpty) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      _applyFilter(state);
+                    });
                   }
-                  if (data.isEmpty) {
-                    return Padding(
-                        padding: EdgeInsets.only(bottom: 20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(
-                              Icons.file_copy,
-                              size: 50,
-                              color: Colors.grey,
-                            ),
-                            SizedBox(
-                              height: 20,
-                            ),
-                            Column(
-                              children: [
-                                Text(
-                                  "No return to supplier request found !",
-                                  style: TextStyle(
-                                      color: Colors.grey, fontSize: 15),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ));
+
+                  if (filteredData.isEmpty) {
+                    return const Center(
+                      child: Text("No matching Goods Return Request found."),
+                    );
                   }
-                  return ListView(
-                    controller: _scrollController,
-                    children: [
-                      ...data.map(
-                        (po) => GestureDetector(
-                          onTap: () => Navigator.of(context).pop(po),
-                          child: Container(
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF3F3F3),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            margin: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 5),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      "${getDataFromDynamic(po['CardCode'])} - ${getDataFromDynamic(po['DocNum'])}",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 15,
-                                      ),
+                  return ListView.builder(
+                    itemCount: filteredData.length,
+                    itemBuilder: (context, index) {
+                      final bp = filteredData[index];
+                      return GestureDetector(
+                        onTap: () => onPressed(bp),
+                        child: Container(
+                          padding: const EdgeInsets.all(15),
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 15, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 243, 243, 243),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    getDataFromDynamic(bp['CardCode']),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
                                     ),
-                                    Text(
-                                      'Doc Date: ${getDataFromDynamic(po['DocDueDate'], isDate: true)}',
-                                      style: const TextStyle(
-                                          fontSize: 13, color: Colors.black87),
+                                  ),
+                                  Text(
+                                    'Date : ${getDataFromDynamic(bp['DocDate'], isDate: true)}',
+                                    style: const TextStyle(
+                                        fontSize: 13.5, color: Colors.black54),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      getDataFromDynamic(bp['CardName']),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        getDataFromDynamic(po['Comments']),
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 30),
-                                    Text(
-                                      'Delivery Date: ${getDataFromDynamic(po['DocDate'], isDate: true)}',
-                                      style: const TextStyle(
-                                          fontSize: 13, color: Colors.black87),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  ),
+                                  const SizedBox(width: 30),
+                                  Text(
+                                    'Return Date : ${getDataFromDynamic(bp['DocDueDate'], isDate: true)}',
+                                    style: const TextStyle(
+                                        fontSize: 13.5, color: Colors.black54),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                      if (state is RequestingPaginationPurchaseReturnRequest)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
-                          child: Center(
-                            child: SizedBox(
-                              width: 30,
-                              height: 30,
-                              child: CircularProgressIndicator(strokeWidth: 3),
-                            ),
-                          ),
-                        ),
-                    ],
+                      );
+                    },
                   );
                 },
               ),
