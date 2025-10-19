@@ -61,7 +61,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       queryParams: {
         '\$filter': "DocumentStatus eq 'bost_Open'",
         '\$select':
-            "CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
+            "DocEntry,CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
       },
       onSave: (context, data) async =>
           context.read<PurchaseOrderOfflineCubit>().addData(data),
@@ -72,7 +72,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       queryParams: {
         '\$filter': "DocumentStatus eq 'bost_Open'",
         '\$select':
-            "CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
+            "DocEntry,CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
       },
       onSave: (context, data) async =>
           context.read<SaleOrderOfflineCubit>().addData(data),
@@ -83,7 +83,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       queryParams: {
         '\$filter': "DocumentStatus eq 'bost_Open'",
         '\$select':
-            "CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
+            "DocEntry,CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
       },
       onSave: (context, data) async =>
           context.read<PurchaseReturnRequestOfflineCubit>().addData(data),
@@ -94,7 +94,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       queryParams: {
         '\$filter': "DocumentStatus eq 'bost_Open'",
         '\$select':
-            "CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
+            "DocEntry,CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
       },
       onSave: (context, data) async =>
           context.read<ReturnReceiptRequestOfflineCubit>().addData(data),
@@ -175,7 +175,6 @@ class _DownloadScreenState extends State<DownloadScreen> {
     super.initState();
     _loadDownloadState();
   }
-
   /// -----------------------------
   /// 💾 Save & Load State
   /// -----------------------------
@@ -209,6 +208,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
         item.isLoading = state['isLoading'] ?? false;
         item.success = state['success'] ?? false;
         item.failed = state['failed'] ?? false;
+      }
+      if (isDownloadedString == "false") {
+        for (var item in _downloads) {
+          item.success = false;
+          item.failed = false;
+          item.isLoading = false;
+        }
       }
       setState(() {});
     } catch (e) {
@@ -354,10 +360,6 @@ class _DownloadScreenState extends State<DownloadScreen> {
     }
   }
 
-  /// -----------------------------
-  /// 🧹 Clear & Reset
-  /// -----------------------------
-  ///
   Future<void> _clearAllData() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -496,20 +498,6 @@ class _DownloadScreenState extends State<DownloadScreen> {
       isDownloadedString = "false";
     });
   }
-
-  Future<void> _resetSyncStatus() async {
-    for (var item in _downloads) {
-      item.isLoading = false;
-      item.success = false;
-      item.failed = false;
-    }
-    await _saveDownloadState();
-    setState(() {});
-  }
-
-  /// -----------------------------
-  /// 🧱 UI
-  /// -----------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -554,67 +542,94 @@ class _DownloadScreenState extends State<DownloadScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Padding(
-                padding:  widget.fromDashboard ? const EdgeInsets.only(left: 8,top: 30,bottom: 20):const EdgeInsets.only(left: 8,top: 15),
+                padding: widget.fromDashboard
+                    ? const EdgeInsets.only(left: 8, top: 30, bottom: 20)
+                    : const EdgeInsets.only(left: 8, top: 15),
                 child: Row(
                   children: [
-                    Icon(Icons.cloud_download,size: 2,color: PRIMARY_COLOR,),
-                    SizedBox(width: 8,)
-,                    Text("Data Synchronization",style: TextStyle(fontSize: 16,fontWeight: FontWeight.bold,color: PRIMARY_COLOR),),
+                    Icon(
+                      Icons.cloud_download,
+                      size: 2,
+                      color: PRIMARY_COLOR,
+                    ),
+                    SizedBox(
+                      width: 8,
+                    ),
+                    Text(
+                      "Data Synchronization",
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: PRIMARY_COLOR),
+                    ),
                   ],
                 ),
               ),
-              widget.fromDashboard ? Container():
-              Container(
-                width: 148,
-                margin: EdgeInsets.only(right: 15,top: 15,bottom: 4),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: PRIMARY_COLOR, // 🔴 Red background
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10), // 🔘 Rounded corners
-                    ),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-                  ),
-                  child: Row(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 3),
-                        child: const Text(
-                          "Go Dashboard",
-                          style: TextStyle(
-                            color: Colors.white, // ⚪ White text
-                            fontWeight: FontWeight.bold,
+              widget.fromDashboard
+                  ? Container()
+                  : Container(
+                      width: 148,
+                      margin: EdgeInsets.only(right: 15, top: 15, bottom: 4),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: PRIMARY_COLOR, // 🔴 Red background
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(10), // 🔘 Rounded corners
                           ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 13, vertical: 11),
                         ),
+                        child: Row(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(left: 3),
+                              child: const Text(
+                                "Go Dashboard",
+                                style: TextStyle(
+                                  color: Colors.white, // ⚪ White text
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 5,
+                            ),
+                            Icon(
+                              Icons.keyboard_arrow_right,
+                              color: Colors.white,
+                              size: 23,
+                            ),
+                          ],
+                        ),
+                        onPressed: () async {
+                          if (isDownloadedString != "true") {
+                            MaterialDialog.warning(
+                              onConfirm: () => _downloadAllSequentially(),
+                              confirmLabel: "Download",
+                              context,
+                              title: 'Failed',
+                              body:
+                                  "Data must be downloaded before proceeding.",
+                            );
+                            return;
+                          }
+                          ;
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const WarehousePage(isPicker: true),
+                            ),
+                            (Route<dynamic> route) =>
+                                false, // removes all previous routes
+                          );
+                        },
                       ),
-                      SizedBox(
-                        width: 5,
-                      ),
-                      Icon(
-                        Icons.keyboard_arrow_right,
-                        color: Colors.white,
-                        size: 23,
-                      ),
-                    ],
-                  ),
-                  onPressed: () async {
-                    if (isDownloadedString != "true") return;
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const WarehousePage(isPicker: true),
-                      ),
-                      (Route<dynamic> route) =>
-                          false, // removes all previous routes
-                    );
-                  },
-                ),
-              ),
+                    ),
             ],
           ),
-          downloadStatus.isNotEmpty ?
-          Text(downloadStatus):Container(),
+          downloadStatus.isNotEmpty ? Text(downloadStatus) : Container(),
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             width: double.infinity,
@@ -623,7 +638,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                 backgroundColor:
                     isDownloadingAll || isDownloadedString == "true"
                         ? Colors.grey
-                        : const Color.fromARGB(255, 120, 120, 125),
+                        : PRIMARY_COLOR,
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
                 padding: const EdgeInsets.symmetric(vertical: 14),

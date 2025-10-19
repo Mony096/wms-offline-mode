@@ -8,6 +8,7 @@ import 'package:wms_mobile/feature/business_partner/presentation/cubit/bussiness
 import 'package:wms_mobile/feature/counting/counting.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
@@ -34,6 +35,7 @@ import 'package:wms_mobile/mobile_function/inventoryScreen.dart';
 import 'package:wms_mobile/mobile_function/packingScreen.dart';
 import 'package:wms_mobile/mobile_function/receivingScreen.dart';
 import 'package:wms_mobile/mobile_function/rmaScreen.dart';
+import 'package:wms_mobile/sync_to_sap.dart';
 import 'package:wms_mobile/utilies/dialog/dialog.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 
@@ -188,15 +190,36 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
           actions: [
-            Text(
-              warehouseCode,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-                fontSize: 17,
-              ),
-            ),
-            const SizedBox(width: 15),
+            IconButton(
+                onPressed: () async {
+                  goTo(
+                    context,
+                    DownloadScreen(fromDashboard: true),
+                  ).then((_) async {
+                    final orders =
+                        context.read<ItemBarcodeOfflineCubit>().getJsonData();
+                    final warehouse =
+                        await LocalStorageManger.getString('warehouse');
+
+                    if (warehouse.isEmpty && orders.length > 0) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const WarehousePage(isPicker: true),
+                        ),
+                        (Route<dynamic> route) => false,
+                      );
+                    } else {
+                      init();
+                    }
+                  });
+                },
+                icon: Icon(
+                  Icons.refresh,
+                  size: 25,
+                  color: Colors.white,
+                )),
+            SizedBox(width: 10),
           ],
         ),
         body: Container(
@@ -240,7 +263,7 @@ class _DashboardState extends State<Dashboard> {
                         child: Row(
                           children: [
                             Icon(
-                              Icons.refresh,
+                              Icons.cloud_upload,
                               color: Colors.white,
                               size: 20,
                             ),
@@ -248,7 +271,7 @@ class _DashboardState extends State<Dashboard> {
                               width: 5,
                             ),
                             const Text(
-                              "Refresh Data",
+                              "Sync to SAP",
                               style: TextStyle(
                                 color: Colors.white, // ⚪ White text
                                 fontWeight: FontWeight.bold,
@@ -257,29 +280,7 @@ class _DashboardState extends State<Dashboard> {
                           ],
                         ),
                         onPressed: () async {
-                          goTo(
-                            context,
-                            DownloadScreen(fromDashboard: true),
-                          ).then((_) async {
-                            final orders = context
-                                .read<ItemBarcodeOfflineCubit>()
-                                .getJsonData();
-                            final warehouse =
-                                await LocalStorageManger.getString('warehouse');
-
-                            if (warehouse.isEmpty && orders.length > 0) {
-                              Navigator.pushAndRemoveUntil(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      const WarehousePage(isPicker: true),
-                                ),
-                                (Route<dynamic> route) => false,
-                              );
-                            } else {
-                              init();
-                            }
-                          });
+                          goTo(context, SyncToSAPScreen());
                         },
                       ),
                     ),
@@ -295,35 +296,35 @@ class _DashboardState extends State<Dashboard> {
               //     // Navigator.pop(context);
               //   },
               // ),
-              // ElevatedButton(
-              //   child: Text("Show"),
-              //   onPressed: () async {
-              //     context.read<PurchaseReturnRequestOfflineCubit>().printAllData();
+              ElevatedButton(
+                child: Text("Show"),
+                onPressed: () async {
+                  context.read<GoodReceiptPoOfflineCubit>().printAllData();
 
-              //     // Navigator.pop(context);
-              //   },
-              // ),
-              // ElevatedButton(
-              //   child: Text("Clear"),
-              //   onPressed: () async {
-              //     context.read<PurchaseOrderOfflineCubit>().clearData();
-              //     context.read<BusinessOfflineCubit>().clearData();
-              //     context.read<WarehouseOfflineCubit>().clearData();
-              //     context.read<BinOfflineCubit>().clearData();
-              //     context.read<ItemOfflineCubit>().clearData();
-              //     context.read<UOMGroupOfflineCubit>().clearData();
-              //     context.read<UOMOfflineCubit>().clearData();
-              //     context.read<ItemBarcodeOfflineCubit>().clearData();
-              //     context.read<BatchListOfflineCubit>().clearData();
-              //     context.read<ReceiptTypeOfflineCubit>().clearData();
-              //     context.read<IssueTypeOfflineCubit>().clearData();
-              //     context.read<ReturnReceiptRequestOfflineCubit>().clearData();
-              //     context.read<SaleOrderOfflineCubit>().clearData();
-              //     context.read<PurchaseReturnRequestOfflineCubit>().clearData();
+                  // Navigator.pop(context);
+                },
+              ),
+              ElevatedButton(
+                child: Text("Clear"),
+                onPressed: () async {
+                  context.read<GoodReceiptPoOfflineCubit>().clearData();
+                  // context.read<BusinessOfflineCubit>().clearData();
+                  // context.read<WarehouseOfflineCubit>().clearData();
+                  // context.read<BinOfflineCubit>().clearData();
+                  // context.read<ItemOfflineCubit>().clearData();
+                  // context.read<UOMGroupOfflineCubit>().clearData();
+                  // context.read<UOMOfflineCubit>().clearData();
+                  // context.read<ItemBarcodeOfflineCubit>().clearData();
+                  // context.read<BatchListOfflineCubit>().clearData();
+                  // context.read<ReceiptTypeOfflineCubit>().clearData();
+                  // context.read<IssueTypeOfflineCubit>().clearData();
+                  // context.read<ReturnReceiptRequestOfflineCubit>().clearData();
+                  // context.read<SaleOrderOfflineCubit>().clearData();
+                  // context.read<PurchaseReturnRequestOfflineCubit>().clearData();
 
-              //     // Navigator.pop(context);
-              //   },
-              // ),
+                  // Navigator.pop(context);
+                },
+              ),
               Expanded(
                 // 👈 this makes the list scrollable
                 child: ListView.builder(

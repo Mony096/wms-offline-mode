@@ -201,7 +201,7 @@ class MaterialDialog {
                         body,
                         textAlign: TextAlign.start,
                         style: TextStyle(
-                          fontSize: width * 0.038,
+                          fontSize: 14,
                           color: isDark ? Colors.grey[300] : Colors.grey[700],
                           height: 1.3,
                         ),

@@ -7,6 +7,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/batch/good_receip_batch_screen.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/duplicateItem_GPO_Screen.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
@@ -139,14 +141,34 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         //   isBin.clear();
         // }
         // Initialize the list of items
+        print(widget.po['DocumentLines'][0]["LineStatus"]);
         List<Map<String, dynamic>> rawItems = [];
         final openLines = widget.po['DocumentLines']
             .where((line) => line['LineStatus'] == 'bost_Open')
             .toList();
 
         for (var element in openLines) {
-          final itemResponse =
-              await _blocItem.find("('${element['ItemCode']}')");
+          final itemList = context.read<ItemOfflineCubit>().state;
+          final matchedItem = itemList.firstWhere(
+              (e) => e['ItemCode'] == element['ItemCode'],
+              orElse: () => null);
+
+          if (matchedItem == null) {
+            MaterialDialog.success(context,
+                title: 'Oops.', body: "Item not found");
+            return;
+          }
+          final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+          final uomGroup = uomGroupCubit.state.firstWhere(
+            (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+            orElse: () => {},
+          );
+          final itemMapped = {
+            ...matchedItem,
+            "BaseUoM": uomGroup['BaseUoM'],
+            "UoMGroupDefinitionCollection":
+                uomGroup['UoMGroupDefinitionCollection']
+          };
 
           rawItems.add({
             "ItemCode": element['ItemCode'],
@@ -159,11 +181,11 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
             "UoMEntry": getDataFromDynamic(element['UoMEntry']),
             "UoMCode": element['UoMCode'],
             "UoMGroupDefinitionCollection":
-                itemResponse['UoMGroupDefinitionCollection'],
-            "BaseUoM": itemResponse['BaseUoM'],
+                itemMapped['UoMGroupDefinitionCollection'],
+            "BaseUoM": itemMapped['BaseUoM'],
             "BinId": binId.text,
-            "ManageSerialNumbers": itemResponse["ManageSerialNumbers"],
-            "ManageBatchNumbers": itemResponse["ManageBatchNumbers"],
+            "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
+            "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
             "BarCode": element['BarCode'],
           });
 
@@ -422,7 +444,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
   }
 
   void onPostToSAP() async {
-    // print(items);
+    // print(widget.po);
     // return;
     try {
       final filteredItems = items.where((item) {
@@ -547,26 +569,43 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       //   print(data);
       // });
       // return;
-      final response = await _bloc.post(data);
+      if (widget.quickReceipt) {
+        context.read<QuickGoodReceiptOfflineCubit>().addData(data);
+      } else {
+        context.read<GoodReceiptPoOfflineCubit>().addData(data);
+      }
+
       if (mounted) {
-        if (widget.po != null) {
-          _blocCubit.remove(widget.po['DocEntry']);
-        }
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
           body: widget.quickReceipt
-              ? "Quick Receipt - ${response['DocNum']}."
-              : "Good Receipt PO - ${response['DocNum']}.",
-          onOk: () => Navigator.of(context)
-              .pop(widget.po == null ? null : widget.po['DocEntry']),
+              ? "Saved Quick Receipt "
+              : "Saved Good Receipt PO ",
+          onOk: () => Navigator.of(context).pop(),
         );
+        // final response = await _bloc.post(data);
+        // if (mounted) {
+        //   if (widget.po != null) {
+        //     _blocCubit.remove(widget.po['DocEntry']);
+        //   }
+        //   Navigator.of(context).pop();
+        //   MaterialDialog.success(
+        //     context,
+        //     title: 'Successfully',
+        //     body: widget.quickReceipt
+        //         ? "Quick Receipt - ${response['DocNum']}."
+        //         : "Good Receipt PO - ${response['DocNum']}.",
+        //     onOk: () => Navigator.of(context)
+        //         .pop(widget.po == null ? null : widget.po['DocEntry']),
+        //   );
+        // }
+        clear();
+        setState(() {
+          items = [];
+        });
       }
-      clear();
-      setState(() {
-        items = [];
-      });
     } catch (e) {
       if (mounted) {
         Navigator.of(context).pop();

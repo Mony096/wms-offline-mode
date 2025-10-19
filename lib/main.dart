@@ -14,7 +14,9 @@ import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_ty
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/grt_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/good_receipt_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/purchase_good_receipt_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/component/item/presentation/cubit/item_cubit.dart';
@@ -76,6 +78,8 @@ void main() async {
   await Hive.openBox("return_receipt_request");
   await Hive.openBox("sale_order");
   await Hive.openBox("purchase_return_request");
+  await Hive.openBox("goods_receipt_po");
+  await Hive.openBox("quick_goods_receipt");
 
   // (Optional) Only print directory AFTER Hive init
   final dir = await getApplicationDocumentsDirectory();
@@ -150,6 +154,8 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => ReturnReceiptRequestOfflineCubit()),
         BlocProvider(create: (_) => SaleOrderOfflineCubit()),
         BlocProvider(create: (_) => PurchaseReturnRequestOfflineCubit()),
+          BlocProvider(create: (_) => GoodReceiptPoOfflineCubit()),
+           BlocProvider(create: (_) => QuickGoodReceiptOfflineCubit())
       ],
       child: const MainScreen(),
     );

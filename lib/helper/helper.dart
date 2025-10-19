@@ -37,6 +37,7 @@ String getDataFromDynamic(dynamic value, {bool isDate = false}) {
     return '';
   }
 }
+
 String getDataFromDynamicBin(dynamic value, {bool isDate = false}) {
   try {
     if (value == null) return 'NO BINLOCATION';
@@ -54,6 +55,7 @@ String getDataFromDynamicBin(dynamic value, {bool isDate = false}) {
     return 'No BinLocation';
   }
 }
+
 String getDataFromDynamicO(dynamic value, {bool isDate = false}) {
   try {
     if (value == null) return '0';
@@ -107,6 +109,49 @@ String convertQuantityUoM(double baseQty, double alternativeQty, double qty) {
   String totalQty = fractionDigits(baseQty / alternativeQty, digit: 6);
   return fractionDigits(qty * double.parse(totalQty), digit: 4);
 }
+
+Future<dynamic> postToSAP({
+  required String host,
+  required String port,
+  required String token,
+  required String endpoint,
+  required dynamic body,
+}) async {
+  try {
+    // 🧠 Build the full URL
+    final uri = Uri.parse('$host:$port/b1s/v1/$endpoint');
+
+    // 🧠 Log for debugging
+    debugPrint('📡 [SAP POST] Endpoint: /b1s/v1/$endpoint');
+    debugPrint('📤 [Body] ${jsonEncode(body)}');
+    debugPrint('🌐 [Full URL] $uri');
+
+    // Send POST request
+    final response = await http.post(
+      uri,
+      headers: {
+        "Cookie": "B1SESSION=$token; ROUTEID=.node3",
+        "Content-Type": "application/json",
+      },
+      body: jsonEncode(body),
+    );
+
+    // 🧾 Check response
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      debugPrint('✅ [SAP POST Success] ${response.statusCode}');
+      return jsonDecode(response.body);
+    } else {
+      debugPrint(
+          '❌ [SAP POST Failed] → ${response.statusCode}: ${response.body}');
+      throw Exception(
+          'SAP POST request failed: ${response.statusCode} ${response.body}');
+    }
+  } catch (e) {
+    debugPrint('⚠️ [SAP POST Error] $e');
+    rethrow;
+  }
+}
+
 Future<dynamic> getFromSAP({
   required String host,
   required String port,
