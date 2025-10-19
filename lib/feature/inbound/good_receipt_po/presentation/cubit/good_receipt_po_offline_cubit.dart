@@ -102,7 +102,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
           host: host,
           port: port,
           token: token,
-          endpoint: 'PurchaseDeliveryNotesa',
+          endpoint: 'PurchaseDeliveryNotes',
           body: item,
         );
         print("✅ Synced: ${item['DocEntry'] ?? 'N/A'}");
