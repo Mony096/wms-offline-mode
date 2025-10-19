@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_log.dart';
 
 class SyncItem {
@@ -118,7 +119,10 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
         backgroundColor: PRIMARY_COLOR,
         centerTitle: true,
         title: const Text("Sync to SAP",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold,fontSize: 19)),
+            style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 17)),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -128,11 +132,14 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           ),
         ],
       ),
-      body: ListView.builder(
-        itemCount: _syncGroups.length,
-        itemBuilder: (context, index) {
-          return _buildExpandableGroup(context, _syncGroups[index]);
-        },
+      body: Container(
+        margin: EdgeInsets.only(top: 10),
+        child: ListView.builder(
+          itemCount: _syncGroups.length,
+          itemBuilder: (context, index) {
+            return _buildExpandableGroup(context, _syncGroups[index]);
+          },
+        ),
       ),
     );
   }
@@ -140,6 +147,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
   // 🔹 Build expandable group (slide down)
   Widget _buildExpandableGroup(BuildContext context, SyncGroup group) {
     return StatefulBuilder(
+      
       builder: (context, setInnerState) {
         bool isExpanded = true;
         return StatefulBuilder(
@@ -292,16 +300,17 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-               ElevatedButton.icon(
+              ElevatedButton.icon(
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const SyncLogScreen()),
+                    MaterialPageRoute(
+                        builder: (_) => const ReviewOfflineSave()),
                   );
                 },
                 icon: const Icon(Icons.book, color: Colors.white, size: 18),
-                label: const Text("Review",
-                    style: TextStyle(color: Colors.white)),
+                label:
+                    const Text("Review", style: TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
                   padding:

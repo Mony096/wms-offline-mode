@@ -292,8 +292,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           .then((value) {
         if (value == null) return;
 
-        uom.text = (value as UnitOfMeasurementEntity).code;
-        uomAbEntry.text = (value).id.toString();
+        uom.text = value["Code"];
+        uomAbEntry.text = value["AbsEntry"].toString();
       });
     } catch (e) {
       print(e);
