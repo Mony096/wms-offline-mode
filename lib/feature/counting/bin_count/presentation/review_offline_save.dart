@@ -3,10 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_offline_cubit.dart';
 
-class ReviewQuickCountOfflineSave extends StatelessWidget {
-  const ReviewQuickCountOfflineSave({super.key});
+class ReviewBinCountOfflineSave extends StatelessWidget {
+  const ReviewBinCountOfflineSave({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +29,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
         ),
         elevation: 3,
       ),
-      body: BlocBuilder<QuickCountOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<BinCountOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
@@ -41,7 +45,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemBuilder: (context, index) {
               final record = records[index];
-              final lines = record['InventoryPostingLines'] ?? [];
+              final lines = record['InventoryCountingLines'] ?? [];
               final timestamp = record["timestamp"];
 
               String formattedTime = '';
@@ -100,11 +104,10 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                   
                                   _buildRow("Warehouse",
-                                      record['InventoryPostingLines'][0]["WarehouseCode"] ?? ''),
-                                        const SizedBox(height: 5),
-                                        _buildRow("Reference",
-                                      record['Reference2'] ?? 'N/A'),
+                                      record['InventoryCountingLines'][0]
+                                            ["WarehouseCode"] ?? ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),
@@ -124,12 +127,11 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                                         context.read<BinOfflineCubit>();
 
                                     // Try to extract BinAbsEntry safely
-
+                                 
                                     final bin = binCubit.state.firstWhere(
                                       (u) =>
                                           u['AbsEntry'] ==
-                                          int.tryParse(
-                                              (line["BinEntry"] ?? -1).toString()),
+                                          int.tryParse(line["BinEntry"].toString()),
                                       orElse: () =>
                                           {}, // return empty map if not found
                                     );

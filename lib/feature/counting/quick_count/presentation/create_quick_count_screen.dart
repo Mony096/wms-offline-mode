@@ -5,7 +5,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
@@ -104,30 +106,24 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   void init() async {
     final whs = await LocalStorageManger.getString('warehouse');
     warehouse.text = whs;
-    // inWhsQty.text = "0";
-
     if (!widget.isQuickCount) {
-      // Populate text fields with PO data
-      // poText.text = getDataFromDynamic(widget.po['DocNum']);
-      // cardCode.text = getDataFromDynamic(widget.po['CardCode']);
-      // cardName.text = getDataFromDynamic(widget.po['CardName']);
-
-      // Show loading indicator
       if (mounted) MaterialDialog.loading(context);
 
       // Initialize the list of items
       List<Map<String, dynamic>> rawItems = [];
-      // final openLines = widget.po['DocumentLines']
-      //     .where((line) => line['LineStatus'] == 'bost_Open')
-      //     .toList();
-      final cycleLineCount = await dio.get(
-          "/view.svc/CycleItemCountB1SLQuery?\$filter = WhsCode eq '${warehouse.text}'");
+      // final cycleLineCount = await dio.get(
+      //     "/view.svc/CycleItemCountB1SLQuery?\$filter = WhsCode eq '${warehouse.text}'");
+      final itemCycleCount = context.read<ItemCycleCountOfflineCubit>();
 
-      if (cycleLineCount.statusCode == 200) {
-        for (var element in cycleLineCount.data["value"]) {
+      // 🧩 Step 1: Filter bin by warehouse
+      final filteredCycleCount = itemCycleCount.state
+          .where((b) => b['WhsCode'] == warehouse.text)
+          .toList();
+      if (filteredCycleCount.isNotEmpty) {
+        for (var element in filteredCycleCount) {
           final itemResponse =
-              await _blocItem.find("('${element['ItemCode']}')");
-          print(itemResponse);
+              findFullItemInformation(context, element['ItemCode']);
+          if (itemResponse == null) return;
 
           rawItems.add({
             "ItemCode": element['ItemCode'],
@@ -142,9 +138,10 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
             "UoMGroupDefinitionCollection":
                 itemResponse['UoMGroupDefinitionCollection'],
             "BaseUoM": itemResponse['BaseUoM'],
-            "BinId": binId.text,
+           
             "ManageSerialNumbers": itemResponse["ManageSerialNumbers"],
             "ManageBatchNumbers": itemResponse["ManageBatchNumbers"],
+             "BinId": binId.text,
             "BarCode": element['BarCode'],
           });
 
@@ -154,12 +151,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
 
       items = combineItems(rawItems);
 
-      // Combine items with the same ItemCode and UoMCode
-
-      // Close loading indicator
       if (mounted) MaterialDialog.close(context);
 
-      // Update state with combined items
       if (mounted) {
         setState(() {
           items;
@@ -261,8 +254,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
           .then((value) {
         if (value == null) return;
 
-        uom.text = (value as UnitOfMeasurementEntity).code;
-        uomAbEntry.text = (value).id.toString();
+        uom.text = value["Code"];
+        uomAbEntry.text = value["AbsEntry"].toString();
       });
     } catch (e) {
       print(e);
@@ -346,24 +339,26 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
         inWhsQty.text = getDataFromDynamic(item["InWhsQty"]);
-        final stateBin = _blocBin.state;
-        if (stateBin is BinData) {
-          // print(state.entities);
-          binLists = stateBin.entities;
-        }
+        final binCubit = context.read<BinOfflineCubit>();
+        final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
 
-        if (binLists.where((b) => b.warehouse == warehouse.text).isEmpty &&
-            !widget.isQuickCount) {
-          final url =
-              "/view.svc/ItemB1SLQuery?\$filter=ItemCode eq '${item['ItemCode']}' and WhsCode eq '${warehouse.text}'";
-          print("🌐 Request URL: $url");
+        final binList = binCubit.state;
+        final itemStockList = itemStockCubit.getJsonData();
 
-          final response = await dio.get(url);
-
-          final data = response.data["value"];
-          print(data);
-          if (data != null && data.isNotEmpty) {
-            final onHandQty = data[0]["OnHandQty"] ?? 0;
+        // 🧩 Step 1: Filter bin by warehouse
+        final filteredBin =
+            binList.where((b) => b['Warehouse'] == warehouse.text).toList();
+        if (filteredBin.isEmpty && !widget.isQuickCount) {
+          final matchedItemStock = itemStockList.firstWhere(
+            (i) =>
+                i['ItemCode'] == item['ItemCode'] &&
+                i['WhsCode'] == warehouse.text,
+            orElse: () => {},
+          );
+          print(matchedItemStock);
+          // 🧩 Step 3: Update stock quantity (offline)
+          if (matchedItemStock.isNotEmpty) {
+            final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
             setState(() {
               inWhsQty.text = onHandQty.toString();
             });
@@ -464,6 +459,13 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   void onChangeWhs() async {
     goTo(context, WarehousePage()).then((value) {
       if (value == null) return;
+      inWhsQty.text = "";
+      binCode.text = "";
+      binId.text = "";
+      itemCode.text = "";
+      itemName.text = "";
+      uom.text = "";
+      uomAbEntry.text = "";
       warehouse.text = getDataFromDynamic(value);
     });
   }
@@ -535,6 +537,9 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
       if (widget.isQuickCount) {
         context.read<QuickCountOfflineCubit>().addData(data);
       }
+      {
+        context.read<CycleCountOfflineCubit>().addData(data);
+      }
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
@@ -583,68 +588,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
       MaterialDialog.loading(context);
       itemCode.text = getDataFromDynamic(value['ItemCode']);
       FocusScope.of(context).requestFocus(FocusNode());
-      // final bin = await dio
-      //     .get("/BinLocations?\$filter=Warehouse eq '${warehouse.text}'");
-      // if (bin.data["value"].length == 0) {
-      //   final totalQtyWh = await dio.get(
-      //       "/view.svc/ItemB1SLQuery?\$filter=ItemCode eq '${itemCode.text}' and WhsCode eq '${warehouse.text}'");
-      //   if (totalQtyWh.statusCode == 200) {
-      //     try {
-      //       // Sum the OnHandQty values from the response
-      //       inWhsQty.text = "0";
-      //       dynamic totalQty = totalQtyWh.data["value"]
-      //           .map<dynamic>((item) => item["OnHandQty"] as dynamic)
-      //           .reduce((a, b) => a + b);
 
-      //       // Update the inWhsQty TextEditingController with the total quantity
-      //       inWhsQty.text = totalQty.toString();
-
-      //       // Set the state to reflect the changes
-      //       setState(() {
-      //         print(totalQtyWh);
-      //       });
-      //     } catch (e) {
-      //       print('Error occurred while processing the data: $e');
-      //     }
-      //   }
-      // }
-      final item = itemCode.text.trim();
-      final whs = warehouse.text.trim();
-      final bin = binId.text.trim();
-
-      print("🧾 Item: $item");
-      print("🏭 Warehouse: $whs");
-      print("📦 BinID: $bin");
-
-      try {
-        if (item.isNotEmpty && whs.isNotEmpty && bin.isNotEmpty) {
-          final url =
-              "/view.svc/ItemB1SLQuery?\$filter=ItemCode eq '$item' and WhsCode eq '$whs' and BinID eq $bin";
-          print("🌐 Request URL: $url");
-
-          final response = await dio.get(url);
-
-          final data = response.data["value"];
-          if (data != null && data.isNotEmpty) {
-            final onHandQty = data[0]["OnHandQty"] ?? 0;
-            setState(() {
-              inWhsQty.text = onHandQty.toString();
-            });
-          } else {
-            setState(() {
-              inWhsQty.text = "0";
-            });
-          }
-        }
-
-        print("📦 In-warehouse quantity: ${inWhsQty.text}");
-      } catch (e, stack) {
-        print("❌ Error during Dio request: $e");
-        print("📜 Stack trace: $stack");
-        setState(() {
-          inWhsQty.text = "0";
-        });
-      }
       itemCode.text = getDataFromDynamic(value['ItemCode']);
       itemName.text = getDataFromDynamic(value['ItemName']);
       // quantity.text = '0';

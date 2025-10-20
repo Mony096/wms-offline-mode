@@ -5,9 +5,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/business_partner/presentation/cubit/business_partner_cubit.dart';
 import 'package:wms_mobile/feature/business_partner/presentation/cubit/bussinessPartner_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/binlocation_count_cubit.dart';
 import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_cubit.dart';
+import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_cubit.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/grt_cubit.dart';
@@ -26,6 +30,7 @@ import 'package:wms_mobile/feature/inbound/return_receipt/component/item/present
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/cubit/item_cubit.dart';
@@ -96,10 +101,15 @@ void main() async {
   await Hive.openBox("goods_issue");
   await Hive.openBox("quick_count");
   await Hive.openBox("item_find_stock");
+  await Hive.openBox("cycle_count");
+  await Hive.openBox("item_cycle_count");
+  await Hive.openBox("physical_count");
+  await Hive.openBox("cos");
+  await Hive.openBox("bin_count");
 
   // (Optional) Only print directory AFTER Hive init
-  final dir = await getApplicationDocumentsDirectory();
-  print("📁 App directory: $dir");
+  // final dir = await getApplicationDocumentsDirectory();
+  // print("📁 App directory: $dir");
   //  IdataScanner.startListening();
   // IdataScanner.startScan();
   container();
@@ -179,7 +189,12 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => PurchaseReturnOfflineCubit()),
         BlocProvider(create: (_) => GoodsIssueOfflineCubit()),
         BlocProvider(create: (_) => QuickCountOfflineCubit()),
-        BlocProvider(create: (_) => ItemFindStockOfflineCubit())
+        BlocProvider(create: (_) => ItemFindStockOfflineCubit()),
+        BlocProvider(create: (_) => CycleCountOfflineCubit()),
+        BlocProvider(create: (_) => ItemCycleCountOfflineCubit()),  
+        BlocProvider(create: (_) => PhysicalCountOfflineCubit()),
+        BlocProvider(create: (_) => COSOfflineCubit()),
+        BlocProvider(create: (_) => BinCountOfflineCubit())
       ],
       child: const MainScreen(),
     );

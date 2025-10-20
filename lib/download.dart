@@ -5,11 +5,13 @@ import 'package:http/http.dart' as http;
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/business_partner/presentation/cubit/bussinessPartner_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
@@ -109,6 +111,16 @@ class _DownloadScreenState extends State<DownloadScreen> {
           context.read<BusinessOfflineCubit>().addData(data),
     ),
     DownloadItem(
+      name: 'Counting Sheets',
+      url: 'InventoryCountings',
+      queryParams: {
+        '\$select': "DocumentNumber,DocumentStatus,DocumentEntry",
+        '\$filter': "DocumentStatus eq 'cdsOpen'"
+      },
+      onSave: (context, data) async =>
+          context.read<COSOfflineCubit>().addData(data),
+    ),
+    DownloadItem(
       name: 'Warehouses',
       url: 'Warehouses',
       queryParams: {'\$select': "WarehouseCode,WarehouseName"},
@@ -142,6 +154,12 @@ class _DownloadScreenState extends State<DownloadScreen> {
       url: 'view.svc/WMS_ITEM_BARCODEB1SLQuery',
       onSave: (context, data) async =>
           context.read<ItemBarcodeOfflineCubit>().addData(data),
+    ),
+    DownloadItem(
+      name: 'Item Cycle Count',
+      url: 'view.svc/CycleItemCountB1SLQuery',
+      onSave: (context, data) async =>
+          context.read<ItemCycleCountOfflineCubit>().addData(data),
     ),
     DownloadItem(
       name: 'Item Stock',
@@ -340,44 +358,113 @@ class _DownloadScreenState extends State<DownloadScreen> {
     setState(() => isDownloadingAll = false);
   }
 
-  Future<bool> _fetchAndSave(
-      DownloadItem item, dynamic token, dynamic host, dynamic port) async {
+  // Future<bool> _fetchAndSave(
+  //     DownloadItem item, dynamic token, dynamic host, dynamic port) async {
+  //   setState(() {
+  //     item.isLoading = true;
+  //     item.failed = false;
+  //     item.success = false;
+  //   });
+  //   await _saveDownloadState();
+
+  //   try {
+  //     final data = await getFromSAP(
+  //       host: host,
+  //       port: port,
+  //       token: token,
+  //       endpoint: item.url,
+  //       queryParams: item.queryParams,
+  //     );
+
+  //     await item.onSave(context, data["value"]);
+
+  //     setState(() {
+  //       item.success = true;
+  //       item.isLoading = false;
+  //       item.failed = false;
+  //     });
+  //     await _saveDownloadState();
+  //     return true;
+  //   } catch (e) {
+  //     debugPrint('❌ Fetch failed for ${item.url}: $e');
+  //     setState(() {
+  //       item.failed = true;
+  //       item.isLoading = false;
+  //       item.success = false;
+  //     });
+  //     await _saveDownloadState();
+  //     return false;
+  //   }
+  // }
+Future<bool> _fetchAndSave(
+    DownloadItem item, dynamic token, dynamic host, dynamic port) async {
+  setState(() {
+    item.isLoading = true;
+    item.failed = false;
+    item.success = false;
+  });
+  await _saveDownloadState();
+
+  try {
+    // Step 1️⃣ — Get list from SAP
+    final data = await getFromSAP(
+      host: host,
+      port: port,
+      token: token,
+      endpoint: item.url,
+      queryParams: item.queryParams,
+    );
+
+    var values = data["value"];
+
+    // Step 2️⃣ — Special case for InventoryCountings
+    if (item.url == "InventoryCountings") {
+      List<dynamic> detailedList = [];
+
+      // Loop through each item and fetch details by ID
+      for (final inv in values) {
+        final docEntry = inv["DocumentEntry"];
+        if (docEntry == null) continue;
+
+        try {
+          final detail = await getFromSAP(
+            host: host,
+            port: port,
+            token: token,
+            endpoint: "InventoryCountings($docEntry)",
+          );
+
+          detailedList.add(detail);
+          debugPrint("✅ Loaded detail for InventoryCounting $docEntry");
+        } catch (e) {
+          debugPrint("⚠️ Failed to fetch detail for $docEntry: $e");
+        }
+      }
+      // Optionally also call item.onSave if needed
+      await item.onSave(context, detailedList);
+    } else {
+      // Normal behavior for other endpoints
+      await item.onSave(context, values);
+    }
+
     setState(() {
-      item.isLoading = true;
+      item.success = true;
+      item.isLoading = false;
       item.failed = false;
+    });
+    await _saveDownloadState();
+    return true;
+  } catch (e) {
+    debugPrint('❌ Fetch failed for ${item.url}: $e');
+    setState(() {
+      item.failed = true;
+      item.isLoading = false;
       item.success = false;
     });
     await _saveDownloadState();
-
-    try {
-      final data = await getFromSAP(
-        host: host,
-        port: port,
-        token: token,
-        endpoint: item.url,
-        queryParams: item.queryParams,
-      );
-
-      await item.onSave(context, data["value"]);
-
-      setState(() {
-        item.success = true;
-        item.isLoading = false;
-        item.failed = false;
-      });
-      await _saveDownloadState();
-      return true;
-    } catch (e) {
-      debugPrint('❌ Fetch failed for ${item.url}: $e');
-      setState(() {
-        item.failed = true;
-        item.isLoading = false;
-        item.success = false;
-      });
-      await _saveDownloadState();
-      return false;
-    }
+    return false;
   }
+}
 
   Future<void> _clearAllData() async {
     final confirm = await showDialog<bool>(
@@ -422,20 +509,9 @@ class _DownloadScreenState extends State<DownloadScreen> {
     context.read<ReturnReceiptRequestOfflineCubit>().clearData();
     context.read<SaleOrderOfflineCubit>().clearData();
     context.read<PurchaseReturnRequestOfflineCubit>().clearData();
-
-    // 2️⃣ Remove all keys from LocalStorage
-    await LocalStorageManger.removeString("warehouse");
-    await LocalStorageManger.removeString("businessPartners");
-    await LocalStorageManger.removeString("items");
-    await LocalStorageManger.removeString("batches");
-    await LocalStorageManger.removeString("uomGroups");
-    await LocalStorageManger.removeString("uoms");
-    await LocalStorageManger.removeString("barcodes");
-    await LocalStorageManger.removeString("receiptTypes");
-    await LocalStorageManger.removeString("issueTypes");
-    await LocalStorageManger.removeString("returnReceipts");
-    await LocalStorageManger.removeString("saleOrders");
-    await LocalStorageManger.removeString("purchaseReturnRequests");
+    context.read<ItemFindStockOfflineCubit>().clearData();
+    context.read<ItemCycleCountOfflineCubit>().clearData();
+    context.read<COSOfflineCubit>().clearData();
 
     // 3️⃣ Reset all download states
     for (var item in _downloads) {
@@ -484,20 +560,9 @@ class _DownloadScreenState extends State<DownloadScreen> {
     context.read<ReturnReceiptRequestOfflineCubit>().clearData();
     context.read<SaleOrderOfflineCubit>().clearData();
     context.read<PurchaseReturnRequestOfflineCubit>().clearData();
-
-    // 2️⃣ Remove all keys from LocalStorage
-    await LocalStorageManger.removeString("warehouse");
-    await LocalStorageManger.removeString("businessPartners");
-    await LocalStorageManger.removeString("items");
-    await LocalStorageManger.removeString("batches");
-    await LocalStorageManger.removeString("uomGroups");
-    await LocalStorageManger.removeString("uoms");
-    await LocalStorageManger.removeString("barcodes");
-    await LocalStorageManger.removeString("receiptTypes");
-    await LocalStorageManger.removeString("issueTypes");
-    await LocalStorageManger.removeString("returnReceipts");
-    await LocalStorageManger.removeString("saleOrders");
-    await LocalStorageManger.removeString("purchaseReturnRequests");
+    context.read<ItemFindStockOfflineCubit>().clearData();
+    context.read<ItemCycleCountOfflineCubit>().clearData();
+        context.read<COSOfflineCubit>().clearData();
 
     // 3️⃣ Reset all download states
     for (var item in _downloads) {

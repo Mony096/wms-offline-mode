@@ -3,15 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
-import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
 
-class SyncLogQuickCountScreen extends StatelessWidget {
-  const SyncLogQuickCountScreen({super.key});
+class SyncLogBinCountScreen extends StatelessWidget {
+  const SyncLogBinCountScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<QuickCountOfflineCubit>();
+    final cubit = context.read<BinCountOfflineCubit>();
     final failed =
         cubit.failedRecords.map((e) => {...e, "status": "failed"}).toList();
     final success =
@@ -120,7 +119,7 @@ class SyncLogQuickCountScreen extends StatelessWidget {
                   itemCount: allRecords.length,
                   itemBuilder: (context, index) {
                     final record = allRecords[index];
-                    final lines = record['InventoryPostingLines'] ?? [];
+                    final lines = record['InventoryCountingLines'] ?? [];
                     final status = record["status"];
                     final timeStamp = record["timestamp"];
 
@@ -170,31 +169,18 @@ class SyncLogQuickCountScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 5),
-                            // Text(
-                            //   "Goods Receipt Type : ${record['U_lk_gitype'] ?? '-'}",
-                            //   style: const TextStyle(
-                            //       fontSize: 13, color: Colors.black54),
-                            // ),
-                            // const SizedBox(height: 5),
 
-                            // // --- Partner + Warehouse
-
-                            // Text(
-                            //   "Warehouse : ${record['U_lk_whsdesc'] ?? '-'}",
-                            //   style: const TextStyle(
-                            //       fontSize: 13, color: Colors.black54),
-                            // ),
                             Row(
                               children: [
                                 Text(
-                                  "Warehosue  :",
+                                  "Counting Sheet    :",
                                   style: const TextStyle(
                                       fontSize: 13, color: Colors.black54),
                                 ),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
-                                   record['InventoryPostingLines'][0]["WarehouseCode"] ?? '',
+                                    record['DocumentNumber'] ?? 'N/A',
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontSize: 12,
@@ -205,19 +191,22 @@ class SyncLogQuickCountScreen extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 5),
-
-                             Row(
+                            SizedBox(
+                              height: 5,
+                            ),
+                            Row(
                               children: [
                                 Text(
-                                  "Reference    :",
+                                  "Warehosue           :",
                                   style: const TextStyle(
                                       fontSize: 13, color: Colors.black54),
                                 ),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
-                                   record['Reference2'] ?? 'N/A',
+                                    record['InventoryCountingLines'][0]
+                                            ["WarehouseCode"] ??
+                                        '',
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontSize: 12,
@@ -242,8 +231,6 @@ class SyncLogQuickCountScreen extends StatelessWidget {
                               final binCubit = context.read<BinOfflineCubit>();
 
                               // Try to extract BinAbsEntry safely
-                             
-
                               final bin = binCubit.state.firstWhere(
                                 (u) =>
                                     u['AbsEntry'] ==
@@ -251,6 +238,7 @@ class SyncLogQuickCountScreen extends StatelessWidget {
                                 orElse: () =>
                                     {}, // return empty map if not found
                               );
+
                               final displayBin = bin['BinCode'] ?? '';
                               return Container(
                                 padding: EdgeInsets.only(top: 3, bottom: 3),

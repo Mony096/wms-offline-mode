@@ -3,10 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 
-class ReviewQuickCountOfflineSave extends StatelessWidget {
-  const ReviewQuickCountOfflineSave({super.key});
+class ReviewCycleCountOfflineSave extends StatelessWidget {
+  const ReviewCycleCountOfflineSave({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +28,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
         ),
         elevation: 3,
       ),
-      body: BlocBuilder<QuickCountOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<CycleCountOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(

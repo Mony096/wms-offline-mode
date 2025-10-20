@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/constant/style.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/sync_log.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/sync_log.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/review_cycle_count_offline_save.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_log.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_log_cycle_count.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/sync_log.dart';
@@ -203,20 +212,48 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogQuickCountScreen());
             },
           ),
-          // SyncItem(
-          //   name: 'Return To Supplier',
-          //   getCount: (context) =>
-          //       context.read<PurchaseReturnOfflineCubit>().getJsonData().length,
-          //   onSync: (context) async {
-          //     await context.read<PurchaseReturnOfflineCubit>().post();
-          //   },
-          //   onGotoReview: (context) {
-          //     goTo(context, ReviewPurchaseReturnOfflineSave());
-          //   },
-          //   onGotoSyncLog: (context) {
-          //     goTo(context, SyncLogPurchaseReturnScreen());
-          //   },
-          // ),
+          SyncItem(
+            name: 'Cycle Count',
+            getCount: (context) =>
+                context.read<CycleCountOfflineCubit>().getJsonData().length,
+            onSync: (context) async {
+              await context.read<CycleCountOfflineCubit>().post();
+            },
+            onGotoReview: (context) {
+              goTo(context, ReviewCycleCountOfflineSave());
+            },
+            onGotoSyncLog: (context) {
+              goTo(context, SyncLogCycleCountScreen());
+            },
+          ),
+          SyncItem(
+            name: 'Physical Count',
+            getCount: (context) =>
+                context.read<PhysicalCountOfflineCubit>().getJsonData().length,
+            onSync: (context) async {
+              await context.read<PhysicalCountOfflineCubit>().post();
+            },
+            onGotoReview: (context) {
+              goTo(context, ReviewPhysicalCountOfflineSave());
+            },
+            onGotoSyncLog: (context) {
+              goTo(context, SyncLogPhysicalCountScreen());
+            },
+          ),
+          SyncItem(
+            name: 'Bin Count',
+            getCount: (context) =>
+                context.read<BinCountOfflineCubit>().getJsonData().length,
+            onSync: (context) async {
+              await context.read<BinCountOfflineCubit>().post();
+            },
+            onGotoReview: (context) {
+              goTo(context, ReviewBinCountOfflineSave());
+            },
+            onGotoSyncLog: (context) {
+              goTo(context, SyncLogBinCountScreen());
+            },
+          ),
           // SyncItem(
           //   name: 'Goods Issue',
           //   getCount: (context) =>

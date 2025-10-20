@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:wms_mobile/download.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/business_partner/presentation/cubit/bussinessPartner_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/counting.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
@@ -12,6 +13,8 @@ import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/go
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_cycle_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/screen/batch_list_page.dart';
@@ -130,22 +133,9 @@ class _DashboardState extends State<Dashboard> {
     context.read<ReturnReceiptRequestOfflineCubit>().clearData();
     context.read<SaleOrderOfflineCubit>().clearData();
     context.read<PurchaseReturnRequestOfflineCubit>().clearData();
-
-    // 2️⃣ Remove all keys from LocalStorage
-    await LocalStorageManger.removeString("warehouse");
-    await LocalStorageManger.removeString("businessPartners");
-    await LocalStorageManger.removeString("items");
-    await LocalStorageManger.removeString("batches");
-    await LocalStorageManger.removeString("uomGroups");
-    await LocalStorageManger.removeString("uoms");
-    await LocalStorageManger.removeString("barcodes");
-    await LocalStorageManger.removeString("receiptTypes");
-    await LocalStorageManger.removeString("issueTypes");
-    await LocalStorageManger.removeString("returnReceipts");
-    await LocalStorageManger.removeString("saleOrders");
-    await LocalStorageManger.removeString("purchaseReturnRequests");
-
-    // 4️⃣ Save cleared download state
+    context.read<ItemFindStockOfflineCubit>().clearData();
+    context.read<ItemCycleCountOfflineCubit>().clearData();
+    context.read<COSOfflineCubit>().clearData();
 
     // 5️⃣ Update UI
     setState(() {

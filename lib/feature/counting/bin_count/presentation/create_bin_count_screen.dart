@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/cos/presentation/screen/cos_page.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
@@ -133,8 +135,8 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
           .then((value) {
         if (value == null) return;
 
-        uom.text = (value as UnitOfMeasurementEntity).code;
-        uomAbEntry.text = (value).id.toString();
+        uom.text = value["Code"];
+        uomAbEntry.text = value["AbsEntry"].toString();
       });
     } catch (e) {
       print(e);
@@ -276,16 +278,17 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
         }).toList(),
       };
 
-      final response = await _bloc.post(data);
+      context.read<BinCountOfflineCubit>().addData(data);
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Physical Count - ${response["DocumentNumber"]}.",
+          body: "Saved Bin Count",
           onOk: () => Navigator.of(context).pop(),
         );
       }
+
       clear();
       setState(() {
         items = [];
@@ -351,42 +354,82 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
       clear();
       if (value['DocumentEntry'] != null) {
         try {
-          final response =
-              await dio.get('/InventoryCountings(${value['DocumentEntry']})');
+          // final response =
+          //     await dio.get('/InventoryCountings(${value['DocumentEntry']})');
 
-          if (response.statusCode == 200) {
-            final binResponse = await dio.get(
-                "/BinLocations?\$filter=Warehouse eq '${response.data["InventoryCountingLines"]?[0]?["WarehouseCode"]}' & \$select=AbsEntry,Warehouse,BinCode");
-            warehouse.text =
-                response.data["InventoryCountingLines"]?[0]?["WarehouseCode"];
-            if (binResponse.statusCode == 200) {
-              final binData = binResponse.data['value'];
-              warehouse.text =
-                  response.data["InventoryCountingLines"]?[0]?["WarehouseCode"];
-              items = [];
+          // if (response.statusCode == 200) {
+          //   final binResponse = await dio.get(
+          //       "/BinLocations?\$filter=Warehouse eq '${response.data["InventoryCountingLines"]?[0]?["WarehouseCode"]}' & \$select=AbsEntry,Warehouse,BinCode");
+          //   warehouse.text =
+          //       response.data["InventoryCountingLines"]?[0]?["WarehouseCode"];
+          //   if (binResponse.statusCode == 200) {
+          //     final binData = binResponse.data['value'];
+          //     warehouse.text =
+          //         response.data["InventoryCountingLines"]?[0]?["WarehouseCode"];
+          //     items = [];
 
-              for (var element in response.data["InventoryCountingLines"]) {
-                var binCode = binData.firstWhere(
-                  (e) => e["AbsEntry"] == element['BinEntry'],
-                  orElse: () => null,
-                )?['BinCode'];
+          //     for (var element in response.data["InventoryCountingLines"]) {
+          //       var binCode = binData.firstWhere(
+          //         (e) => e["AbsEntry"] == element['BinEntry'],
+          //         orElse: () => null,
+          //       )?['BinCode'];
 
-                items.add({
-                  "ItemCode": element['ItemCode'],
-                  "ItemDescription":
-                      element['ItemName'] ?? element['ItemDescription'],
-                  "Quantity": getDataFromDynamic(element['CountedQuantity']),
-                  "WarehouseCode": warehouse.text,
-                  "UoMCode": element['UoMCode'],
-                  "BinId": element['BinEntry'],
-                  "BinCode": binCode,
-                  "InventoryCountingLineUoMs":
-                      element['InventoryCountingLineUoMs'],
-                });
-              }
-            }
+          //       items.add({
+          //         "ItemCode": element['ItemCode'],
+          //         "ItemDescription":
+          //             element['ItemName'] ?? element['ItemDescription'],
+          //         "Quantity": getDataFromDynamic(element['CountedQuantity']),
+          //         "WarehouseCode": warehouse.text,
+          //         "UoMCode": element['UoMCode'],
+          //         "BinId": element['BinEntry'],
+          //         "BinCode": binCode,
+          //         "InventoryCountingLineUoMs":
+          //             element['InventoryCountingLineUoMs'],
+          //       });
+          //     }
+          // }
+          // }
+          final binCubit = context.read<BinOfflineCubit>();
+
+          final binList = binCubit.state;
+
+          // 🧩 Step 1: Filter bin by warehouse
+          final filteredBin = binList
+              .where((b) =>
+                  b['Warehouse'] ==
+                  value["InventoryCountingLines"]?[0]?["WarehouseCode"])
+              .toList();
+
+          warehouse.text =
+              value["InventoryCountingLines"]?[0]?["WarehouseCode"];
+          warehouse.text =
+              value["InventoryCountingLines"]?[0]?["WarehouseCode"];
+          items = [];
+          for (var element in value["InventoryCountingLines"]) {
+            var binCode = filteredBin.firstWhere(
+              (e) => e["AbsEntry"] == element['BinEntry'],
+              orElse: () => null,
+            )?['BinCode'];
+            // final itemResponse =
+            //     findFullItemInformation(context, element['ItemCode']);
+            // if (itemResponse == null) return;
+
+            items.add({
+              "ItemCode": element['ItemCode'],
+              "ItemDescription":
+                  element['ItemName'] ?? element['ItemDescription'],
+              "Quantity": getDataFromDynamic(element['CountedQuantity']),
+              "WarehouseCode": warehouse.text,
+              "UoMCode": element['UoMCode'],
+              "BinId": element['BinEntry'],
+              "BinCode": binCode,
+              "InventoryCountingLineUoMs": element['InventoryCountingLineUoMs'],
+              // "UoMEntry":
+              //     getDataFromDynamic(itemResponse['InventoryUoMEntry'] ?? "-1"),
+              // "UoMGroupDefinitionCollection":
+              //     itemResponse['UoMGroupDefinitionCollection'],
+            });
           }
-
           setState(() {
             items = items;
           });
