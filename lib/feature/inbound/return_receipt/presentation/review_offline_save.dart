@@ -4,9 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_offline_cubit.dart';
 
-class ReviewOfflineSave extends StatelessWidget {
-  const ReviewOfflineSave({super.key});
+class ReviewReturnReceiptOfflineSave extends StatelessWidget {
+  const ReviewReturnReceiptOfflineSave({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +26,7 @@ class ReviewOfflineSave extends StatelessWidget {
         ),
         elevation: 3,
       ),
-      body: BlocBuilder<GoodReceiptPoOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<ReturnReceiptOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
@@ -100,10 +101,10 @@ class ReviewOfflineSave extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildRow("Supplier Code",
+                                  _buildRow("RTR#",
                                       record['CardCode'] ?? 'N/A'),
                                   const SizedBox(height: 5),
-                                  _buildRow("Supplier Name",
+                                  _buildRow("Name",
                                       record['CardName'] ?? 'N/A'),
                                   const SizedBox(height: 5),
                                   _buildRow("Warehouse",

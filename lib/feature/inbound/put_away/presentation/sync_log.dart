@@ -3,14 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_offline_cubit.dart';
 
-class SyncLogScreen extends StatelessWidget {
-  const SyncLogScreen({super.key});
+class SyncLogPutAwayScreen extends StatelessWidget {
+  const SyncLogPutAwayScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<GoodReceiptPoOfflineCubit>();
+    final cubit = context.read<PutAwayOfflineCubit>();
     final failed =
         cubit.failedRecords.map((e) => {...e, "status": "failed"}).toList();
     final success =
@@ -119,7 +120,7 @@ class SyncLogScreen extends StatelessWidget {
                   itemCount: allRecords.length,
                   itemBuilder: (context, index) {
                     final record = allRecords[index];
-                    final lines = record['DocumentLines'] ?? [];
+                    final lines = record['StockTransferLines'] ?? [];
                     final status = record["status"];
                     final timeStamp = record["timestamp"];
 
@@ -161,27 +162,43 @@ class SyncLogScreen extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  "Timestamp: $formattedTime",
+                                  "Timestamp : $formattedTime",
                                   style: const TextStyle(
                                       fontSize: 13, color: Colors.grey),
                                 ),
                                 Icon(icon, color: color, size: 20),
                               ],
                             ),
-                            const SizedBox(height: 10),
+
+                            const SizedBox(height: 7),
 
                             // --- Partner + Warehouse
-                            Text(
-                              "${record['CardCode'] ?? '-'} - ${record['CardName'] ?? 'N/A'}",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                            Text(
-                              "Warehouse : ${record['WarehouseCode'] ?? '-'}",
-                              style: const TextStyle(
-                                  fontSize: 13, color: Colors.black54),
+
+                            // Text(
+                            //   "Warehouse : ${record['FromWarehouse'] ?? '-'}",
+                            //   style: const TextStyle(
+                            //       fontSize: 13, color: Colors.black54),
+                            // ),
+                            Row(
+                              children: [
+                                Text(
+                                  "Warehouse :",
+                                  style: const TextStyle(
+                                      fontSize: 13, color: Colors.black54),
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    record['FromWarehouse'] ?? '-',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 10),
 
@@ -194,25 +211,36 @@ class SyncLogScreen extends StatelessWidget {
                             const SizedBox(height: 4),
 
                             ...lines.map<Widget>((line) {
-                              final binCubit = context.read<BinOfflineCubit>();
-
-                              // Try to extract BinAbsEntry safely
                               final binAllocations =
-                                  line['DocumentLinesBinAllocations'];
-                              final binAbsEntry = (binAllocations != null &&
+                                  line['StockTransferLinesBinAllocations'];
+                              final sBinAbsEntry = (binAllocations != null &&
                                       binAllocations.isNotEmpty &&
                                       binAllocations[0]?['BinAbsEntry'] != null)
                                   ? binAllocations[0]['BinAbsEntry']
                                   : null;
-
-                              final bin = binCubit.state.firstWhere(
+                              final tBinAbsEntry = (binAllocations != null &&
+                                      binAllocations.isNotEmpty &&
+                                      binAllocations[1]?['BinAbsEntry'] != null)
+                                  ? binAllocations[1]['BinAbsEntry']
+                                  : null;
+                              final binCubit = context.read<BinOfflineCubit>();
+                              final sbin = binCubit.state.firstWhere(
                                 (u) =>
                                     u['AbsEntry'] ==
-                                    int.tryParse(binAbsEntry.toString()),
+                                    int.tryParse(sBinAbsEntry.toString()),
                                 orElse: () =>
                                     {}, // return empty map if not found
                               );
-                              final displayBin = bin['BinCode'] ?? '';
+                              final tbin = binCubit.state.firstWhere(
+                                (u) =>
+                                    u['AbsEntry'] ==
+                                    int.tryParse(tBinAbsEntry.toString()),
+                                orElse: () =>
+                                    {}, // return empty map if not found
+                              );
+
+                              final displaySBin = sbin['BinCode'] ?? '';
+                              final displayTBin = tbin['BinCode'] ?? '';
                               return Container(
                                 padding: EdgeInsets.only(top: 3, bottom: 3),
                                 decoration: BoxDecoration(
@@ -245,11 +273,11 @@ class SyncLogScreen extends StatelessWidget {
                                                   fontSize: 13,
                                                   color: Colors.black),
                                             ),
-                                            const SizedBox(height: 3),
+                                            const SizedBox(height: 5),
                                             Row(
                                               children: [
                                                 Text(
-                                                  "UoM Code     :",
+                                                  "UoM Code  :",
                                                   style: const TextStyle(
                                                       fontSize: 13,
                                                       color: Colors.black54),
@@ -270,13 +298,60 @@ class SyncLogScreen extends StatelessWidget {
                                                 ),
                                               ],
                                             ),
-                                            displayBin != ""
-                                                ? const SizedBox(height: 3)
-                                                : Container(),
-                                            displayBin != ""
-                                                ? _buildRow("Bin Location",
-                                                    displayBin ?? 'N/A')
-                                                : Container(),
+                                            SizedBox(
+                                              height: 5,
+                                            ),
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  "Source Bin  :",
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black54),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    displaySBin,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Colors.black87,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            SizedBox(
+                                              height: 7,
+                                            ),
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  "To Bin          :",
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black54),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    displayTBin,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Colors.black87,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -293,14 +368,15 @@ class SyncLogScreen extends StatelessWidget {
                                 ),
                               );
                             }).toList(),
-                            SizedBox(
-                              height: 10,
-                            ),
+
                             // Divider(
                             //   height: 18,
                             //   thickness: 0.8,
                             //   color: Colors.grey,
                             // ),
+                            SizedBox(
+                              height: 10,
+                            ),
                             // --- Status Message
                             if (isFailed)
                               Text(

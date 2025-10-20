@@ -4,13 +4,14 @@ import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 
-class SyncLogScreen extends StatelessWidget {
-  const SyncLogScreen({super.key});
+class SyncLogQuickScreen extends StatelessWidget {
+  const SyncLogQuickScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<GoodReceiptPoOfflineCubit>();
+    final cubit = context.read<QuickGoodReceiptOfflineCubit>();
     final failed =
         cubit.failedRecords.map((e) => {...e, "status": "failed"}).toList();
     final success =
@@ -293,14 +294,15 @@ class SyncLogScreen extends StatelessWidget {
                                 ),
                               );
                             }).toList(),
-                            SizedBox(
-                              height: 10,
-                            ),
+
                             // Divider(
                             //   height: 18,
                             //   thickness: 0.8,
                             //   color: Colors.grey,
                             // ),
+                            SizedBox(
+                              height: 10,
+                            ),
                             // --- Status Message
                             if (isFailed)
                               Text(

@@ -4,9 +4,10 @@ import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 
-class ReviewOfflineSave extends StatelessWidget {
-  const ReviewOfflineSave({super.key});
+class ReviewQuickOfflineSave extends StatelessWidget {
+  const ReviewQuickOfflineSave({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +26,7 @@ class ReviewOfflineSave extends StatelessWidget {
         ),
         elevation: 3,
       ),
-      body: BlocBuilder<GoodReceiptPoOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<QuickGoodReceiptOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
@@ -183,7 +184,7 @@ class ReviewOfflineSave extends StatelessWidget {
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                   top: 2, left: 2),
-                                              child:        Row(
+                                              child: Row(
                                                 children: [
                                                   Text(
                                                     "UoM Code     :",
@@ -212,7 +213,7 @@ class ReviewOfflineSave extends StatelessWidget {
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                   top: 2, left: 2),
-                                              child:        Row(
+                                              child: Row(
                                                 children: [
                                                   Text(
                                                     "Bin Location :",

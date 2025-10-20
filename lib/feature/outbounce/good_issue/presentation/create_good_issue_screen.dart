@@ -7,6 +7,7 @@ import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dar
 import 'package:wms_mobile/feature/good_isuse_select/domain/entity/grt_entity.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/screen/grt_page.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '/feature/inbound/return_receipt_request/presentation/return_receipt_request_page.dart';
@@ -131,8 +132,8 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
           .then((value) {
         if (value == null) return;
 
-        uom.text = (value as UnitOfMeasurementEntity).code;
-        uomAbEntry.text = (value).id.toString();
+        uom.text = value["Code"];
+        uomAbEntry.text = value["AbsEntry"].toString();
       });
     } catch (e) {
       print(e);
@@ -370,13 +371,13 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
         }).toList(),
       };
 
-      final response = await _bloc.post(data);
+      context.read<GoodsIssueOfflineCubit>().addData(data);
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Good Issue - ${response['DocNum']}.",
+          body: "Saved Goods Issue",
           onOk: () => Navigator.of(context).pop(),
         );
       }

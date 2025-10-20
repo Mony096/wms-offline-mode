@@ -3,10 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_offline_cubit.dart';
 
-class ReviewOfflineSave extends StatelessWidget {
-  const ReviewOfflineSave({super.key});
+class ReviewPutAwayOfflineSave extends StatelessWidget {
+  const ReviewPutAwayOfflineSave({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +26,7 @@ class ReviewOfflineSave extends StatelessWidget {
         ),
         elevation: 3,
       ),
-      body: BlocBuilder<GoodReceiptPoOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<PutAwayOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
@@ -41,19 +42,7 @@ class ReviewOfflineSave extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemBuilder: (context, index) {
               final record = records[index];
-              final lines = record['DocumentLines'] ?? [];
-              final timestamp = record["timestamp"];
-
-              String formattedTime = '';
-              if (timestamp != null && timestamp.toString().isNotEmpty) {
-                try {
-                  final parsedDate = DateTime.parse(timestamp);
-                  formattedTime =
-                      DateFormat("yyyy, MMM d • h:mma").format(parsedDate);
-                } catch (_) {
-                  formattedTime = timestamp.toString();
-                }
-              }
+              final lines = record['StockTransferLines'] ?? [];
 
               return Padding(
                 padding:
@@ -100,14 +89,8 @@ class ReviewOfflineSave extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildRow("Supplier Code",
-                                      record['CardCode'] ?? 'N/A'),
-                                  const SizedBox(height: 5),
-                                  _buildRow("Supplier Name",
-                                      record['CardName'] ?? 'N/A'),
-                                  const SizedBox(height: 5),
                                   _buildRow("Warehouse",
-                                      record['WarehouseCode'] ?? ''),
+                                      record['FromWarehouse'] ?? ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),
@@ -123,29 +106,42 @@ class ReviewOfflineSave extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 6),
                                   ...lines.map<Widget>((line) {
-                                    final binCubit =
-                                        context.read<BinOfflineCubit>();
-
-                                    // Try to extract BinAbsEntry safely
-                                    final binAllocations =
-                                        line['DocumentLinesBinAllocations'];
-                                    final binAbsEntry = (binAllocations !=
+                                    final binAllocations = line[
+                                        'StockTransferLinesBinAllocations'];
+                                    final sBinAbsEntry = (binAllocations !=
                                                 null &&
                                             binAllocations.isNotEmpty &&
                                             binAllocations[0]?['BinAbsEntry'] !=
                                                 null)
                                         ? binAllocations[0]['BinAbsEntry']
                                         : null;
-
-                                    final bin = binCubit.state.firstWhere(
+                                    final tBinAbsEntry = (binAllocations !=
+                                                null &&
+                                            binAllocations.isNotEmpty &&
+                                            binAllocations[1]?['BinAbsEntry'] !=
+                                                null)
+                                        ? binAllocations[1]['BinAbsEntry']
+                                        : null;
+                                    final binCubit =
+                                        context.read<BinOfflineCubit>();
+                                    final sbin = binCubit.state.firstWhere(
                                       (u) =>
                                           u['AbsEntry'] ==
-                                          int.tryParse(binAbsEntry.toString()),
+                                          int.tryParse(sBinAbsEntry.toString()),
+                                      orElse: () =>
+                                          {}, // return empty map if not found
+                                    );
+                                    final tbin = binCubit.state.firstWhere(
+                                      (u) =>
+                                          u['AbsEntry'] ==
+                                          int.tryParse(tBinAbsEntry.toString()),
                                       orElse: () =>
                                           {}, // return empty map if not found
                                     );
 
-                                    final displayBin = bin['BinCode'] ?? '';
+                                    final displaySBin = sbin['BinCode'] ?? '';
+                                    final displayTBin = tbin['BinCode'] ?? '';
+
                                     return Padding(
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 4),
@@ -182,8 +178,8 @@ class ReviewOfflineSave extends StatelessWidget {
                                                   .isNotEmpty)
                                             Padding(
                                               padding: const EdgeInsets.only(
-                                                  top: 2, left: 2),
-                                              child:        Row(
+                                                  top: 6, left: 2),
+                                              child: Row(
                                                 children: [
                                                   Text(
                                                     "UoM Code     :",
@@ -208,37 +204,64 @@ class ReviewOfflineSave extends StatelessWidget {
                                                 ],
                                               ),
                                             ),
-                                          if (displayBin != "")
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                  top: 2, left: 2),
-                                              child:        Row(
-                                                children: [
-                                                  Text(
-                                                    "Bin Location :",
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                top: 6, left: 2),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  "Source Bin :",
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black54),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    displaySBin,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: const TextStyle(
-                                                        fontSize: 13,
-                                                        color: Colors.black54),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Expanded(
-                                                    child: Text(
-                                                      displayBin,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: const TextStyle(
-                                                        fontSize: 12,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        color: Colors.black87,
-                                                      ),
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Colors.black87,
                                                     ),
                                                   ),
-                                                ],
-                                              ),
+                                                ),
+                                              ],
                                             ),
+                                          ),
                                           SizedBox(
                                             height: 2,
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                top: 6, left: 2),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  "To Bin :",
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black54),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    displayTBin,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Colors.black87,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                           const Divider(
                                               height: 8, color: Colors.black12),
@@ -289,7 +312,7 @@ class ReviewOfflineSave extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 110,
+          width: 90,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_offline_cubit.dart';
 
-class ReviewOfflineSave extends StatelessWidget {
-  const ReviewOfflineSave({super.key});
+class ReviewPurchaseReturnOfflineSave extends StatelessWidget {
+  const ReviewPurchaseReturnOfflineSave({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +27,7 @@ class ReviewOfflineSave extends StatelessWidget {
         ),
         elevation: 3,
       ),
-      body: BlocBuilder<GoodReceiptPoOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<PurchaseReturnOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
@@ -100,10 +102,10 @@ class ReviewOfflineSave extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildRow("Supplier Code",
+                                  _buildRow("Customer Code",
                                       record['CardCode'] ?? 'N/A'),
                                   const SizedBox(height: 5),
-                                  _buildRow("Supplier Name",
+                                  _buildRow("Customer Name",
                                       record['CardName'] ?? 'N/A'),
                                   const SizedBox(height: 5),
                                   _buildRow("Warehouse",
@@ -183,7 +185,7 @@ class ReviewOfflineSave extends StatelessWidget {
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                   top: 2, left: 2),
-                                              child:        Row(
+                                              child: Row(
                                                 children: [
                                                   Text(
                                                     "UoM Code     :",
@@ -212,7 +214,7 @@ class ReviewOfflineSave extends StatelessWidget {
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                   top: 2, left: 2),
-                                              child:        Row(
+                                              child: Row(
                                                 children: [
                                                   Text(
                                                     "Bin Location :",
@@ -289,7 +291,7 @@ class ReviewOfflineSave extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 110,
+          width: 140,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

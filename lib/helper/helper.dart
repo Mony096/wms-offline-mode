@@ -1,9 +1,13 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/core/enum/global.dart';
 import 'package:http/http.dart' as http;
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
+import 'package:wms_mobile/utilies/dialog/dialog.dart';
 
 Future<dynamic> goTo<T extends Widget>(BuildContext context, T route,
     {bool removeAllPreviousRoutes = false}) async {
@@ -199,4 +203,45 @@ String _buildQueryString(Map<String, String>? params) {
       .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
       .join('&');
   return '?$query';
+}
+
+Map<String, dynamic>? findFullItemInformation(
+    BuildContext context, String itemCode) {
+  try {
+    final itemList = context.read<ItemOfflineCubit>().state;
+
+    // Find the item
+    final matchedItem = itemList.firstWhere(
+      (e) => e['ItemCode'] == itemCode,
+      orElse: () => null,
+    );
+
+    if (matchedItem == null) {
+      MaterialDialog.warning(
+        context,
+        title: 'Oops.',
+        body: "Item not found",
+      );
+      return null;
+    }
+
+    // Find UoM group
+    final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+    final uomGroup = uomGroupCubit.state.firstWhere(
+      (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+      orElse: () => {},
+    );
+
+    // Merge item info with UoM group info
+    final Map<String, dynamic> itemMapped = {
+      ...matchedItem,
+      "BaseUoM": uomGroup['BaseUoM'],
+      "UoMGroupDefinitionCollection": uomGroup['UoMGroupDefinitionCollection'],
+    };
+
+    return itemMapped;
+  } catch (e) {
+    debugPrint('⚠️ [findFullItemInformation Error] $e');
+    return null;
+  }
 }

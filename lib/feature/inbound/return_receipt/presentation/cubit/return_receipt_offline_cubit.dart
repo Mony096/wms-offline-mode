@@ -6,12 +6,12 @@ import 'package:http/http.dart' as http;
 import 'package:wms_mobile/helper/helper.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 
-class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
-  QuickGoodReceiptOfflineCubit() : super([]) {
+class ReturnReceiptOfflineCubit extends Cubit<List<dynamic>> {
+  ReturnReceiptOfflineCubit() : super([]) {
     loadData();
   }
 
-  final Box box = Hive.box('quick_goods_receipt');
+  final Box box = Hive.box('return_receipt');
   List<dynamic> failedRecords = []; // 🔴 store failed syncs separately
   List<dynamic> successRecords = []; //  success syncs separately
   String loginFail = "";
@@ -110,7 +110,7 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
           host: host,
           port: port,
           token: token,
-          endpoint: 'PurchaseDeliveryNotes',
+          endpoint: 'Returns',
           body: item,
         );
         successRecords.add({

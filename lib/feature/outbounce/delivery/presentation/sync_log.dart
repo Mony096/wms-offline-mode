@@ -3,14 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
 
-class SyncLogScreen extends StatelessWidget {
-  const SyncLogScreen({super.key});
+class SyncLogDeliveryScreen extends StatelessWidget {
+  const SyncLogDeliveryScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<GoodReceiptPoOfflineCubit>();
+    final cubit = context.read<DeliveryOfflineCubit>();
     final failed =
         cubit.failedRecords.map((e) => {...e, "status": "failed"}).toList();
     final success =
@@ -168,20 +168,74 @@ class SyncLogScreen extends StatelessWidget {
                                 Icon(icon, color: color, size: 20),
                               ],
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 5),
+                            Row(
+                              children: [
+                                Text(
+                                  "Customer Code  :",
+                                  style: const TextStyle(
+                                      fontSize: 13, color: Colors.black54),
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    record["CardCode"],
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Row(
+                              children: [
+                                Text(
+                                  "Customer Name :",
+                                  style: const TextStyle(
+                                      fontSize: 13, color: Colors.black54),
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    record["CardName"],
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
 
                             // --- Partner + Warehouse
-                            Text(
-                              "${record['CardCode'] ?? '-'} - ${record['CardName'] ?? 'N/A'}",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                            Text(
-                              "Warehouse : ${record['WarehouseCode'] ?? '-'}",
-                              style: const TextStyle(
-                                  fontSize: 13, color: Colors.black54),
+
+                            Row(
+                              children: [
+                                Text(
+                                  "Warehouse          :",
+                                  style: const TextStyle(
+                                      fontSize: 13, color: Colors.black54),
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    record["WarehouseCode"],
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 10),
 
@@ -293,14 +347,15 @@ class SyncLogScreen extends StatelessWidget {
                                 ),
                               );
                             }).toList(),
-                            SizedBox(
-                              height: 10,
-                            ),
+
                             // Divider(
                             //   height: 18,
                             //   thickness: 0.8,
                             //   color: Colors.grey,
                             // ),
+                            SizedBox(
+                              height: 10,
+                            ),
                             // --- Status Message
                             if (isFailed)
                               Text(

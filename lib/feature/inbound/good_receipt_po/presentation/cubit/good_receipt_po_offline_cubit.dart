@@ -13,6 +13,9 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
 
   final Box box = Hive.box('goods_receipt_po');
   List<dynamic> failedRecords = []; // 🔴 store failed syncs separately
+  List<dynamic> successRecords = []; //  success syncs separately
+  String loginFail = "";
+  String loginFailTime = "";
 
   // Load data from Hive
   void loadData() {
@@ -81,11 +84,16 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
 
     if (loginResponse.statusCode != 200) {
       debugPrint("❌ Login failed: ${loginResponse.body}");
+      final startTime = DateTime.now();
+      loginFailTime = startTime.toIso8601String();
+      loginFail = loginResponse.body.toString();
       return;
     }
 
     final loginData = jsonDecode(loginResponse.body);
     final token = loginData['SessionId'];
+    loginFailTime = "";
+    loginFail = "";
     if (token == null) {
       debugPrint("❌ Token not found in login response");
       await LocalStorageManger.setString('isDownloaded', 'false');
@@ -93,7 +101,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
     }
 
     failedRecords.clear();
-
+    successRecords.clear();
     // 3️⃣ Post each record to SAP
     for (var item in items) {
       final startTime = DateTime.now();
@@ -105,6 +113,11 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
           endpoint: 'PurchaseDeliveryNotes',
           body: item,
         );
+        successRecords.add({
+          ...item,
+          'success': "Synced Successfully to SAP",
+          'timestamp': startTime.toIso8601String(),
+        });
         print("✅ Synced: ${item['DocEntry'] ?? 'N/A'}");
       } catch (e) {
         print("🔥 Failed to sync record: $e");
@@ -116,12 +129,6 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
         });
       }
     }
-
-    // 4️⃣ Store only failed records
-    if (failedRecords.isNotEmpty) {
-      box.put('failed', failedRecords);
-    }
-
     print(
         "🎯 Sync completed. Success: ${items.length - failedRecords.length}, Failed: ${failedRecords.length}");
   }

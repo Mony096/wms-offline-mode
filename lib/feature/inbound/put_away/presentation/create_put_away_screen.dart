@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/cubit/warehouse_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
@@ -153,8 +154,8 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
           .then((value) {
         if (value == null) return;
 
-        uom.text = (value as UnitOfMeasurementEntity).code;
-        uomAbEntry.text = (value).id.toString();
+        uom.text = value["Code"];
+        uomAbEntry.text = value["AbsEntry"].toString();
       });
     } catch (e) {
       print(e);
@@ -436,17 +437,17 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
           };
         }).toList(),
       };
-      setState(() {
-        print(data);
-      });
+      // setState(() {
+      //   print(data);
+      // });
       // return;
-      final response = await _bloc.post(data);
+      context.read<PutAwayOfflineCubit>().addData(data);
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Put Away - ${response['DocNum']}.",
+          body: "Saved Put Away",
           onOk: () => Navigator.of(context).pop(),
         );
       }

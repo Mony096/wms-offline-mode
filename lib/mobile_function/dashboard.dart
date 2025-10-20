@@ -234,7 +234,7 @@ class _DashboardState extends State<Dashboard> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
-                      children: [
+                      children: const [
                         Icon(Icons.circle,
                             color: Color.fromARGB(255, 217, 217, 222)),
                         SizedBox(width: 8),
@@ -249,19 +249,38 @@ class _DashboardState extends State<Dashboard> {
                       ],
                     ),
                     Container(
+                      height: 43,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        gradient: LinearGradient(
+                          colors: [
+                            PRIMARY_COLOR.withOpacity(0.9),
+                            PRIMARY_COLOR.withOpacity(0.7),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
                       margin: EdgeInsets.only(right: 15),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: PRIMARY_COLOR, // 🔴 Red background
+                          backgroundColor: Colors
+                              .transparent, // Make button background transparent
+                          shadowColor:
+                              Colors.transparent, // Remove default shadow
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(10), // 🔘 Rounded corners
+                            borderRadius: BorderRadius.circular(10),
                           ),
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 11),
+                              horizontal: 17, vertical: 0),
                         ),
                         child: Row(
-                          children: [
+                          children: const [
                             Icon(
                               Icons.cloud_upload,
                               color: Colors.white,
@@ -270,12 +289,12 @@ class _DashboardState extends State<Dashboard> {
                             SizedBox(
                               width: 5,
                             ),
-                            const Text(
+                            Text(
                               "Sync to SAP",
                               style: TextStyle(
-                                color: Colors.white, // ⚪ White text
-                                fontWeight: FontWeight.bold,
-                              ),
+                                  color: Colors.white, // ⚪ White text
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13),
                             ),
                           ],
                         ),
@@ -296,35 +315,35 @@ class _DashboardState extends State<Dashboard> {
               //     // Navigator.pop(context);
               //   },
               // ),
-              ElevatedButton(
-                child: Text("Show"),
-                onPressed: () async {
-                  context.read<GoodReceiptPoOfflineCubit>().printAllData();
+              // ElevatedButton(
+              //   child: Text("Show"),
+              //   onPressed: () async {
+              //     context.read<GoodReceiptPoOfflineCubit>().printAllData();
 
-                  // Navigator.pop(context);
-                },
-              ),
-              ElevatedButton(
-                child: Text("Clear"),
-                onPressed: () async {
-                  context.read<GoodReceiptPoOfflineCubit>().clearData();
-                  // context.read<BusinessOfflineCubit>().clearData();
-                  // context.read<WarehouseOfflineCubit>().clearData();
-                  // context.read<BinOfflineCubit>().clearData();
-                  // context.read<ItemOfflineCubit>().clearData();
-                  // context.read<UOMGroupOfflineCubit>().clearData();
-                  // context.read<UOMOfflineCubit>().clearData();
-                  // context.read<ItemBarcodeOfflineCubit>().clearData();
-                  // context.read<BatchListOfflineCubit>().clearData();
-                  // context.read<ReceiptTypeOfflineCubit>().clearData();
-                  // context.read<IssueTypeOfflineCubit>().clearData();
-                  // context.read<ReturnReceiptRequestOfflineCubit>().clearData();
-                  // context.read<SaleOrderOfflineCubit>().clearData();
-                  // context.read<PurchaseReturnRequestOfflineCubit>().clearData();
+              //     // Navigator.pop(context);
+              //   },
+              // ),
+              // ElevatedButton(
+              //   child: Text("Clear"),
+              //   onPressed: () async {
+              //     context.read<GoodReceiptPoOfflineCubit>().clearData();
+              //     // context.read<BusinessOfflineCubit>().clearData();
+              //     // context.read<WarehouseOfflineCubit>().clearData();
+              //     // context.read<BinOfflineCubit>().clearData();
+              //     // context.read<ItemOfflineCubit>().clearData();
+              //     // context.read<UOMGroupOfflineCubit>().clearData();
+              //     // context.read<UOMOfflineCubit>().clearData();
+              //     // context.read<ItemBarcodeOfflineCubit>().clearData();
+              //     // context.read<BatchListOfflineCubit>().clearData();
+              //     // context.read<ReceiptTypeOfflineCubit>().clearData();
+              //     // context.read<IssueTypeOfflineCubit>().clearData();
+              //     // context.read<ReturnReceiptRequestOfflineCubit>().clearData();
+              //     // context.read<SaleOrderOfflineCubit>().clearData();
+              //     // context.read<PurchaseReturnRequestOfflineCubit>().clearData();
 
-                  // Navigator.pop(context);
-                },
-              ),
+              //     // Navigator.pop(context);
+              //   },
+              // ),
               Expanded(
                 // 👈 this makes the list scrollable
                 child: ListView.builder(

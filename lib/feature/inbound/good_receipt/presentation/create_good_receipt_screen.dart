@@ -6,6 +6,7 @@ import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/domain/entity/grt_entity.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/screen/grt_page.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
@@ -133,8 +134,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
           .then((value) {
         if (value == null) return;
 
-        uom.text = (value as UnitOfMeasurementEntity).code;
-        uomAbEntry.text = (value).id.toString();
+        uom.text = value["Code"];
+        uomAbEntry.text = value["AbsEntry"].toString();
       });
     } catch (e) {
       print(e);
@@ -384,13 +385,13 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
       //   print(data);
       // });
       // return;
-      final response = await _bloc.post(data);
+      context.read<GoodsReceiptOfflineCubit>().addData(data);
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Good Receipt - ${response['DocNum']}.",
+          body: "Saved Goods Receipt",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -429,16 +430,16 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
       });
       MaterialDialog.loading(context);
       FocusScope.of(context).requestFocus(FocusNode());
-      final state = _blocBin.state;
-      // If state is not BinData, just return (no data yet)
-      if (state is! BinData) {
-        debugPrint("BinCubit has no data yet.");
-        return;
-      }
-      final bins = state.entities;
-      if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-        isBin.clear();
-      }
+      // final state = _blocBin.state;
+      // // If state is not BinData, just return (no data yet)
+      // if (state is! BinData) {
+      //   debugPrint("BinCubit has no data yet.");
+      //   return;
+      // }
+      // final bins = state.entities;
+      // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
+      //   isBin.clear();
+      // }
       itemCode.text = getDataFromDynamic(value['ItemCode']);
       itemName.text = getDataFromDynamic(value['ItemName']);
       // quantity.text = '0';

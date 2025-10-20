@@ -4,6 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
@@ -208,22 +211,29 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
     });
     goTo(context, ItemPage(type: ItemType.inventory)).then((value) async {
       if (value == null) return;
-      final stateBin = _blocBin.state;
-      if (stateBin is BinData) {
-        // print(state.entities);
-        binLists = stateBin.entities;
-      }
 
-      if (binLists.where((b) => b.warehouse == warehouse.text).isEmpty) {
-        final url =
-            "/view.svc/ItemB1SLQuery?\$filter=ItemCode eq '${value["ItemCode"]}' and WhsCode eq '${warehouse.text}'";
-        print("🌐 Request URL: $url");
+      // 🧠 Load Bin and ItemFindStock data from Hive via Cubit
+      final binCubit = context.read<BinOfflineCubit>();
+      final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
 
-        final response = await dio.get(url);
+      final binList = binCubit.state;
+      final itemStockList = itemStockCubit.getJsonData();
 
-        final data = response.data["value"];
-        if (data != null && data.isNotEmpty) {
-          final onHandQty = data[0]["OnHandQty"] ?? 0;
+      // 🧩 Step 1: Filter bin by warehouse
+      final filteredBin =
+          binList.where((b) => b['Warehouse'] == warehouse.text).toList();
+      if (filteredBin.isEmpty) {
+        // 🧩 Step 2: Find item in offline stock list
+        final matchedItemStock = itemStockList.firstWhere(
+          (item) =>
+              item['ItemCode'] == value['ItemCode'] &&
+              item['WhsCode'] == warehouse.text,
+          orElse: () => {},
+        );
+
+        // 🧩 Step 3: Update stock quantity (offline)
+        if (matchedItemStock.isNotEmpty) {
+          final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
           setState(() {
             inWhsQty.text = onHandQty.toString();
           });
@@ -233,6 +243,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
           });
         }
       }
+
+      // 🧩 Step 4: Continue normal item setup
       onSetItemTemp(value);
     });
   }
@@ -386,6 +398,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
           title: 'Warning', body: "Item Code is Required.");
       return;
     }
+
     final value = await goTo(
       context,
       BinPage(warehouse: warehouse.text, itemCode: itemCode.text),
@@ -407,28 +420,40 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
 
     try {
       if (item.isNotEmpty && whs.isNotEmpty && bin.isNotEmpty) {
-        final url =
-            "/view.svc/ItemB1SLQuery?\$filter=ItemCode eq '$item' and WhsCode eq '$whs' and BinID eq $bin";
-        print("🌐 Request URL: $url");
+        // 🧠 Get offline data
+        final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
+        final stockData = itemStockCubit.getJsonData();
 
-        final response = await dio.get(url);
+        // 🔍 Find matching item in offline stock
+        final matched = stockData.firstWhere(
+          (e) =>
+              e['ItemCode'].toString().trim() == item &&
+              e['WhsCode'].toString().trim() == whs &&
+              e['BinID'].toString().trim() == bin,
+          orElse: () => {},
+        );
 
-        final data = response.data["value"];
-        if (data != null && data.isNotEmpty) {
-          final onHandQty = data[0]["OnHandQty"] ?? 0;
+        if (matched.isNotEmpty) {
+          final onHandQty = matched['OnHandQty'] ?? 0;
           setState(() {
             inWhsQty.text = onHandQty.toString();
           });
         } else {
+          // ❌ Not found in offline data
           setState(() {
             inWhsQty.text = "0";
           });
+          MaterialDialog.warning(
+            context,
+            title: "Not Found",
+            body: "No offline stock found for this item in the selected bin.",
+          );
         }
       }
 
       print("📦 In-warehouse quantity: ${inWhsQty.text}");
     } catch (e, stack) {
-      print("❌ Error during Dio request: $e");
+      print("❌ Error during offline lookup: $e");
       print("📜 Stack trace: $stack");
       setState(() {
         inWhsQty.text = "0";
@@ -507,16 +532,15 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
           };
         }).toList(),
       };
-      setState(() {
-        print(data);
-      });
-      final response = await _bloc.post(data);
+      if (widget.isQuickCount) {
+        context.read<QuickCountOfflineCubit>().addData(data);
+      }
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Quick Count - ${response['DocumentNumber']}.",
+          body: widget.isQuickCount ? "Saved Quick Count" : "Saved Cycle Count",
           onOk: () => Navigator.of(context).pop(),
         );
       }

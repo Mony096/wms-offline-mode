@@ -7,6 +7,7 @@ import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dar
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/duplicateItem_GPO_Screen.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/duplicateItem_DLR_Screen.dart';
 import 'package:wms_mobile/feature/outbounce/sale_order/presentation/sale_order_page.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
@@ -135,8 +136,8 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           .then((value) {
         if (value == null) return;
 
-        uom.text = (value as UnitOfMeasurementEntity).code;
-        uomAbEntry.text = (value).id.toString();
+           uom.text = value["Code"];
+        uomAbEntry.text = value["AbsEntry"].toString();
       });
     } catch (e) {
       print(e);
@@ -375,13 +376,13 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         }).toList(),
       };
 
-      final response = await _bloc.post(data);
+      context.read<DeliveryOfflineCubit>().addData(data);
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Return Receipt - ${response['DocNum']}.",
+          body: "Saved Delivery",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -583,63 +584,14 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       cardName.text = getDataFromDynamic(value['CardName']);
       poText.text = getDataFromDynamic(value['DocNum']);
 
-      // if (mounted) MaterialDialog.loading(context);
-
-      // items = [];
-      // itemCodeFilter = [];
-
-      // for (var element in value['DocumentLines']) {
-      //   final itemResponse = await _blocItem.find("('${element['ItemCode']}')");
-
-      //   items.add({
-      //     "DocEntry": element['DocEntry'],
-      //     "BaseEntry": element['DocEntry'],
-      //     "BaseLine": element['LineNum'],
-      //     "ItemCode": element['ItemCode'],
-      //     "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
-      //     "TotalQuantity": getDataFromDynamic(element['Quantity']),
-      //     "Quantity": "0",
-      //     "WarehouseCode": warehouse.text,
-      //     "UoMEntry": getDataFromDynamic(element['UoMEntry']),
-      //     "UoMCode": element['UoMCode'],
-      //     "UoMGroupDefinitionCollection":
-      //         itemResponse['UoMGroupDefinitionCollection'],
-      //     "BaseUoM": itemResponse['BaseUoM'],
-      //     "BinId": binId.text,
-      //     "ManageSerialNumbers": itemResponse["ManageSerialNumbers"],
-      //     "ManageBatchNumbers": itemResponse["ManageBatchNumbers"],
-      //     "BarCode": element['BarCode'],
-      //   });
-      //   baseEntry.add({
-      //     "BaseEntry": element['DocEntry'],
-      //     "ItemCode": element['ItemCode'],
-      //   });
-      //   // await Future.delayed(Duration(seconds: 1));
-      //   itemCodeFilter.add(element['ItemCode']);
-      // }
-
-      // if (mounted) MaterialDialog.close(context);
-
-      // setState(() {
-      //   items;
-      // });
-      // Show loading indicator
       if (mounted) MaterialDialog.loading(context);
-      // final state = _blocBin.state;
-      // // If state is not BinData, just return (no data yet)
-      // if (state is! BinData) {
-      //   debugPrint("BinCubit has no data yet.");
-      //   return;
-      // }
-      // final bins = state.entities;
-      // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-      //   isBin.clear();
-      // }
-      // Initialize the list of items
+
       List<Map<String, dynamic>> rawItems = [];
 
       for (var element in value['DocumentLines']) {
-        final itemResponse = await _blocItem.find("('${element['ItemCode']}')");
+        final itemResponse =
+            findFullItemInformation(context, element['ItemCode']);
+        if (itemResponse == null) return;
 
         rawItems.add({
           "DocEntry": element['DocEntry'],

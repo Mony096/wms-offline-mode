@@ -48,61 +48,61 @@ class _InboundState extends State<Inbound> {
   @override
   void initState() {
     super.initState();
-    _checkBin();
+    // _checkBin();
   }
 
-  Future<void> _checkBin() async {
-    try {
-      _bloc = context.read<BinCubit>();
-      final state = _bloc.state;
-      if (state is BinData) {
-        // print(state.entities);
-        data = state.entities;
-      }
-      // print(data.where((b) => b.warehouse == "05"));
-      // replace 'warehouse.text' with your actual variable or controller
-      final warehouse = await LocalStorageManger.getString('warehouse');
-      if (mounted) {
-        setState(() {
-          // remove "Put Away" if no bins found
-          if (data.where((b) => b.warehouse == warehouse).isEmpty) {
-            gridList.removeWhere((item) => item["name"] == "Put Away");
-          }
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-      debugPrint('Error checking bins: $e');
-    }
-  }
+  // Future<void> _checkBin() async {
+  //   try {
+  //     _bloc = context.read<BinCubit>();
+  //     final state = _bloc.state;
+  //     if (state is BinData) {
+  //       // print(state.entities);
+  //       data = state.entities;
+  //     }
+  //     // print(data.where((b) => b.warehouse == "05"));
+  //     // replace 'warehouse.text' with your actual variable or controller
+  //     final warehouse = await LocalStorageManger.getString('warehouse');
+  //     if (mounted) {
+  //       setState(() {
+  //         // remove "Put Away" if no bins found
+  //         if (data.where((b) => b.warehouse == warehouse).isEmpty) {
+  //           gridList.removeWhere((item) => item["name"] == "Put Away");
+  //         }
+  //         _isLoading = false;
+  //       });
+  //     }
+  //   } catch (e) {
+  //     if (mounted) {
+  //       setState(() => _isLoading = false);
+  //     }
+  //     debugPrint('Error checking bins: $e');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(
-            child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // SizedBox(
-            //     width: 25,
-            //     height: 25,
-            //     child: CircularProgressIndicator(
-            //       color: Colors.grey,
-            //     )),
+    // if (_isLoading) {
+    //   return const Scaffold(
+    //     body: Center(
+    //         child: Column(
+    //       crossAxisAlignment: CrossAxisAlignment.center,
+    //       mainAxisAlignment: MainAxisAlignment.center,
+    //       children: [
+    //         // SizedBox(
+    //         //     width: 25,
+    //         //     height: 25,
+    //         //     child: CircularProgressIndicator(
+    //         //       color: Colors.grey,
+    //         //     )),
 
-            Text(
-              "Waiting initialize Inbound",
-              style: TextStyle(fontSize: 16, color: Colors.black54),
-            )
-          ],
-        )),
-      );
-    }
+    //         Text(
+    //           "Waiting initialize Inbound",
+    //           style: TextStyle(fontSize: 16, color: Colors.black54),
+    //         )
+    //       ],
+    //     )),
+    //   );
+    // }
 
     return Scaffold(
       appBar: AppBar(

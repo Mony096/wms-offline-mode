@@ -10,8 +10,10 @@ import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
+import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
@@ -142,6 +144,12 @@ class _DownloadScreenState extends State<DownloadScreen> {
           context.read<ItemBarcodeOfflineCubit>().addData(data),
     ),
     DownloadItem(
+      name: 'Item Stock',
+      url: 'view.svc/ItemB1SLQuery',
+      onSave: (context, data) async =>
+          context.read<ItemFindStockOfflineCubit>().addData(data),
+    ),
+    DownloadItem(
       name: 'Serial Batch Lists',
       url: 'view.svc/WMS_SERIAL_BATCHB1SLQuery',
       onSave: (context, data) async =>
@@ -175,6 +183,17 @@ class _DownloadScreenState extends State<DownloadScreen> {
     super.initState();
     _loadDownloadState();
   }
+
+  void _logout() {
+    MaterialDialog.loading(context);
+    _clearAllDataFromCatchError();
+    const timeoutDuration = Duration(milliseconds: 200);
+    Future.delayed(timeoutDuration, () {
+      BlocProvider.of<AuthorizationBloc>(context)
+          .add(const RequestLogoutEvent());
+    });
+  }
+
   /// -----------------------------
   /// 💾 Save & Load State
   /// -----------------------------
@@ -498,6 +517,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       isDownloadedString = "false";
     });
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -520,14 +540,15 @@ class _DownloadScreenState extends State<DownloadScreen> {
           //   tooltip: 'Reset Status',
           //   onPressed: _resetSyncStatus,
           // ),
+
           IconButton(
             icon: const Icon(
-              Icons.delete_forever,
+              Icons.logout,
               color: Colors.white,
               size: 28,
             ),
             tooltip: 'Clear All Data',
-            onPressed: _clearAllData,
+            onPressed: _logout,
           ),
           SizedBox(
             width: 10,
@@ -546,7 +567,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     ? const EdgeInsets.only(left: 8, top: 30, bottom: 20)
                     : const EdgeInsets.only(left: 8, top: 15),
                 child: Row(
-                  children: [
+                  children: const [
                     Icon(
                       Icons.cloud_download,
                       size: 2,
@@ -581,10 +602,10 @@ class _DownloadScreenState extends State<DownloadScreen> {
                               horizontal: 13, vertical: 11),
                         ),
                         child: Row(
-                          children: [
+                          children: const [
                             Padding(
-                              padding: const EdgeInsets.only(left: 3),
-                              child: const Text(
+                              padding: EdgeInsets.only(left: 3),
+                              child: Text(
                                 "Go Dashboard",
                                 style: TextStyle(
                                   color: Colors.white, // ⚪ White text
@@ -614,7 +635,6 @@ class _DownloadScreenState extends State<DownloadScreen> {
                             );
                             return;
                           }
-                          ;
                           Navigator.pushAndRemoveUntil(
                             context,
                             MaterialPageRoute(
@@ -630,33 +650,65 @@ class _DownloadScreenState extends State<DownloadScreen> {
             ],
           ),
           downloadStatus.isNotEmpty ? Text(downloadStatus) : Container(),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isDownloadingAll || isDownloadedString == "true"
-                        ? Colors.grey
-                        : PRIMARY_COLOR,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                padding: const EdgeInsets.symmetric(vertical: 14),
+          Row(
+            children: [
+              Expanded(
+                flex: 4,
+                child: Container(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          isDownloadingAll || isDownloadedString == "true"
+                              ? Colors.grey
+                              : PRIMARY_COLOR,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed:
+                        isDownloadingAll ? null : _downloadAllSequentially,
+                    icon: const Icon(Icons.cloud_download, color: Colors.white),
+                    label: Text(
+                      isDownloadingAll
+                          ? 'Downloading...'
+                          : isDownloadedString == "true"
+                              ? "Downloaded"
+                              : 'Download ',
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white),
+                    ),
+                  ),
+                ),
               ),
-              onPressed: isDownloadingAll ? null : _downloadAllSequentially,
-              icon: const Icon(Icons.cloud_download, color: Colors.white),
-              label: Text(
-                isDownloadingAll
-                    ? 'Downloading...'
-                    : isDownloadedString == "true"
-                        ? "Downloaded"
-                        : 'Download ',
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white),
+              Expanded(
+                flex: 2,
+                child: Container(
+                  margin: EdgeInsets.only(right: 17),
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor:
+                          isDownloadingAll ? Colors.grey : PRIMARY_COLOR,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: _clearAllData,
+                    icon: const Icon(Icons.delete_forever, color: Colors.white),
+                    label: Text(
+                      "Clear",
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white),
+                    ),
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
           Expanded(
             child: ListView.builder(
@@ -713,7 +765,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
         // CircularProgressIndicator
         subtitle: item.isLoading
             ? Row(
-                children: [
+                children: const [
                   SizedBox(
                       width: 17,
                       height: 17,

@@ -52,6 +52,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _postData() async {
     try {
+      if (_userName.text.isEmpty || _password.text.isEmpty) {
+        MaterialDialog.warning(
+          context,
+          title: 'Failed',
+          body: "Invalid UserName or Password",
+        );
+        return;
+      }
       if (mounted) {
         if (_rememberMe) {
           await LocalStorageManger.setString('remember_me', 'true');
@@ -62,6 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
           await LocalStorageManger.setString('username', _userName.text);
           await LocalStorageManger.setString('password', _password.text);
         }
+
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(

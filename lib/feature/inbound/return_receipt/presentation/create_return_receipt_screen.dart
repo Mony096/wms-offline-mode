@@ -7,6 +7,7 @@ import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dar
 import 'package:wms_mobile/feature/business_partner/presentation/screen/business_partner_page.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/component/item/presentation/cubit/item_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/component/item/presentation/screen/item_page.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/duplicateItem_RTR_Screen.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/return_receipt_request_page.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
@@ -127,8 +128,8 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
           .then((value) {
         if (value == null) return;
 
-        uom.text = (value as UnitOfMeasurementEntity).code;
-        uomAbEntry.text = (value).id.toString();
+        uom.text = value["Code"];
+        uomAbEntry.text = value["AbsEntry"].toString();
       });
     } catch (e) {
       print(e);
@@ -285,8 +286,6 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
   }
 
   void onPostToSAP() async {
-    print(docEntry.text);
-
     try {
       MaterialDialog.loading(context);
       if (cardCode.text == '') {
@@ -376,13 +375,14 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
           };
         }).toList(),
       };
-      final response = await _bloc.post(data);
+      // final response = await _bloc.post(data);
+      context.read<ReturnReceiptOfflineCubit>().addData(data);
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Return Receipt - ${response['DocNum']}.",
+          body: "Saved Return Receipt",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -416,16 +416,16 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
   void onSetItemTemp(dynamic value) async {
     try {
       if (value == null) return;
-      final state = _blocBin.state;
-      // If state is not BinData, just return (no data yet)
-      if (state is! BinData) {
-        debugPrint("BinCubit has no data yet.");
-        return;
-      }
-      final bins = state.entities;
-      if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-        isBin.clear();
-      }
+      // final state = _blocBin.state;
+      // // If state is not BinData, just return (no data yet)
+      // if (state is! BinData) {
+      //   debugPrint("BinCubit has no data yet.");
+      //   return;
+      // }
+      // final bins = state.entities;
+      // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
+      //   isBin.clear();
+      // }
       itemCode.text = getDataFromDynamic(value['ItemCode']);
       itemName.text = getDataFromDynamic(value['ItemName']);
       // quantity.text = '0';
@@ -623,12 +623,12 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
       cardCode.text = getDataFromDynamic(value['CardCode']);
       cardName.text = getDataFromDynamic(value['CardName']);
       docEntry.text = getDataFromDynamic(value['DocEntry']);
-      print(docEntry.text);
       if (mounted) MaterialDialog.loading(context);
       items = [];
       for (var element in value['DocumentLines']) {
-        final itemResponse = await _blocItem.find("('${element['ItemCode']}')");
-
+        final itemResponse =
+            findFullItemInformation(context, element['ItemCode']);
+        if (itemResponse == null) return;
         items.add({
           "DocEntry": element['DocEntry'],
           "BaseEntry": element['DocEntry'],

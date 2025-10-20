@@ -9,19 +9,24 @@ import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/binloca
 import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/grt_cubit.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/grt_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/good_receipt_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/purchase_good_receipt_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_cubit.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/component/item/presentation/cubit/item_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/cubit/item_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_cubit.dart';
@@ -31,7 +36,10 @@ import 'package:wms_mobile/feature/list_serial/presentation/cubit/serial_list_of
 import 'package:wms_mobile/feature/lookup/bin_lookup/presentation/cubit/binlocation_lookup_cubit.dart';
 import 'package:wms_mobile/feature/lookup/product_lookup/presentation/cubit/product_lookup_cubit.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
+import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/pick_and_pack/bin_transfer/presentation/cubit/bin_transfer_cubit.dart';
@@ -80,6 +88,14 @@ void main() async {
   await Hive.openBox("purchase_return_request");
   await Hive.openBox("goods_receipt_po");
   await Hive.openBox("quick_goods_receipt");
+  await Hive.openBox("return_receipt");
+  await Hive.openBox("goods_receipt");
+  await Hive.openBox("put_away");
+  await Hive.openBox("delivery");
+  await Hive.openBox("purchase_return");
+  await Hive.openBox("goods_issue");
+  await Hive.openBox("quick_count");
+  await Hive.openBox("item_find_stock");
 
   // (Optional) Only print directory AFTER Hive init
   final dir = await getApplicationDocumentsDirectory();
@@ -154,8 +170,16 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => ReturnReceiptRequestOfflineCubit()),
         BlocProvider(create: (_) => SaleOrderOfflineCubit()),
         BlocProvider(create: (_) => PurchaseReturnRequestOfflineCubit()),
-          BlocProvider(create: (_) => GoodReceiptPoOfflineCubit()),
-           BlocProvider(create: (_) => QuickGoodReceiptOfflineCubit())
+        BlocProvider(create: (_) => GoodReceiptPoOfflineCubit()),
+        BlocProvider(create: (_) => QuickGoodReceiptOfflineCubit()),
+        BlocProvider(create: (_) => ReturnReceiptOfflineCubit()),
+        BlocProvider(create: (_) => GoodsReceiptOfflineCubit()),
+        BlocProvider(create: (_) => PutAwayOfflineCubit()),
+        BlocProvider(create: (_) => DeliveryOfflineCubit()),
+        BlocProvider(create: (_) => PurchaseReturnOfflineCubit()),
+        BlocProvider(create: (_) => GoodsIssueOfflineCubit()),
+        BlocProvider(create: (_) => QuickCountOfflineCubit()),
+        BlocProvider(create: (_) => ItemFindStockOfflineCubit())
       ],
       child: const MainScreen(),
     );

@@ -3,14 +3,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 
-class SyncLogScreen extends StatelessWidget {
-  const SyncLogScreen({super.key});
+class SyncLogQuickCountScreen extends StatelessWidget {
+  const SyncLogQuickCountScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<GoodReceiptPoOfflineCubit>();
+    final cubit = context.read<QuickCountOfflineCubit>();
     final failed =
         cubit.failedRecords.map((e) => {...e, "status": "failed"}).toList();
     final success =
@@ -119,7 +120,7 @@ class SyncLogScreen extends StatelessWidget {
                   itemCount: allRecords.length,
                   itemBuilder: (context, index) {
                     final record = allRecords[index];
-                    final lines = record['DocumentLines'] ?? [];
+                    final lines = record['InventoryPostingLines'] ?? [];
                     final status = record["status"];
                     final timeStamp = record["timestamp"];
 
@@ -168,18 +169,18 @@ class SyncLogScreen extends StatelessWidget {
                                 Icon(icon, color: color, size: 20),
                               ],
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 5),
+                            Text(
+                              "Goods Receipt Type : ${record['U_lk_gitype'] ?? '-'}",
+                              style: const TextStyle(
+                                  fontSize: 13, color: Colors.black54),
+                            ),
+                            const SizedBox(height: 5),
 
                             // --- Partner + Warehouse
+
                             Text(
-                              "${record['CardCode'] ?? '-'} - ${record['CardName'] ?? 'N/A'}",
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
-                              ),
-                            ),
-                            Text(
-                              "Warehouse : ${record['WarehouseCode'] ?? '-'}",
+                              "Warehouse : ${record['U_lk_whsdesc'] ?? '-'}",
                               style: const TextStyle(
                                   fontSize: 13, color: Colors.black54),
                             ),
@@ -293,14 +294,15 @@ class SyncLogScreen extends StatelessWidget {
                                 ),
                               );
                             }).toList(),
-                            SizedBox(
-                              height: 10,
-                            ),
+
                             // Divider(
                             //   height: 18,
                             //   thickness: 0.8,
                             //   color: Colors.grey,
                             // ),
+                            SizedBox(
+                              height: 10,
+                            ),
                             // --- Status Message
                             if (isFailed)
                               Text(

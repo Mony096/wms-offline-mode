@@ -3,10 +3,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 
-class ReviewOfflineSave extends StatelessWidget {
-  const ReviewOfflineSave({super.key});
+class ReviewQuickCountOfflineSave extends StatelessWidget {
+  const ReviewQuickCountOfflineSave({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +27,7 @@ class ReviewOfflineSave extends StatelessWidget {
         ),
         elevation: 3,
       ),
-      body: BlocBuilder<GoodReceiptPoOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<QuickCountOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
@@ -41,7 +43,7 @@ class ReviewOfflineSave extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemBuilder: (context, index) {
               final record = records[index];
-              final lines = record['DocumentLines'] ?? [];
+              final lines = record['InventoryPostingLines'] ?? [];
               final timestamp = record["timestamp"];
 
               String formattedTime = '';
@@ -100,14 +102,11 @@ class ReviewOfflineSave extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildRow("Supplier Code",
-                                      record['CardCode'] ?? 'N/A'),
-                                  const SizedBox(height: 5),
-                                  _buildRow("Supplier Name",
-                                      record['CardName'] ?? 'N/A'),
+                                  _buildRow("Goods Receipt Type",
+                                      record['U_lk_gitype'] ?? 'N/A'),
                                   const SizedBox(height: 5),
                                   _buildRow("Warehouse",
-                                      record['WarehouseCode'] ?? ''),
+                                      record['U_lk_whsdesc'] ?? ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),
@@ -127,20 +126,12 @@ class ReviewOfflineSave extends StatelessWidget {
                                         context.read<BinOfflineCubit>();
 
                                     // Try to extract BinAbsEntry safely
-                                    final binAllocations =
-                                        line['DocumentLinesBinAllocations'];
-                                    final binAbsEntry = (binAllocations !=
-                                                null &&
-                                            binAllocations.isNotEmpty &&
-                                            binAllocations[0]?['BinAbsEntry'] !=
-                                                null)
-                                        ? binAllocations[0]['BinAbsEntry']
-                                        : null;
 
                                     final bin = binCubit.state.firstWhere(
                                       (u) =>
                                           u['AbsEntry'] ==
-                                          int.tryParse(binAbsEntry.toString()),
+                                          int.tryParse(
+                                              (line["BinEntry"] ?? -1).toString()),
                                       orElse: () =>
                                           {}, // return empty map if not found
                                     );
@@ -167,7 +158,7 @@ class ReviewOfflineSave extends StatelessWidget {
                                                 ),
                                               ),
                                               Text(
-                                                "Qty: ${line['Quantity'] ?? '0'}",
+                                                "Qty: ${line['CountedQuantity'] ?? '0'}",
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Colors.black87,
@@ -183,7 +174,7 @@ class ReviewOfflineSave extends StatelessWidget {
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                   top: 2, left: 2),
-                                              child:        Row(
+                                              child: Row(
                                                 children: [
                                                   Text(
                                                     "UoM Code     :",
@@ -212,7 +203,7 @@ class ReviewOfflineSave extends StatelessWidget {
                                             Padding(
                                               padding: const EdgeInsets.only(
                                                   top: 2, left: 2),
-                                              child:        Row(
+                                              child: Row(
                                                 children: [
                                                   Text(
                                                     "Bin Location :",
@@ -289,7 +280,7 @@ class ReviewOfflineSave extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 110,
+          width: 140,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

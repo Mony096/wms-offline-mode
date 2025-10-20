@@ -6,6 +6,7 @@ import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/duplicateItem_GPO_Screen.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/duplicateItem_PRT_Screen.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '../../purchase_return_request/presentation/purchase_return_request_page.dart';
@@ -135,8 +136,8 @@ class _CreatePurchaseReturnScreenState
           .then((value) {
         if (value == null) return;
 
-        uom.text = (value as UnitOfMeasurementEntity).code;
-        uomAbEntry.text = (value).id.toString();
+        uom.text = value["Code"];
+        uomAbEntry.text = value["AbsEntry"].toString();
       });
     } catch (e) {
       print(e);
@@ -372,16 +373,13 @@ class _CreatePurchaseReturnScreenState
           };
         }).toList(),
       };
-      setState(() {
-        print(data);
-      });
-      final response = await _bloc.post(data);
+     context.read<PurchaseReturnOfflineCubit>().addData(data);
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Purcase Return - ${response['DocNum']}.",
+          body: "Saved Return To Supplier",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -583,21 +581,23 @@ class _CreatePurchaseReturnScreenState
       //   items;
       // });
       if (mounted) MaterialDialog.loading(context);
-      final state = _blocBin.state;
-      // If state is not BinData, just return (no data yet)
-      if (state is! BinData) {
-        debugPrint("BinCubit has no data yet.");
-        return;
-      }
-      final bins = state.entities;
-      if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-        isBin.clear();
-      }
+      // final state = _blocBin.state;
+      // // If state is not BinData, just return (no data yet)
+      // if (state is! BinData) {
+      //   debugPrint("BinCubit has no data yet.");
+      //   return;
+      // }
+      // final bins = state.entities;
+      // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
+      //   isBin.clear();
+      // }
       // Initialize the list of items
       List<Map<String, dynamic>> rawItems = [];
 
       for (var element in value['DocumentLines']) {
-        final itemResponse = await _blocItem.find("('${element['ItemCode']}')");
+        final itemResponse =
+            findFullItemInformation(context, element['ItemCode']);
+        if (itemResponse == null) return;
 
         rawItems.add({
           "DocEntry": element['DocEntry'],
