@@ -42,12 +42,17 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
     return items;
   }
 
+  int getLog() {
+    final items = [...successRecords, ...failedRecords];
+    return items.length;
+  }
+
   void printAllData() {
     final items = getJsonData();
     print("🟢 Hive Data: $items");
   }
 
-  // ✅ Post all offline data to SAP
+  
   Future<void> post() async {
     final items = getJsonData();
     if (items.isEmpty) {
@@ -59,49 +64,58 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
     box.put('data', []);
     emit([]);
 
-    // 2️⃣ Load stored credentials
-    final username = await LocalStorageManger.getString('username');
-    final password = await LocalStorageManger.getString('password');
-    final host = await LocalStorageManger.getString('host');
-    final port = await LocalStorageManger.getString('port');
-    final company = await LocalStorageManger.getString('db');
-
-    if (username.isEmpty || password.isEmpty || company.isEmpty) {
-      debugPrint("❌ Missing username, password, or companyDB");
-      return;
-    }
-
-    print("🌐 Logging in to SAP...");
-    final loginResponse = await http.post(
-      Uri.parse('$host:$port/b1s/v1/Login'),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "CompanyDB": company,
-        "UserName": username,
-        "Password": password,
-      }),
-    );
-
-    if (loginResponse.statusCode != 200) {
-      debugPrint("❌ Login failed: ${loginResponse.body}");
-      final startTime = DateTime.now();
-      loginFailTime = startTime.toIso8601String();
-      loginFail = loginResponse.body.toString();
-      return;
-    }
-
-    final loginData = jsonDecode(loginResponse.body);
-    final token = loginData['SessionId'];
-    loginFailTime = "";
-    loginFail = "";
-    if (token == null) {
-      debugPrint("❌ Token not found in login response");
-      await LocalStorageManger.setString('isDownloaded', 'false');
-      return;
-    }
-
     failedRecords.clear();
     successRecords.clear();
+
+    final host = await LocalStorageManger.getString('host');
+    final port = await LocalStorageManger.getString('port');
+
+    // ✅ Use saved token if available
+    String loginToken = await LocalStorageManger.getString('token');
+
+    if (loginToken.isEmpty) {
+      // 2️⃣ Load stored credentials
+      final username = await LocalStorageManger.getString('username');
+      final password = await LocalStorageManger.getString('password');
+      final company = await LocalStorageManger.getString('db');
+
+      if (username.isEmpty || password.isEmpty || company.isEmpty) {
+        debugPrint("❌ Missing username, password, or companyDB");
+        return;
+      }
+
+      print("🌐 Logging in to SAP...");
+      final loginResponse = await http.post(
+        Uri.parse('$host:$port/b1s/v1/Login'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "CompanyDB": company,
+          "UserName": username,
+          "Password": password,
+        }),
+      );
+
+      if (loginResponse.statusCode != 200) {
+        debugPrint("❌ Login failed: ${loginResponse.body}");
+        final startTime = DateTime.now();
+        loginFailTime = startTime.toIso8601String();
+        loginFail = loginResponse.body.toString();
+        return;
+      }
+
+      final loginData = jsonDecode(loginResponse.body);
+      loginToken = loginData['SessionId'] ?? "";
+
+      if (loginToken.isEmpty) {
+        debugPrint("❌ Token not found in login response");
+        await LocalStorageManger.setString('isDownloaded', 'false');
+        return;
+      }
+    }
+
+    loginFailTime = "";
+    loginFail = "";
+
     // 3️⃣ Post each record to SAP
     for (var item in items) {
       final startTime = DateTime.now();
@@ -109,7 +123,7 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
         await postToSAP(
           host: host,
           port: port,
-          token: token,
+          token: loginToken,
           endpoint: 'PurchaseDeliveryNotes',
           body: item,
         );
@@ -121,7 +135,6 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
         print("✅ Synced: ${item['DocEntry'] ?? 'N/A'}");
       } catch (e) {
         print("🔥 Failed to sync record: $e");
-        print(e);
         failedRecords.add({
           ...item,
           'error': e.toString(),
@@ -129,6 +142,7 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
         });
       }
     }
+
     print(
         "🎯 Sync completed. Success: ${items.length - failedRecords.length}, Failed: ${failedRecords.length}");
   }

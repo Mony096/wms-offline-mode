@@ -32,4 +32,8 @@ class BatchListOfflineCubit extends Cubit<List<dynamic>> {
     final List<dynamic> items = box.get('data', defaultValue: []).cast<dynamic>();
     print("🟢 Hive Data: $items");
   }
+    List<dynamic> getJsonData() {
+    final items = box.get('data', defaultValue: []).cast<dynamic>();
+    return items;
+  }
 }

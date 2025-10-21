@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/review_offline_save.dart';
@@ -40,20 +43,23 @@ import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/review
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/sync_log.dart';
 import 'package:wms_mobile/helper/helper.dart';
 import 'package:wms_mobile/utilies/dialog/dialog.dart';
+import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 
 class SyncItem {
   final String name;
   final int Function(BuildContext) getCount;
+  final int Function(BuildContext) getLog;
+
   final Future<void> Function(BuildContext) onSync;
   final void Function(BuildContext)? onGotoReview;
   final void Function(BuildContext)? onGotoSyncLog;
-  SyncItem({
-    required this.name,
-    required this.getCount,
-    required this.onSync,
-    required this.onGotoReview,
-    required this.onGotoSyncLog,
-  });
+  SyncItem(
+      {required this.name,
+      required this.getCount,
+      required this.onSync,
+      required this.onGotoReview,
+      required this.onGotoSyncLog,
+      required this.getLog});
 }
 
 class SyncToSAPScreen extends StatefulWidget {
@@ -65,19 +71,22 @@ class SyncToSAPScreen extends StatefulWidget {
 
 class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
   final List<SyncGroup> _syncGroups = [];
-
+  bool isLoading = false;
   @override
   void initState() {
     super.initState();
-
     _syncGroups.addAll([
       SyncGroup(
         title: "Inbound",
+        description:
+            "Sync inbound documents like GRPO, Quick GRPO, and Return Receipt from suppliers.",
         items: [
           SyncItem(
             name: 'Goods Receipt PO',
             getCount: (context) =>
                 context.read<GoodReceiptPoOfflineCubit>().getJsonData().length,
+            getLog: (context) =>
+                context.read<GoodReceiptPoOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<GoodReceiptPoOfflineCubit>().post();
             },
@@ -94,6 +103,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 .read<QuickGoodReceiptOfflineCubit>()
                 .getJsonData()
                 .length,
+            getLog: (context) =>
+                context.read<QuickGoodReceiptOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<QuickGoodReceiptOfflineCubit>().post();
             },
@@ -108,6 +119,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             name: 'Customer Return Receipt',
             getCount: (context) =>
                 context.read<ReturnReceiptOfflineCubit>().getJsonData().length,
+            getLog: (context) =>
+                context.read<ReturnReceiptOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<ReturnReceiptOfflineCubit>().post();
             },
@@ -122,6 +135,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             name: 'Goods Receipt',
             getCount: (context) =>
                 context.read<GoodsReceiptOfflineCubit>().getJsonData().length,
+            getLog: (context) =>
+                context.read<GoodsReceiptOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<GoodsReceiptOfflineCubit>().post();
             },
@@ -136,6 +151,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             name: 'Put Away',
             getCount: (context) =>
                 context.read<PutAwayOfflineCubit>().getJsonData().length,
+            getLog: (context) => context.read<PutAwayOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<PutAwayOfflineCubit>().post();
             },
@@ -149,12 +165,15 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
         ],
       ),
       SyncGroup(
+        description:
+            "Sync outbound transactions including Delivery, Return Request, and Goods Issue.",
         title: "Outbound",
         items: [
           SyncItem(
             name: 'Delivery',
             getCount: (context) =>
                 context.read<DeliveryOfflineCubit>().getJsonData().length,
+            getLog: (context) => context.read<DeliveryOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<DeliveryOfflineCubit>().post();
             },
@@ -169,6 +188,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             name: 'Return To Supplier',
             getCount: (context) =>
                 context.read<PurchaseReturnOfflineCubit>().getJsonData().length,
+            getLog: (context) =>
+                context.read<PurchaseReturnOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<PurchaseReturnOfflineCubit>().post();
             },
@@ -183,6 +204,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             name: 'Goods Issue',
             getCount: (context) =>
                 context.read<GoodsIssueOfflineCubit>().getJsonData().length,
+            getLog: (context) =>
+                context.read<GoodsIssueOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<GoodsIssueOfflineCubit>().post();
             },
@@ -196,12 +219,16 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
         ],
       ),
       SyncGroup(
+        description:
+            "Sync stock counting records to keep warehouse inventory aligned with SAP.",
         title: "Counting",
         items: [
           SyncItem(
             name: 'Quick Count',
             getCount: (context) =>
                 context.read<QuickCountOfflineCubit>().getJsonData().length,
+            getLog: (context) =>
+                context.read<QuickCountOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<QuickCountOfflineCubit>().post();
             },
@@ -216,6 +243,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             name: 'Cycle Count',
             getCount: (context) =>
                 context.read<CycleCountOfflineCubit>().getJsonData().length,
+            getLog: (context) =>
+                context.read<CycleCountOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<CycleCountOfflineCubit>().post();
             },
@@ -230,6 +259,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             name: 'Physical Count',
             getCount: (context) =>
                 context.read<PhysicalCountOfflineCubit>().getJsonData().length,
+            getLog: (context) =>
+                context.read<PhysicalCountOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<PhysicalCountOfflineCubit>().post();
             },
@@ -244,6 +275,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             name: 'Bin Count',
             getCount: (context) =>
                 context.read<BinCountOfflineCubit>().getJsonData().length,
+            getLog: (context) => context.read<BinCountOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<BinCountOfflineCubit>().post();
             },
@@ -254,23 +286,93 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogBinCountScreen());
             },
           ),
-          // SyncItem(
-          //   name: 'Goods Issue',
-          //   getCount: (context) =>
-          //       context.read<GoodsIssueOfflineCubit>().getJsonData().length,
-          //   onSync: (context) async {
-          //     await context.read<GoodsIssueOfflineCubit>().post();
-          //   },
-          //   onGotoReview: (context) {
-          //     goTo(context, ReviewGoodsIssueOfflineSave());
-          //   },
-          //   onGotoSyncLog: (context) {
-          //     goTo(context, SyncLogGoodsIssueScreen());
-          //   },
-          // ),
         ],
       ),
     ]);
+  }
+
+  Future<void> _syncAll(BuildContext context) async {
+    // 1️⃣ Show loading dialog
+    MaterialDialog.loading(context);
+
+    // 2️⃣ Load stored credentials
+    final username = await LocalStorageManger.getString('username');
+    final password = await LocalStorageManger.getString('password');
+    final host = await LocalStorageManger.getString('host');
+    final port = await LocalStorageManger.getString('port');
+    final company = await LocalStorageManger.getString('db');
+
+    if (username.isEmpty || password.isEmpty || company.isEmpty) {
+      MaterialDialog.close(context);
+      MaterialDialog.warning(context,
+          title: "Missing Credentials",
+          body: "Please check your SAP login configuration.");
+      return;
+    }
+
+    try {
+      // 3️⃣ Login to SAP
+      print("🌐 Logging in to SAP...");
+      final loginResponse = await http.post(
+        Uri.parse('$host:$port/b1s/v1/Login'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "CompanyDB": company,
+          "UserName": username,
+          "Password": password,
+        }),
+      );
+
+      if (loginResponse.statusCode != 200) {
+        MaterialDialog.close(context);
+        debugPrint("❌ Login failed: ${loginResponse.body}");
+        MaterialDialog.warning(context,
+            title: "Login Failed",
+            body: "Cannot connect to SAP. Please check your credentials.");
+        return;
+      }
+
+      final loginData = jsonDecode(loginResponse.body);
+      final token = loginData['SessionId'];
+
+      // 4️⃣ Save token before starting sync
+      await LocalStorageManger.setString('token', token);
+      print("✅ Login successful. Token saved.");
+
+      // 5️⃣ Process each sync group
+      for (final group in _syncGroups) {
+        for (final item in group.items) {
+          try {
+            final count = item.getCount(context);
+            if (count > 0) {
+              print("🔄 Syncing ${item.name} ($count records)...");
+              await item.onSync(context);
+            } else {
+              print("⚠️ Skipping ${item.name} — no offline data.");
+            }
+          } catch (e) {
+            print("❌ Failed to sync ${item.name}: $e");
+          }
+        }
+      }
+
+      // 6️⃣ Logout or remove token after all syncs
+      await LocalStorageManger.removeString('token');
+
+      // 7️⃣ Close loading dialog and show success message
+      MaterialDialog.close(context);
+      MaterialDialog.success(
+        context,
+        title: "Sync Completed",
+        body: "All modules have been synced check log for detail.",
+      );
+    } catch (e) {
+      // 8️⃣ Handle any unexpected error
+      MaterialDialog.close(context);
+      debugPrint("🔥 Unexpected error during sync: $e");
+      MaterialDialog.warning(context,
+          title: "Sync Error", body: "Something went wrong during sync.");
+    }
   }
 
   Future<void> _clearAllData() async {
@@ -278,34 +380,58 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Clear All Data?"),
+        title: const Text(
+          "Clear All saved Data?",
+          style: TextStyle(fontSize: 19, fontWeight: FontWeight.w500),
+        ),
         content: const Text(
-            "This will remove all offline data and reset download states. Are you sure?"),
+            "This will remove all your saved offline data. Are you sure?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text("Cancel"),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             onPressed: () => Navigator.pop(context, true),
             child: const Text(
               "Clear",
               style: TextStyle(color: Colors.white),
             ),
-          ),
+          )
         ],
       ),
     );
 
     // User canceled
     if (confirm != true) return;
-
+    setState(() {
+      isLoading = true;
+    });
     // 1️⃣ Clear all Cubits
     context.read<GoodReceiptPoOfflineCubit>().clearData();
     context.read<QuickGoodReceiptOfflineCubit>().clearData();
     context.read<ReturnReceiptOfflineCubit>().clearData();
+    context.read<GoodsReceiptOfflineCubit>().clearData();
+    context.read<PutAwayOfflineCubit>().clearData();
+    context.read<DeliveryOfflineCubit>().clearData();
+    context.read<PurchaseReturnOfflineCubit>().clearData();
+    context.read<GoodsIssueOfflineCubit>().clearData();
+    context.read<QuickCountOfflineCubit>().clearData();
+    context.read<PhysicalCountOfflineCubit>().clearData();
+    context.read<CycleCountOfflineCubit>().clearData();
+    context.read<BinCountOfflineCubit>().clearData();
 
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    setState(() {
+      isLoading = false;
+    });
     // 6️⃣ Optional: feedback
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -335,106 +461,303 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_forever),
-            tooltip: 'Clear All Data',
+            tooltip: 'Clear All Saved Data',
             onPressed: _clearAllData,
           ),
         ],
       ),
-      body: Container(
-        margin: EdgeInsets.only(top: 10),
-        child: ListView.builder(
-          itemCount: _syncGroups.length,
-          itemBuilder: (context, index) {
-            return _buildExpandableGroup(context, _syncGroups[index]);
-          },
-        ),
-      ),
+      body: isLoading
+          ? Center(
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(strokeWidth: 4),
+              ),
+            )
+          : Column(
+              children: [
+                Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(
+                      colors: [
+                        PRIMARY_COLOR.withOpacity(0.9),
+                        PRIMARY_COLOR.withOpacity(0.7),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  margin:
+                      EdgeInsets.only(right: 20, bottom: 0, left: 20, top: 20),
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors
+                          .transparent, // Make button background transparent
+                      shadowColor: Colors.transparent, // Remove default shadow
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 17, vertical: 0),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(
+                          Icons.cloud_upload,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        SizedBox(
+                          width: 8,
+                        ),
+                        Text(
+                          "Synchronize All Modules",
+                          style: TextStyle(
+                              color: Colors.white, // ⚪ White text
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        ),
+                      ],
+                    ),
+                    onPressed: () async {
+                      final result = await showDialog<bool>(
+                        barrierDismissible: false,
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text(
+                            "Confirm Sync",
+                            style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w500),
+                          ),
+                          content: const Text(
+                            "Make sure you have internet or Wi-Fi. Do you want to continue syncing all data to SAP?",
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          actions: [
+                            // Cancel button
+                            TextButton(
+                              style: TextButton.styleFrom(
+                                backgroundColor:
+                                    Colors.grey[200], // light grey background
+                                foregroundColor: Colors.black87, // text color
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: const Text(
+                                "Cancel",
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+
+                            // Sync button
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    PRIMARY_COLOR, // your main color
+                                foregroundColor: Colors.white, // text color
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
+                              ),
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: const Text(
+                                "Sync",
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (result == true) {
+                        await _syncAll(context);
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: _syncGroups.length,
+                    itemBuilder: (context, index) {
+                      return _buildExpandableGroup(context, _syncGroups[index]);
+                    },
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
-  // 🔹 Build expandable group (slide down)
   Widget _buildExpandableGroup(BuildContext context, SyncGroup group) {
+    bool isExpanded = false;
+
+    // Compute total pending items for the group
+    int totalAlert;
+    int totalPending = group.items.fold(
+      0,
+      (sum, item) => sum + (item.getCount(context)),
+    );
+    int totalLog = group.items.fold(
+      0,
+      (sum, item) => sum + (item.getLog(context)),
+    );
+    totalAlert = totalPending + totalLog;
     return StatefulBuilder(
-      builder: (context, setInnerState) {
-        bool isExpanded = false;
-        return StatefulBuilder(
-          builder: (context, innerSetState) {
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+      builder: (context, setState) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.grey[50],
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
               ),
-              child: Column(
-                children: [
-                  InkWell(
-                    onTap: () {
-                      innerSetState(() => isExpanded = !isExpanded);
-                    },
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 17),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        gradient: LinearGradient(
-                          colors: [
-                            PRIMARY_COLOR.withOpacity(0.9),
-                            PRIMARY_COLOR.withOpacity(0.7),
+            ],
+          ),
+          child: Column(
+            children: [
+              InkWell(
+                onTap: () => setState(() => isExpanded = !isExpanded),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.white,
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      // Icon badge
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: PRIMARY_COLOR.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.cloud_sync_rounded,
+                          color: PRIMARY_COLOR,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Text column
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    group.title,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                // Badge with total pending count
+                                if (totalAlert > 0)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      '$totalAlert',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            if (group.description != null &&
+                                group.description!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4.0),
+                                child: Text(
+                                  group.description!,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.black54,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                           ],
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.folder_copy,
-                                  color: Colors.white),
-                              const SizedBox(width: 10),
-                              Text(
-                                group.title,
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                          AnimatedRotation(
-                            turns: isExpanded ? 0.5 : 0.0,
-                            duration: const Duration(milliseconds: 200),
-                            child: const Icon(Icons.keyboard_arrow_down,
-                                color: Colors.white, size: 28),
-                          ),
-                        ],
+
+                      const SizedBox(width: 8),
+
+                      // Expand icon
+                      AnimatedRotation(
+                        turns: isExpanded ? 0.5 : 0.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          color: Colors.black54,
+                          size: 28,
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                  AnimatedCrossFade(
-                    firstChild: const SizedBox.shrink(),
-                    secondChild: Column(
-                      children: group.items
-                          .map((item) => _buildApiCard(context, item))
-                          .toList(),
-                    ),
-                    crossFadeState: isExpanded
-                        ? CrossFadeState.showSecond
-                        : CrossFadeState.showFirst,
-                    duration: const Duration(milliseconds: 300),
-                  ),
-                ],
+                ),
               ),
-            );
-          },
+
+              // Expandable body
+              AnimatedCrossFade(
+                firstChild: const SizedBox.shrink(),
+                secondChild: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Column(
+                    children: group.items
+                        .map((item) => _buildApiCard(context, item))
+                        .toList(),
+                  ),
+                ),
+                crossFadeState: isExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 250),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -444,7 +767,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
   Widget _buildApiCard(BuildContext context, SyncItem item) {
     final count = item.getCount(context);
     final isReady = count > 0;
-
+    final totalLog = item.getLog(context);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
       padding: const EdgeInsets.all(10),
@@ -545,7 +868,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                                                 ),
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor:
-                                                      Colors.blueGrey,
+                                                      Colors.orange,
                                                   padding: const EdgeInsets
                                                       .symmetric(
                                                       horizontal: 12,
@@ -621,10 +944,20 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         color: isReady
-                            ? Colors.orange
+                            ? Colors.green
                             : const Color.fromARGB(255, 126, 133, 126),
                       ),
                     ),
+                    totalLog > 0 ? const SizedBox(height: 4) : Container(),
+                    totalLog > 0
+                        ? Text(
+                            '$totalLog synchronization log entries',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.orange,
+                            ),
+                          )
+                        : Container(),
                     const SizedBox(height: 3),
                   ],
                 ),
@@ -637,49 +970,6 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
 
           // --- Action Buttons ---
 
-          // Expanded(
-          //   child: ElevatedButton.icon(
-          //     onPressed: item.onGotoReview != null
-          //         ? () => item.onGotoReview!(context)
-          //         : null,
-          //     icon: const Icon(Icons.book, color: Colors.white, size: 18),
-          //     label: const Text(
-          //       "Review",
-          //       style: TextStyle(color: Colors.white),
-          //     ),
-          //     style: ElevatedButton.styleFrom(
-          //       backgroundColor: Colors.green,
-          //       padding:
-          //           const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-          //       shape: RoundedRectangleBorder(
-          //         borderRadius: BorderRadius.circular(8),
-          //       ),
-          //     ),
-          //   ),
-          // ),
-          // const SizedBox(width: 8),
-          // Expanded(
-          //   child: ElevatedButton.icon(
-          //     onPressed: item.onGotoSyncLog != null
-          //         ? () => item.onGotoSyncLog!(context)
-          //         : null,
-          //     icon:
-          //         const Icon(Icons.history, color: Colors.white, size: 18),
-          //     label: const Text(
-          //       "Sync Log",
-          //       style: TextStyle(color: Colors.white),
-          //     ),
-          //     style: ElevatedButton.styleFrom(
-          //       backgroundColor: Colors.blueGrey,
-          //       padding:
-          //           const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-          //       shape: RoundedRectangleBorder(
-          //         borderRadius: BorderRadius.circular(8),
-          //       ),
-          //     ),
-          //   ),
-          // ),
-          // const SizedBox(width: 8),
           Align(
             alignment: Alignment.topRight,
             child: SizedBox(
@@ -750,5 +1040,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
 class SyncGroup {
   final String title;
   final List<SyncItem> items;
-  SyncGroup({required this.title, required this.items});
+  final String? description; // 👈 new field
+
+  SyncGroup({this.description, required this.title, required this.items});
 }

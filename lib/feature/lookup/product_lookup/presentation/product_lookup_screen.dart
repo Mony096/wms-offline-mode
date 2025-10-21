@@ -4,7 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/core/error/failure.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
+import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '../../../item/presentation/cubit/item_cubit.dart';
@@ -169,45 +171,66 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
   void onGetItem() async {
     try {
       MaterialDialog.loading(context);
-      final response = await _bloc
-          .get({"itemCode": itemCode.text, "warehouseCode": warehouse.text});
-      if (response["value"].length == 0) {
+
+      final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
+      final batchListCubit = context.read<BatchListOfflineCubit>();
+
+      // Get offline stock data
+      final itemStockList = itemStockCubit.getJsonData();
+
+      // Step 1: Find item in offline stock list
+      final matchedItemStock = itemStockList
+          .where(
+            (item) =>
+                item['ItemCode'] == itemCode.text &&
+                item['WhsCode'] == warehouse.text,
+          )
+          .toList();
+
+      if (matchedItemStock.isEmpty) {
         setState(() {
           items = [];
+          serialOrBatchList = [];
         });
         MaterialDialog.close(context);
-        MaterialDialog.success(context, title: 'Opps.', body: "No Items");
+        MaterialDialog.success(context, title: 'Oops.', body: "No Items");
         return;
       }
-      if (response["value"]?[0]?["IsSerial"] == "Y" ||
-          response["value"]?[0]?["IsBatch"] == "Y") {
-        final serialOrBatch = await dio.get(
-            "/view.svc/WMS_SERIAL_BATCHB1SLQuery?\$filter=ItemCode eq '${itemCode.text}' and WhsCode eq '${warehouse.text}'");
-        if (mounted) {
-          setState(() {
-            items = [];
-            serialOrBatchList = [];
-            items.addAll(response["value"]);
-            serialOrBatchList.addAll(serialOrBatch.data["value"]);
-            setState(() {
-              print(serialOrBatchList);
-            });
-          });
-        }
+
+      // Step 2: Check if item requires serial or batch
+      final itemData = matchedItemStock[0];
+      final isSerialOrBatch =
+          itemData["IsSerial"] == "Y" || itemData["IsBatch"] == "Y";
+
+      if (isSerialOrBatch) {
+        // Get offline batch/serial data
+        final batchList = batchListCubit.getJsonData();
+        final matchedSerialOrBatch = batchList
+            .where(
+              (b) =>
+                  b['ItemCode'] == itemCode.text &&
+                  b['WhsCode'] == warehouse.text,
+            )
+            .toList();
+
+        setState(() {
+          items = [itemData];
+          serialOrBatchList = matchedSerialOrBatch;
+        });
+
+        print("Serial/Batch List: $serialOrBatchList");
       } else {
-        if (mounted) {
-          setState(() {
-            items = [];
-            serialOrBatchList = [];
-            items.addAll(response["value"]);
-          });
-        }
+        // Regular non-serial/batch item
+        setState(() {
+          items = [itemData];
+          serialOrBatchList = [];
+        });
       }
 
       MaterialDialog.close(context);
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop();
+        MaterialDialog.close(context);
         MaterialDialog.success(context, title: 'Error.', body: e.toString());
       }
     }

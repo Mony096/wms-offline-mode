@@ -396,75 +396,75 @@ class _DownloadScreenState extends State<DownloadScreen> {
   //     return false;
   //   }
   // }
-Future<bool> _fetchAndSave(
-    DownloadItem item, dynamic token, dynamic host, dynamic port) async {
-  setState(() {
-    item.isLoading = true;
-    item.failed = false;
-    item.success = false;
-  });
-  await _saveDownloadState();
-
-  try {
-    // Step 1️⃣ — Get list from SAP
-    final data = await getFromSAP(
-      host: host,
-      port: port,
-      token: token,
-      endpoint: item.url,
-      queryParams: item.queryParams,
-    );
-
-    var values = data["value"];
-
-    // Step 2️⃣ — Special case for InventoryCountings
-    if (item.url == "InventoryCountings") {
-      List<dynamic> detailedList = [];
-
-      // Loop through each item and fetch details by ID
-      for (final inv in values) {
-        final docEntry = inv["DocumentEntry"];
-        if (docEntry == null) continue;
-
-        try {
-          final detail = await getFromSAP(
-            host: host,
-            port: port,
-            token: token,
-            endpoint: "InventoryCountings($docEntry)",
-          );
-
-          detailedList.add(detail);
-          debugPrint("✅ Loaded detail for InventoryCounting $docEntry");
-        } catch (e) {
-          debugPrint("⚠️ Failed to fetch detail for $docEntry: $e");
-        }
-      }
-      // Optionally also call item.onSave if needed
-      await item.onSave(context, detailedList);
-    } else {
-      // Normal behavior for other endpoints
-      await item.onSave(context, values);
-    }
-
+  Future<bool> _fetchAndSave(
+      DownloadItem item, dynamic token, dynamic host, dynamic port) async {
     setState(() {
-      item.success = true;
-      item.isLoading = false;
+      item.isLoading = true;
       item.failed = false;
-    });
-    await _saveDownloadState();
-    return true;
-  } catch (e) {
-    debugPrint('❌ Fetch failed for ${item.url}: $e');
-    setState(() {
-      item.failed = true;
-      item.isLoading = false;
       item.success = false;
     });
     await _saveDownloadState();
-    return false;
+
+    try {
+      // Step 1️⃣ — Get list from SAP
+      final data = await getFromSAP(
+        host: host,
+        port: port,
+        token: token,
+        endpoint: item.url,
+        queryParams: item.queryParams,
+      );
+
+      var values = data["value"];
+
+      // Step 2️⃣ — Special case for InventoryCountings
+      if (item.url == "InventoryCountings") {
+        List<dynamic> detailedList = [];
+
+        // Loop through each item and fetch details by ID
+        for (final inv in values) {
+          final docEntry = inv["DocumentEntry"];
+          if (docEntry == null) continue;
+
+          try {
+            final detail = await getFromSAP(
+              host: host,
+              port: port,
+              token: token,
+              endpoint: "InventoryCountings($docEntry)",
+            );
+
+            detailedList.add(detail);
+            debugPrint("✅ Loaded detail for InventoryCounting $docEntry");
+          } catch (e) {
+            debugPrint("⚠️ Failed to fetch detail for $docEntry: $e");
+          }
+        }
+        // Optionally also call item.onSave if needed
+        await item.onSave(context, detailedList);
+      } else {
+        // Normal behavior for other endpoints
+        await item.onSave(context, values);
+      }
+
+      setState(() {
+        item.success = true;
+        item.isLoading = false;
+        item.failed = false;
+      });
+      await _saveDownloadState();
+      return true;
+    } catch (e) {
+      debugPrint('❌ Fetch failed for ${item.url}: $e');
+      setState(() {
+        item.failed = true;
+        item.isLoading = false;
+        item.success = false;
+      });
+      await _saveDownloadState();
+      return false;
+    }
   }
-}
 
   Future<void> _clearAllData() async {
     final confirm = await showDialog<bool>(
@@ -562,7 +562,7 @@ Future<bool> _fetchAndSave(
     context.read<PurchaseReturnRequestOfflineCubit>().clearData();
     context.read<ItemFindStockOfflineCubit>().clearData();
     context.read<ItemCycleCountOfflineCubit>().clearData();
-        context.read<COSOfflineCubit>().clearData();
+    context.read<COSOfflineCubit>().clearData();
 
     // 3️⃣ Reset all download states
     for (var item in _downloads) {
@@ -629,7 +629,7 @@ Future<bool> _fetchAndSave(
             children: [
               Padding(
                 padding: widget.fromDashboard
-                    ? const EdgeInsets.only(left: 8, top: 30, bottom: 20)
+                    ? const EdgeInsets.only(left: 8, top: 30, bottom: 5)
                     : const EdgeInsets.only(left: 8, top: 15),
                 child: Row(
                   children: const [
@@ -654,41 +654,11 @@ Future<bool> _fetchAndSave(
               widget.fromDashboard
                   ? Container()
                   : Container(
-                      width: 148,
-                      margin: EdgeInsets.only(right: 15, top: 15, bottom: 4),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: PRIMARY_COLOR, // 🔴 Red background
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(10), // 🔘 Rounded corners
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 13, vertical: 11),
-                        ),
-                        child: Row(
-                          children: const [
-                            Padding(
-                              padding: EdgeInsets.only(left: 3),
-                              child: Text(
-                                "Go Dashboard",
-                                style: TextStyle(
-                                  color: Colors.white, // ⚪ White text
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 5,
-                            ),
-                            Icon(
-                              Icons.keyboard_arrow_right,
-                              color: Colors.white,
-                              size: 23,
-                            ),
-                          ],
-                        ),
-                        onPressed: () async {
+                      width: 120,
+                      margin:
+                          const EdgeInsets.only(right: 15, top: 15, bottom: 4),
+                      child: InkWell(
+                        onTap: () async {
                           if (isDownloadedString != "true") {
                             MaterialDialog.warning(
                               onConfirm: () => _downloadAllSequentially(),
@@ -706,10 +676,32 @@ Future<bool> _fetchAndSave(
                               builder: (_) =>
                                   const WarehousePage(isPicker: true),
                             ),
-                            (Route<dynamic> route) =>
-                                false, // removes all previous routes
+                            (Route<dynamic> route) => false,
                           );
                         },
+                        borderRadius: BorderRadius.circular(4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: const [
+                            Expanded(
+                              child: Text(
+                                "Go Dashboard",
+                                style: TextStyle(
+                                  color: Colors.blue, // 🔵 Blue text
+                                  decoration:
+                                      TextDecoration.underline, // underline
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              Icons.keyboard_arrow_right,
+                              color: Colors.blue, // match text color
+                              size: 23,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
             ],
@@ -719,57 +711,160 @@ Future<bool> _fetchAndSave(
             children: [
               Expanded(
                 flex: 4,
-                child: Container(
+                child:
+                    // Container(
+                    //   margin:
+                    //       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    //   child: ElevatedButton.icon(
+                    //     style: ElevatedButton.styleFrom(
+                    //       backgroundColor:
+                    //           isDownloadingAll || isDownloadedString == "true"
+                    //               ? Colors.grey
+                    //               : PRIMARY_COLOR,
+                    //       shape: RoundedRectangleBorder(
+                    //           borderRadius: BorderRadius.circular(10)),
+                    //       padding: const EdgeInsets.symmetric(vertical: 14),
+                    //     ),
+                    //     onPressed:
+                    //         isDownloadingAll ? null : _downloadAllSequentially,
+                    //     icon: const Icon(Icons.cloud_download, color: Colors.white),
+                    //     label: Text(
+                    //       isDownloadingAll
+                    //           ? 'Downloading...'
+                    //           : isDownloadedString == "true"
+                    //               ? "Downloaded"
+                    //               : 'Download ',
+                    //       style: const TextStyle(
+                    //           fontSize: 16,
+                    //           fontWeight: FontWeight.w600,
+                    //           color: Colors.white),
+                    //     ),
+                    //   ),
+                    // ),
+                    Container(
+                  height: 47,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(
+                      colors: [
+                        isDownloadingAll || isDownloadedString == "true"
+                            ? const Color.fromARGB(255, 192, 190, 190)
+                            : PRIMARY_COLOR.withOpacity(0.9),
+                        isDownloadingAll || isDownloadedString == "true"
+                            ? const Color.fromARGB(255, 192, 190, 190)
+                            : PRIMARY_COLOR.withOpacity(0.7),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
                   margin:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: ElevatedButton.icon(
+                      EdgeInsets.only(right: 15, left: 20, bottom: 10, top: 15),
+                  child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          isDownloadingAll || isDownloadedString == "true"
-                              ? Colors.grey
-                              : PRIMARY_COLOR,
+                      backgroundColor: Colors
+                          .transparent, // Make button background transparent
+                      shadowColor: Colors.transparent, // Remove default shadow
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 17, vertical: 0),
                     ),
-                    onPressed:
-                        isDownloadingAll ? null : _downloadAllSequentially,
-                    icon: const Icon(Icons.cloud_download, color: Colors.white),
-                    label: Text(
-                      isDownloadingAll
-                          ? 'Downloading...'
-                          : isDownloadedString == "true"
-                              ? "Downloaded"
-                              : 'Download ',
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.cloud_upload,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        SizedBox(
+                          width: 5,
+                        ),
+                        Text(
+                          isDownloadingAll
+                              ? 'Downloading...'
+                              : isDownloadedString == "true"
+                                  ? "Downloaded"
+                                  : 'Download ',
+                          style: TextStyle(
+                              color: Colors.white, // ⚪ White text
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        ),
+                      ],
                     ),
+                    onPressed: () async {
+                      isDownloadingAll ? null : _downloadAllSequentially();
+                    },
                   ),
                 ),
               ),
               Expanded(
                 flex: 2,
                 child: Container(
-                  margin: EdgeInsets.only(right: 17),
-                  child: ElevatedButton.icon(
+                  height: 47,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    gradient: LinearGradient(
+                      colors: [
+                        isDownloadingAll
+                            ? const Color.fromARGB(255, 192, 190, 190)
+                            : PRIMARY_COLOR.withOpacity(0.9),
+                        isDownloadingAll
+                            ? const Color.fromARGB(255, 192, 190, 190)
+                            : PRIMARY_COLOR.withOpacity(0.7),
+                      ],
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  margin: EdgeInsets.only(right: 20, bottom: 10, top: 15),
+                  child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          isDownloadingAll ? Colors.grey : PRIMARY_COLOR,
+                      backgroundColor: Colors
+                          .transparent, // Make button background transparent
+                      shadowColor: Colors.transparent, // Remove default shadow
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 17, vertical: 0),
                     ),
-                    onPressed: _clearAllData,
-                    icon: const Icon(Icons.delete_forever, color: Colors.white),
-                    label: Text(
-                      "Clear",
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(
+                          Icons.cloud_upload,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        SizedBox(
+                          width: 5,
+                        ),
+                        Text(
+                          "Clear",
+                          style: TextStyle(
+                              color: Colors.white, // ⚪ White text
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        ),
+                      ],
                     ),
+                    onPressed: () async {
+                      _clearAllData();
+                    },
                   ),
                 ),
               ),

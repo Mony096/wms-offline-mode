@@ -4,6 +4,7 @@ import 'package:wms_mobile/download.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/feature/middleware/presentation/login_screen.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
+import 'package:wms_mobile/mobile_function/dashboard.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 import 'constant/style.dart';
 
@@ -16,20 +17,41 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   bool isPickedWarehouse = false;
+  bool hasCredentials = false;
+  bool isLoading = true; // 👈 Loading flag
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
-    init();
     super.initState();
+    init();
   }
 
   void init() async {
-    final value = await LocalStorageManger.getString('warehouse');
-    if (value != '') {
-      setState(() {
-        isPickedWarehouse = true;
-      });
+    setState(() {
+      isLoading = true;
+    });
+
+    // Simulate async loading
+    final username = await LocalStorageManger.getString('username');
+    final password = await LocalStorageManger.getString('password');
+    final warehouse = await LocalStorageManger.getString('warehouse');
+
+    hasCredentials = username.isNotEmpty && password.isNotEmpty;
+    isPickedWarehouse = warehouse.isNotEmpty;
+
+    // Small delay for smooth loader (optional)
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    setState(() {
+      isLoading = false;
+    });
+
+    // Navigate if credentials exist
+    if (hasCredentials) {
+      _navigatorKey.currentState?.pushReplacement(
+        MaterialPageRoute(builder: (context) => const Dashboard()),
+      );
     }
   }
 
@@ -39,11 +61,13 @@ class _MainScreenState extends State<MainScreen> {
       listener: (context, state) {
         if (state is UnAuthorization) {
           _navigatorKey.currentState?.pushReplacement(
-            MaterialPageRoute(builder: (context) => const LoginScreen(fromLogout:true)),
+            MaterialPageRoute(
+                builder: (context) => const LoginScreen(fromLogout: true)),
           );
         } else if (state is AuthorizationSuccess) {
           _navigatorKey.currentState?.pushReplacement(
-            MaterialPageRoute(builder: (context) => DownloadScreen(fromDashboard: false,)),
+            MaterialPageRoute(
+                builder: (context) => DownloadScreen(fromDashboard: false)),
           );
         }
       },
@@ -57,19 +81,36 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ),
         title: 'Flutter layout demo',
-        home: BlocBuilder<AuthorizationBloc, AuthorizationState>(
-          builder: (context, state) {
-            if (state is AuthorizationSuccess) {
-              return DownloadScreen(fromDashboard: false,) ;
-            } else {
-              return const LoginScreen();
-            }
-          },
-        ),
+        home: isLoading
+            ? const Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 20,),
+                      Text("Waiting Initializing App",style: TextStyle(fontSize: 15),)
+                    ],
+                  ), // 👈 Loader while init
+                ),
+              )
+            : BlocBuilder<AuthorizationBloc, AuthorizationState>(
+                builder: (context, state) {
+                  if (hasCredentials) {
+                    return const Dashboard();
+                  } else if (state is AuthorizationSuccess) {
+                    return DownloadScreen(fromDashboard: false);
+                  } else {
+                    return const LoginScreen();
+                  }
+                },
+              ),
       ),
     );
   }
 }
+
 // import 'package:flutter/material.dart';
 // import 'package:provider/provider.dart';
 // import 'package:wms_mobile/feature/middleware/presentation/login_screen.dart';

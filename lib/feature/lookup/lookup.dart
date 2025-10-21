@@ -53,9 +53,9 @@ class _ProductLookUpState extends State<ProductLookUp> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                SizedBox(
+              SizedBox(
                 height: 10,
-              ), 
+              ),
               SizedBox(
                 child: ListView.builder(
                   // padding: const EdgeInsets.fromLTRB(0, 20, 0, 0),
@@ -63,47 +63,62 @@ class _ProductLookUpState extends State<ProductLookUp> {
                   itemCount: gridList.length,
                   itemBuilder: (BuildContext context, int index) {
                     return GestureDetector(
-                      onTap: () {
-                        goTo(context, routes[index]);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.fromLTRB(15, 22, 12, 22),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(10),
-                          color: const Color.fromARGB(255, 242, 243, 244),
-                        ),
-                        margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                SvgPicture.asset(
-                                  color: const Color.fromARGB(255, 18, 22, 157),
-                                  "images/svg/${gridList[index]["img"]}",
-                                  width: 30,
-                                  height: 30,
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  "${gridList[index]['name']}",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w400,
-                                    fontSize: 15.5,
-                                    color: Colors.black,
+                        onTap: () {
+                          goTo(context, routes[index]);
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 15),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100], // light slate background
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color.fromARGB(255, 207, 207, 217)
+                                  .withOpacity(0.2),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: SvgPicture.asset(
+                                      "images/svg/${gridList[index]["img"]}",
+                                      width: 28,
+                                      height: 28,
+                                      color: const Color.fromARGB(
+                                          255, 18, 22, 157),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            Icon(
-                              Icons.arrow_forward_ios,
-                              size: 20,
-                              color: Colors.grey,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    gridList[index]["name"] ?? "",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 15.5,
+                                      color: Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ));
                   },
                 ),
               )

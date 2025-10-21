@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/screen/bin_page.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/lookup/bin_lookup/presentation/cubit/binlocation_lookup_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
@@ -87,45 +89,68 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
   void onGetItem() async {
     try {
       MaterialDialog.loading(context);
-      final response = await _bloc
-          .get({"binCode": binCode.text, "warehouseCode": warehouse.text});
-      if (response["value"].length == 0) {
+
+      final itemCubit = context.read<ItemFindStockOfflineCubit>();
+      final binCubit = context.read<BinOfflineCubit>();
+
+      // Get offline item stock data
+      final itemStockList = itemCubit.getJsonData();
+
+      // Filter by itemCode and warehouse
+      final matchedItems = itemStockList
+          .where(
+            (item) =>
+                item['BinCode'] == binCode.text &&
+                item['WhsCode'] == warehouse.text,
+          )
+          .toList();
+      // print(itemStockList);
+      if (matchedItems.isEmpty) {
         setState(() {
           items = [];
+          detailItem = {};
         });
-
         MaterialDialog.close(context);
-        MaterialDialog.success(context, title: 'Opps.', body: "No Items");
+        MaterialDialog.success(context, title: 'Oops.', body: "No Items");
         return;
       }
-      final binResponse = await dio.get(
-          "/BinLocations?\$filter=Warehouse eq '${warehouse.text}' and BinCode eq '${binCode.text}' & \$select=MinimumQty,MaximumQty");
-      if (binResponse.statusCode == 200) {
-        if (mounted) {
-          setState(() {
-            items = [];
-            items.addAll(response["value"]);
-            detailItem["MinQty"] = binResponse.data["value"]?[0]?["MinimumQty"];
-            detailItem["MaxQty"] = binResponse.data["value"]?[0]?["MaximumQty"];
-            detailItem["NoItem"] = response["value"].length;
-            detailItem["ItemQty"] = response["value"]
-                .fold(0.0, (sum, item) => sum + item['OnHandQty'] as double);
-          });
-        }
+
+      // Get offline bin data
+      final binList = binCubit.state;
+      final matchedBin = binList.firstWhere(
+        (b) => b['Warehouse'] == warehouse.text && b['BinCode'] == binCode.text,
+        orElse: () => {},
+      );
+
+      // Update state
+      if (mounted) {
+        setState(() {
+          items = matchedItems;
+
+          detailItem["MinQty"] = matchedBin["MinimumQty"] ?? 0.0;
+          detailItem["MaxQty"] = matchedBin["MaximumQty"] ?? 0.0;
+          detailItem["NoItem"] = matchedItems.length;
+          detailItem["ItemQty"] = matchedItems.fold<double>(
+            0.0,
+            (sum, item) => sum + (item['OnHandQty'] as double? ?? 0.0),
+          );
+
+          detailItem["NoBatch"] = matchedItems
+              .where((e) =>
+                  e["IsBatch"] == "Y" && (e["OnHandQty"] as double? ?? 0) > 0)
+              .length;
+          detailItem["NoSerial"] = matchedItems
+              .where((e) =>
+                  e["IsSerial"] == "Y" && (e["OnHandQty"] as double? ?? 0) > 0)
+              .length;
+        });
       }
-      setState(() {
-        detailItem["NoBatch"] = items
-            .where((e) => e["IsBatch"] == "Y" && e["OnHandQty"] > 0)
-            .length;
-        detailItem["NoSerial"] = items
-            .where((e) => e["IsSerial"] == "Y" && e["OnHandQty"] > 0)
-            .length;
-      });
+
       MaterialDialog.close(context);
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop();
-        MaterialDialog.success(context, title: 'Opp.', body: e.toString());
+        MaterialDialog.close(context);
+        MaterialDialog.success(context, title: 'Error.', body: e.toString());
       }
     }
   }
