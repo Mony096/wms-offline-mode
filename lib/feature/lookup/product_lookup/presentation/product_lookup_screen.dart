@@ -4,9 +4,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/core/error/failure.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '../../../item/presentation/cubit/item_cubit.dart';
@@ -42,6 +45,10 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
   List<dynamic> items = [];
   List<dynamic> serialOrBatchList = [];
   bool loading = false;
+  bool isClickScanItem = false;
+  final FocusNode _itemCode = FocusNode();
+  final FocusNode _quantity = FocusNode();
+  final FocusNode _bin = FocusNode();
   @override
   void initState() {
     init();
@@ -109,52 +116,61 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
   void onCompleteTextEditItem() async {
     try {
       if (barCode.text == '') return;
-      MaterialDialog.loading(context);
-      final barcodeRes = await dio.get(
-          "/view.svc/WMS_ITEM_BARCODEB1SLQuery?\$filter=BarCode eq '${barCode.text}' ");
-      if (barcodeRes.statusCode == 200) {
-        if (barcodeRes.data["value"].length == 0) {
-          if (barcodeRes.data["value"].length == 0) {
-            MaterialDialog.close(
-              context,
-            );
-            clear();
-            MaterialDialog.success(context, title: 'Opps.', body: "No Item");
-            return;
-          }
-        }
-        if (barcodeRes.data["value"].length > 1) {
-          for (var element in barcodeRes.data["value"]) {
-            itemCodeFilter.add(element['ItemCode']);
-          }
-          goTo(
-                  context,
-                  ItemByCodePage(
-                      type: ItemType.purchase,
-                      itemCode: itemCodeFilter
-                          .map((item) => "ItemCode eq '$item'")
-                          .join(' or ')))
-              .then((value) {
-            if (value == null) return;
-            onSetItemTemp(value);
-            if (mounted) {
-              MaterialDialog.close(context);
-            }
-          });
-          return;
-        }
-        final item = await _blocItem
-            .find("('${barcodeRes.data["value"]?[0]?["ItemCode"]}')");
-        if (mounted) {
-          MaterialDialog.close(context);
-        }
-        onSetItemTemp(item);
+      // Get all offline barcode data
+      final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+
+      // Find matching barcodes
+      final matchedBarcodes =
+          barcodeList.where((e) => e['BarCode'] == barCode.text).toList();
+
+      if (matchedBarcodes.isEmpty) {
+        clear();
+        MaterialDialog.success(context, title: 'Oops.', body: "No Item");
+        return;
       }
+
+      if (matchedBarcodes.length > 1) {
+        for (var element in matchedBarcodes) {
+          itemCodeFilter.add(element['ItemCode']);
+        }
+
+        goTo(
+          context,
+          ItemByCodePage(
+            type: ItemType.purchase,
+            itemCode: itemCodeFilter
+                .map((item) => "ItemCode eq '$item'")
+                .join(' or '),
+          ),
+        ).then((value) {
+          if (value == null) return;
+          if (mounted) MaterialDialog.close(context);
+          onSetItemTemp(value);
+        });
+
+        return;
+      }
+
+      // Only one barcode match
+      final first = matchedBarcodes.first;
+      final itemList = context.read<ItemOfflineCubit>().state;
+      final matchedItem = itemList.firstWhere(
+          (e) => e['ItemCode'] == first['ItemCode'],
+          orElse: () => null);
+
+      if (matchedItem == null) {
+        MaterialDialog.success(context, title: 'Oops.', body: "Item not found");
+        return;
+      }
+
+      onSetItemTemp(matchedItem);
     } catch (e) {
       if (mounted) {
         MaterialDialog.close(context);
         if (e is ServerFailure) {
-          MaterialDialog.success(context, title: 'Failed', body: e.message);
+          MaterialDialog.warning(context, title: 'Failed', body: e.message);
+        } else {
+          MaterialDialog.warning(context, title: 'Failed', body: e.toString());
         }
       }
     }
@@ -259,6 +275,35 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
     }
   }
 
+  void _requestFocus(FocusNode node) {
+    if (!node.hasFocus) {
+      // Use microtask for stability with fast, external keyboard input
+      Future.microtask(() => node.requestFocus());
+    }
+  }
+
+  void _handleScanSubmitted(String barcode, FocusNode submittedNode) {
+    debugPrint("📦 Scanned Supplier Code: $barcode");
+
+    setState(() {
+      // Check which input currently has focus
+      if (_itemCode.hasFocus) {
+        // ✅ If filter input is focused → set scanned value
+        barCode.text = barcode;
+        itemCode.clear();
+        onCompleteTextEditItem();
+              onGetItem();
+
+        isClickScanItem = false;
+      }
+
+      // else {
+      //   // ✅ Optional: fallback behavior if no input focused
+      //   debugPrint("⚠️ No input focused, ignoring scan");
+      // }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -283,34 +328,6 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Input(
-              //   label: 'Warehouse',
-              //   placeholder: 'Warehouse',
-              //   controller: warehouse,
-              //   readOnly: true,
-              //   onPressed: onChangeWhs,
-              // ),
-
-              // Input(
-              //   controller: itemCode,
-              //   label: 'Item.',
-              //   placeholder: 'Item',
-              //   onPressed: onSelectItem,
-              // ),
-              // Input(
-              //   controller: itemName,
-              //   label: 'Desc.',
-              //   placeholder: 'Description',
-              // ),
-              // // Input(
-              // //   controller: binCode,
-              // //   label: 'Bin.',
-              // //   placeholder: 'Bin Location',
-              // //   onPressed: onChangeBin,
-              // // ),
-
-              // const SizedBox(height: 40),
-              // ContentHeader(),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
@@ -339,30 +356,65 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                 children: [
                   Expanded(
                     child: InputCol(
+                      focusNode: _itemCode,
                       label: 'Item Code',
                       placeholder: 'Chose Item',
                       controller: itemCode,
-                      readOnly: true,
+                      onTap: () => {
+                        setState(() {
+                          isClickScanItem = false; // turn on scan mode
+                          // itemCode.clear();
+                        }),
+                        // 2. Clear current focus before switching
+                        FocusScope.of(context).unfocus()
+                      },
+                      keyboardType: TextInputType.none,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _itemCode);
+                      },
                       onPressed: onSelectItem,
                     ),
                   ),
                   SizedBox(
                     width: 15,
                   ),
-                  Container(
-                    margin: EdgeInsets.only(top: 30),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: IconButton(
-                      onPressed: () {
-                        // your action here
-                      },
-                      icon:
-                          const Icon(Icons.document_scanner_outlined, size: 22),
-                      color: Colors.black87,
-                      tooltip: 'Scan items', // optional hover/long-press text
+                  GestureDetector(
+                    onTap: () {
+                      // 1. Switch to scan mode
+                      setState(() {
+                        isClickScanItem = true; // turn on scan mode
+                        itemCode.clear();
+                        itemName.clear();
+                      });
+
+                      // 2. Clear current focus before switching
+                      FocusScope.of(context).unfocus();
+
+                      // 3. Focus scanner input
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _requestFocus(_itemCode);
+                      });
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(top: 30),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isClickScanItem
+                              ? Colors.green
+                              : Colors
+                                  .transparent, // ✅ green border when active
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF12169D),
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),

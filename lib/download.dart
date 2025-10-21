@@ -305,7 +305,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       isDownloadedString = "false";
       setState(() {
         isDownloadingAll = false;
-        downloadStatus = "Fialed login to SAP";
+        downloadStatus = "Failed Login to SAP";
       });
       return;
     }
@@ -467,6 +467,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
   }
 
   Future<void> _clearAllData() async {
+    if (context.read<UOMGroupOfflineCubit>().state.isEmpty) return;
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -612,7 +613,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
               color: Colors.white,
               size: 28,
             ),
-            tooltip: 'Clear All Data',
+            tooltip: 'Logout',
             onPressed: _logout,
           ),
           SizedBox(
@@ -621,7 +622,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
         ],
       ),
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -706,7 +707,15 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     ),
             ],
           ),
-          downloadStatus.isNotEmpty ? Text(downloadStatus) : Container(),
+          downloadStatus.isNotEmpty
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 6, bottom: 8, left: 20),
+                  child: Text(
+                    'Error:  $downloadStatus',
+                    style: TextStyle(color: Colors.red, fontSize: 14),
+                  ),
+                )
+              : Container(),
           Row(
             children: [
               Expanded(
@@ -780,7 +789,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          Icons.cloud_upload,
+                          Icons.download,
                           color: Colors.white,
                           size: 20,
                         ),
@@ -814,10 +823,10 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     borderRadius: BorderRadius.circular(10),
                     gradient: LinearGradient(
                       colors: [
-                        isDownloadingAll
+                        context.read<UOMGroupOfflineCubit>().state.isEmpty
                             ? const Color.fromARGB(255, 192, 190, 190)
                             : PRIMARY_COLOR.withOpacity(0.9),
-                        isDownloadingAll
+                        context.read<UOMGroupOfflineCubit>().state.isEmpty
                             ? const Color.fromARGB(255, 192, 190, 190)
                             : PRIMARY_COLOR.withOpacity(0.7),
                       ],
@@ -920,7 +929,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
         title: Text(
           item.name,
           style: const TextStyle(
-              fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87),
+              fontWeight: FontWeight.w600, fontSize: 15, color: Colors.black87),
         ),
         // CircularProgressIndicator
         subtitle: item.isLoading
@@ -949,7 +958,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                         ? '❌ Failed to download'
                         : 'Ready to sync',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 13,
                   color: item.success
                       ? Colors.green
                       : item.failed

@@ -536,12 +536,12 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                             "Confirm Sync",
                             style: TextStyle(
                                 color: Colors.black87,
-                                fontSize: 20,
+                                fontSize: 19,
                                 fontWeight: FontWeight.w500),
                           ),
                           content: const Text(
                             "Make sure you have internet or Wi-Fi. Do you want to continue syncing all data to SAP?",
-                            style: TextStyle(fontSize: 14),
+                            style: TextStyle(fontSize: 13),
                           ),
                           actions: [
                             // Cancel button
@@ -711,7 +711,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                                 child: Text(
                                   group.description!,
                                   style: const TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 12.5,
                                     color: Colors.black54,
                                   ),
                                   maxLines: 2,

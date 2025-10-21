@@ -7,7 +7,10 @@ import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dar
 import 'package:wms_mobile/feature/good_receipt_type/domain/entity/grt_entity.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/screen/grt_page.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '/feature/inbound/return_receipt_request/presentation/return_receipt_request_page.dart';
@@ -78,7 +81,11 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
   final barCode = TextEditingController();
   final DioClient dio = DioClient();
   List<dynamic> itemCodeFilter = [];
-
+  bool isClickScanItem = false;
+  bool isClickScanBin = false;
+  final FocusNode _itemCode = FocusNode();
+  final FocusNode _quantity = FocusNode();
+  final FocusNode _bin = FocusNode();
   @override
   void initState() {
     init();
@@ -468,68 +475,6 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     }
   }
 
-  void onCompleteTextEditItem() async {
-    try {
-      if (barCode.text == '') return;
-      quantity.text = '';
-      MaterialDialog.loading(context);
-      final barcodeRes = await dio.get(
-          "/view.svc/WMS_ITEM_BARCODEB1SLQuery?\$filter=BarCode eq '${barCode.text}' ");
-      if (barcodeRes.statusCode == 200) {
-        if (barcodeRes.data["value"].length == 0) {
-          if (barcodeRes.data["value"].length == 0) {
-            MaterialDialog.close(
-              context,
-            );
-            clear();
-            MaterialDialog.success(context, title: 'Opps.', body: "No Item");
-            return;
-          }
-        }
-        if (barcodeRes.data["value"].length > 1) {
-          for (var element in barcodeRes.data["value"]) {
-            itemCodeFilter.add(element['ItemCode']);
-          }
-          goTo(
-                  context,
-                  ItemByCodePage(
-                      type: ItemType.purchase,
-                      itemCode: itemCodeFilter
-                          .map((item) => "ItemCode eq '$item'")
-                          .join(' or ')))
-              .then((value) {
-            if (value == null) return;
-            if (mounted) {
-              MaterialDialog.close(context);
-            }
-            uom.text =
-                getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomCode"]);
-            uomAbEntry.text =
-                getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomEntry"]);
-            onSetItemTemp(value);
-          });
-          return;
-        }
-        final item = await _blocItem
-            .find("('${barcodeRes.data["value"]?[0]?["ItemCode"]}')");
-        if (mounted) {
-          MaterialDialog.close(context);
-        }
-        uom.text = getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomCode"]);
-        uomAbEntry.text =
-            getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomEntry"]);
-        onSetItemTemp(item);
-      }
-    } catch (e) {
-      if (mounted) {
-        MaterialDialog.close(context);
-        if (e is ServerFailure) {
-          MaterialDialog.success(context, title: 'Failed', body: e.message);
-        }
-      }
-    }
-  }
-
   void onCompleteQuantiyInput() {
     FocusScope.of(context).requestFocus(FocusNode());
     onNavigateSerialOrBatch();
@@ -623,6 +568,123 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     });
   }
 
+  void onCompleteTextEditItem() async {
+    try {
+      if (barCode.text == '') return;
+
+      quantity.text = '';
+      // Get all offline barcode data
+      final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+
+      // Find matching barcodes
+      final matchedBarcodes =
+          barcodeList.where((e) => e['BarCode'] == barCode.text).toList();
+
+      if (matchedBarcodes.isEmpty) {
+        clear();
+        MaterialDialog.success(context, title: 'Oops.', body: "No Item");
+        return;
+      }
+
+      if (matchedBarcodes.length > 1) {
+        for (var element in matchedBarcodes) {
+          itemCodeFilter.add(element['ItemCode']);
+        }
+
+        goTo(
+          context,
+          ItemByCodePage(
+            type: ItemType.purchase,
+            itemCode: itemCodeFilter
+                .map((item) => "ItemCode eq '$item'")
+                .join(' or '),
+          ),
+        ).then((value) {
+          if (value == null) return;
+          if (mounted) MaterialDialog.close(context);
+
+          final first = matchedBarcodes.first;
+          uom.text = getDataFromDynamic(first['UomCode']);
+          uomAbEntry.text = getDataFromDynamic(first['UomEntry']);
+          onSetItemTemp(value);
+        });
+
+        return;
+      }
+
+      // Only one barcode match
+      final first = matchedBarcodes.first;
+      final itemList = context.read<ItemOfflineCubit>().state;
+      final matchedItem = itemList.firstWhere(
+          (e) => e['ItemCode'] == first['ItemCode'],
+          orElse: () => null);
+
+      if (matchedItem == null) {
+        MaterialDialog.warning(context, title: 'Oops.', body: "Item not found");
+        return;
+      }
+      final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+      final uomGroup = uomGroupCubit.state.firstWhere(
+        (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+        orElse: () => {},
+      );
+      final itemMapped = {
+        ...matchedItem,
+        "BaseUoM": uomGroup['BaseUoM'],
+        "UoMGroupDefinitionCollection": uomGroup['UoMGroupDefinitionCollection']
+      };
+
+      uom.text = getDataFromDynamic(first['UomCode']);
+      uomAbEntry.text = getDataFromDynamic(first['UomEntry']);
+      onSetItemTemp(itemMapped);
+    } catch (e) {
+      if (mounted) {
+        MaterialDialog.close(context);
+        if (e is ServerFailure) {
+          MaterialDialog.warning(context, title: 'Failed', body: e.message);
+        } else {
+          MaterialDialog.warning(context, title: 'Failed', body: e.toString());
+        }
+      }
+    }
+  }
+
+  // Generic function to request focus on a specific node
+  void _requestFocus(FocusNode node) {
+    if (!node.hasFocus) {
+      // Use microtask for stability with fast, external keyboard input
+      Future.microtask(() => node.requestFocus());
+    }
+  }
+
+  void _handleScanSubmitted(String barcode, FocusNode submittedNode) {
+    debugPrint("📦 Scanned Supplier Code: $barcode");
+
+    setState(() {
+      // Check which input currently has focus
+      if (_itemCode.hasFocus) {
+        // ✅ If filter input is focused → set scanned value
+        barCode.text = barcode;
+        itemCode.clear();
+        onCompleteTextEditItem();
+        isClickScanItem = false;
+      } else if (_bin.hasFocus) {
+        // ✅ If secondary input is focused → clear it
+        binCode.clear();
+        binId.clear();
+        MaterialDialog.warning(context,
+            title: 'Opps', body: "Scan Bin not impliment yet!");
+        isClickScanBin = false;
+      } else if (_quantity.hasFocus) {
+        quantity.clear();
+      }
+      // else {
+      //   // ✅ Optional: fallback behavior if no input focused
+      //   debugPrint("⚠️ No input focused, ignoring scan");
+      // }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -647,64 +709,6 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Input(
-              //   controller: grTypeName,
-              //   label: 'Good Receipt Type.',
-              //   placeholder: 'Good Receipt Type',
-              //   onPressed: onChangeGrt,
-              // ),
-              // Input(
-              //   label: 'Warehouse',
-              //   placeholder: 'Warehouse',
-              //   controller: warehouse,
-              //   readOnly: true,
-              //   onPressed: onChangeWhs,
-              // ),
-              // Input(
-              //   controller: itemCode,
-              //   onEditingComplete: onCompleteTextEditItem,
-              //   label: 'Item.',
-              //   placeholder: 'Item',
-              //   onPressed: onSelectItem,
-              // ),
-              // Input(
-              //   controller: uom,
-              //   label: 'UoM.',
-              //   placeholder: 'Unit Of Measurement',
-              //   onPressed: onChangeUoM,
-              // ),
-              // Input(
-              //   controller: binCode,
-              //   label: 'Bin.',
-              //   placeholder: 'Bin Location',
-              //   onPressed: onChangeBin,
-              // ),
-              // Input(
-              //   controller: quantity,
-              //   label: 'Quantity.',
-              //   placeholder: 'Quantity',
-              //   keyboardType: TextInputType.numberWithOptions(decimal: true),
-              //   onEditingComplete: onCompleteQuantiyInput,
-              //   onPressed: isSerialOrBatch
-              //       ? () {
-              //           onNavigateSerialOrBatch(force: true);
-              //         }
-              //       : null,
-              // ),
-              // const SizedBox(height: 40),
-              // ContentHeader(),
-              // Column(
-              //   children: items.asMap().entries.map((entry) {
-              //     final index = entry.key;
-              //     final item = entry.value;
-
-              //     return GestureDetector(
-              //       onTap: () =>
-              //           onEdit(item, index), // Pass both item and index
-              //       child: ItemRow(item: item),
-              //     );
-              //   }).toList(),
-              // )
               Container(
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
@@ -736,12 +740,74 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
               const SizedBox(height: 5),
 
               // ====== Bin Location ======
-              InputCol(
-                label: 'Bin Location',
-                placeholder: 'Chose Bin Location',
-                controller: binCode,
-                readOnly: true,
-                onPressed: onChangeBin,
+              Row(
+                children: [
+                  Expanded(
+                    child: InputCol(
+                      label: 'Bin Location',
+                      placeholder: 'Chose Bin Location',
+                      controller: binCode,
+                      focusNode: _bin,
+                      onTap: () => {
+                        setState(() {
+                          isClickScanBin = false; // turn on scan mode
+                          // itemCode.clear();
+                        }),
+                        // 2. Clear current focus before switching
+                        FocusScope.of(context).unfocus()
+                      },
+                      keyboardType: TextInputType.none,
+                      onPressed: onChangeBin,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _bin);
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 15,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // 1. Switch to scan mode
+                      setState(() {
+                        isClickScanBin = true; // turn on scan mode
+                        isClickScanItem = false;
+                        binCode.clear();
+                        binId.clear();
+                      });
+
+                      // 2. Clear current focus before switching
+                      FocusScope.of(context).unfocus();
+
+                      // 3. Focus scanner input
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _requestFocus(_bin);
+                      });
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(top: 30),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isClickScanBin
+                              ? Colors.green
+                              : Colors
+                                  .transparent, // ✅ green border when active
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF12169D),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
               ),
               const SizedBox(height: 8),
 
@@ -750,30 +816,65 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 children: [
                   Expanded(
                     child: InputCol(
+                      focusNode: _itemCode,
                       label: 'Item Code',
                       placeholder: 'Chose Item',
                       controller: itemCode,
-                      readOnly: true,
+                      onTap: () => {
+                        setState(() {
+                          isClickScanItem = false; // turn on scan mode
+                          // itemCode.clear();
+                        }),
+                        // 2. Clear current focus before switching
+                        FocusScope.of(context).unfocus()
+                      },
+                      keyboardType: TextInputType.none,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _itemCode);
+                      },
                       onPressed: onSelectItem,
                     ),
                   ),
                   SizedBox(
                     width: 15,
                   ),
-                  Container(
-                    margin: EdgeInsets.only(top: 30),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: IconButton(
-                      onPressed: () {
-                        // your action here
-                      },
-                      icon:
-                          const Icon(Icons.document_scanner_outlined, size: 22),
-                      color: Colors.black87,
-                      tooltip: 'Scan items', // optional hover/long-press text
+                  GestureDetector(
+                    onTap: () {
+                      // 1. Switch to scan mode
+                      setState(() {
+                        isClickScanItem = true; // turn on scan mode
+                        isClickScanBin = false; // turn on scan mode
+                        itemCode.clear();
+                      });
+
+                      // 2. Clear current focus before switching
+                      FocusScope.of(context).unfocus();
+
+                      // 3. Focus scanner input
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _requestFocus(_itemCode);
+                      });
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(top: 30),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isClickScanItem
+                              ? Colors.green
+                              : Colors
+                                  .transparent, // ✅ green border when active
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF12169D),
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -790,6 +891,10 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                       label: 'Input Qty',
                       placeholder: 'Quantity',
                       controller: quantity,
+                      focusNode: _quantity,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _quantity);
+                      },
                       readOnly: isSerialOrBatch ? true : false, // simpler
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),

@@ -7,9 +7,13 @@ import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dar
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/duplicateItem_GPO_Screen.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '../../good_receip_batch_screen.dart' show GoodReceiptBatchScreen;
@@ -73,6 +77,12 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   List<dynamic> binLists = [];
   bool loading = false;
   late BinCubit _blocBin;
+  bool isClickScanItem = false;
+  bool isClickScanBin = false;
+  final FocusNode _itemCode = FocusNode();
+  final FocusNode _quantity = FocusNode();
+  final FocusNode _bin = FocusNode();
+  final FocusNode _ref = FocusNode();
 
   @override
   void initState() {
@@ -109,10 +119,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
     if (!widget.isQuickCount) {
       if (mounted) MaterialDialog.loading(context);
 
-      // Initialize the list of items
       List<Map<String, dynamic>> rawItems = [];
-      // final cycleLineCount = await dio.get(
-      //     "/view.svc/CycleItemCountB1SLQuery?\$filter = WhsCode eq '${warehouse.text}'");
       final itemCycleCount = context.read<ItemCycleCountOfflineCubit>();
 
       // 🧩 Step 1: Filter bin by warehouse
@@ -123,8 +130,23 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         for (var element in filteredCycleCount) {
           final itemResponse =
               findFullItemInformation(context, element['ItemCode']);
-          if (itemResponse == null) return;
 
+          // if (barCodeObj.isEmpty) {
+          //   debugPrint("⚠️ No barcode found for ${element['ItemCode']}");
+          //   continue; // skip this item
+          // }
+
+          if (itemResponse == null) return;
+          final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+          // Find matching barcodes
+          final barCodeObj = barcodeList.firstWhere(
+            (e) =>
+                e['ItemCode'] == element['ItemCode'] &&
+                e['UoMEntry'] == itemResponse["InventoryUoMEntry"],
+            orElse: () => {},
+          );
+          print(element['UoMEntry']);
+          print(barCodeObj);
           rawItems.add({
             "ItemCode": element['ItemCode'],
             "ItemDescription": itemResponse['ItemName'],
@@ -138,11 +160,11 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
             "UoMGroupDefinitionCollection":
                 itemResponse['UoMGroupDefinitionCollection'],
             "BaseUoM": itemResponse['BaseUoM'],
-           
+
             "ManageSerialNumbers": itemResponse["ManageSerialNumbers"],
             "ManageBatchNumbers": itemResponse["ManageBatchNumbers"],
-             "BinId": binId.text,
-            "BarCode": element['BarCode'],
+            "BinId": binId.text,
+            "BarCode": barCodeObj['BarCode'],
           });
 
           itemCodeFilter.add(element['ItemCode']);
@@ -619,20 +641,56 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
 
   // void onCompleteTextEditItem() async {
   //   try {
-  //     if (itemCode.text == '') return;
-
-  //     //
+  //     if (barCode.text == '') return;
+  //     quantity.text = '';
   //     MaterialDialog.loading(context);
-  //     final item = await _blocItem.find("('${itemCode.text}')");
-  //     if (getDataFromDynamic(item['PurchaseItem']) == '' ||
-  //         getDataFromDynamic(item['PurchaseItem']) == 'tNO') {
-  //       throw Exception('${itemCode.text} is not purchase item.');
+  //     final barcodeRes = await dio.get(
+  //         "/view.svc/WMS_ITEM_BARCODEB1SLQuery?\$filter=BarCode eq '${barCode.text}' ");
+  //     if (barcodeRes.statusCode == 200) {
+  //       if (barcodeRes.data["value"].length == 0) {
+  //         if (barcodeRes.data["value"].length == 0) {
+  //           MaterialDialog.close(
+  //             context,
+  //           );
+  //           clear();
+  //           MaterialDialog.success(context, title: 'Opps.', body: "No Item");
+  //           return;
+  //         }
+  //       }
+  //       if (barcodeRes.data["value"].length > 1) {
+  //         for (var element in barcodeRes.data["value"]) {
+  //           itemCodeFilter.add(element['ItemCode']);
+  //         }
+  //         goTo(
+  //                 context,
+  //                 ItemByCodePage(
+  //                     type: ItemType.purchase,
+  //                     itemCode: itemCodeFilter
+  //                         .map((item) => "ItemCode eq '$item'")
+  //                         .join(' or ')))
+  //             .then((value) {
+  //           if (value == null) return;
+  //           if (mounted) {
+  //             MaterialDialog.close(context);
+  //           }
+  //           uom.text =
+  //               getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomCode"]);
+  //           uomAbEntry.text =
+  //               getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomEntry"]);
+  //           onSetItemTemp(value);
+  //         });
+  //         return;
+  //       }
+  //       final item = await _blocItem
+  //           .find("('${barcodeRes.data["value"]?[0]?["ItemCode"]}')");
+  //       if (mounted) {
+  //         MaterialDialog.close(context);
+  //       }
+  //       uom.text = getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomCode"]);
+  //       uomAbEntry.text =
+  //           getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomEntry"]);
+  //       onSetItemTemp(item);
   //     }
-  //     if (mounted) {
-  //       MaterialDialog.close(context);
-  //     }
-
-  //     onSetItemTemp(item);
   //   } catch (e) {
   //     if (mounted) {
   //       MaterialDialog.close(context);
@@ -645,60 +703,138 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   void onCompleteTextEditItem() async {
     try {
       if (barCode.text == '') return;
-      quantity.text = '';
-      MaterialDialog.loading(context);
-      final barcodeRes = await dio.get(
-          "/view.svc/WMS_ITEM_BARCODEB1SLQuery?\$filter=BarCode eq '${barCode.text}' ");
-      if (barcodeRes.statusCode == 200) {
-        if (barcodeRes.data["value"].length == 0) {
-          if (barcodeRes.data["value"].length == 0) {
-            MaterialDialog.close(
-              context,
-            );
-            clear();
-            MaterialDialog.success(context, title: 'Opps.', body: "No Item");
-            return;
-          }
+      if (!widget.isQuickCount) {
+        final duplicateItem =
+            items.where((e) => e["BarCode"] == barCode.text).toList();
+        if (duplicateItem.isEmpty) {
+          MaterialDialog.success(context,
+              title: 'Opps.', body: "Item not found");
+          return;
         }
-        if (barcodeRes.data["value"].length > 1) {
-          for (var element in barcodeRes.data["value"]) {
-            itemCodeFilter.add(element['ItemCode']);
-          }
+        if (duplicateItem.length > 1) {
           goTo(
-                  context,
-                  ItemByCodePage(
-                      type: ItemType.purchase,
-                      itemCode: itemCodeFilter
-                          .map((item) => "ItemCode eq '$item'")
-                          .join(' or ')))
-              .then((value) {
-            if (value == null) return;
-            if (mounted) {
-              MaterialDialog.close(context);
-            }
-            uom.text =
-                getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomCode"]);
-            uomAbEntry.text =
-                getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomEntry"]);
-            onSetItemTemp(value);
+              context,
+              DuplicateItemGPOPage(
+                barCode: barCode.text,
+                items: duplicateItem,
+              )).then((item) {
+            if (item == null) return;
+            final index = items.indexWhere((e) =>
+                e['BarCode'] == item['BarCode'] &&
+                e['ItemCode'] == item['ItemCode']);
+            onEdit(item, index);
           });
           return;
         }
-        final item = await _blocItem
-            .find("('${barcodeRes.data["value"]?[0]?["ItemCode"]}')");
-        if (mounted) {
-          MaterialDialog.close(context);
+        // Continue processing if there is only one matching item
+        final item =
+            await items.firstWhere((e) => e["BarCode"] == barCode.text);
+        final index = items.indexWhere((e) => e['BarCode'] == item['BarCode']);
+        onEdit(item, index);
+      } else {
+        quantity.text = '';
+        // Get all offline barcode data
+
+        final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+        final matchedBarcodes =
+            barcodeList.where((e) => e['BarCode'] == barCode.text).toList();
+
+        if (matchedBarcodes.isEmpty) {
+          clear();
+          MaterialDialog.success(context, title: 'Oops.', body: "No Item");
+          return;
         }
-        uom.text = getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomCode"]);
-        uomAbEntry.text =
-            getDataFromDynamic(barcodeRes.data["value"]?[0]?["UomEntry"]);
-        onSetItemTemp(item);
+
+        if (matchedBarcodes.length > 1) {
+          for (var element in matchedBarcodes) {
+            itemCodeFilter.add(element['ItemCode']);
+          }
+
+          goTo(
+            context,
+            ItemByCodePage(
+              type: ItemType.purchase,
+              itemCode: itemCodeFilter
+                  .map((item) => "ItemCode eq '$item'")
+                  .join(' or '),
+            ),
+          ).then((value) {
+            if (value == null) return;
+            if (mounted) MaterialDialog.close(context);
+
+            final first = matchedBarcodes.first;
+            uom.text = getDataFromDynamic(first['UomCode']);
+            uomAbEntry.text = getDataFromDynamic(first['UomEntry']);
+            onSetItemTemp(value);
+          });
+
+          return;
+        }
+
+        // Only one barcode match
+        final first = matchedBarcodes.first;
+        final itemList = context.read<ItemOfflineCubit>().state;
+        final matchedItem = itemList.firstWhere(
+            (e) => e['ItemCode'] == first['ItemCode'],
+            orElse: () => null);
+
+        if (matchedItem == null) {
+          MaterialDialog.success(context,
+              title: 'Oops.', body: "Item not found");
+          return;
+        }
+        final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+        final uomGroup = uomGroupCubit.state.firstWhere(
+          (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+          orElse: () => {},
+        );
+        final itemMapped = {
+          ...matchedItem,
+          "BaseUoM": uomGroup['BaseUoM'],
+          "UoMGroupDefinitionCollection":
+              uomGroup['UoMGroupDefinitionCollection']
+        };
+        final binCubit = context.read<BinOfflineCubit>();
+        final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
+
+        final binList = binCubit.state;
+        final itemStockList = itemStockCubit.getJsonData();
+
+        // 🧩 Step 1: Filter bin by warehouse
+        final filteredBin =
+            binList.where((b) => b['Warehouse'] == warehouse.text).toList();
+        if (filteredBin.isEmpty) {
+          // 🧩 Step 2: Find item in offline stock list
+          final matchedItemStock = itemStockList.firstWhere(
+            (item) =>
+                item['ItemCode'] == itemMapped["ItemCode"] &&
+                item['WhsCode'] == warehouse.text,
+            orElse: () => {},
+          );
+
+          // 🧩 Step 3: Update stock quantity (offline)
+          if (matchedItemStock.isNotEmpty) {
+            final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
+            setState(() {
+              inWhsQty.text = onHandQty.toString();
+            });
+          } else {
+            setState(() {
+              inWhsQty.text = "0";
+            });
+          }
+        }
+        uom.text = getDataFromDynamic(first['UomCode']);
+        uomAbEntry.text = getDataFromDynamic(first['UomEntry']);
+        onSetItemTemp(itemMapped);
       }
     } catch (e) {
       if (mounted) {
         MaterialDialog.close(context);
         if (e is ServerFailure) {
-          MaterialDialog.success(context, title: 'Failed', body: e.message);
+          MaterialDialog.warning(context, title: 'Failed', body: e.message);
+        } else {
+          MaterialDialog.warning(context, title: 'Failed', body: e.toString());
         }
       }
     }
@@ -780,6 +916,44 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
     }
   }
 
+  // Generic function to request focus on a specific node
+  void _requestFocus(FocusNode node) {
+    if (!node.hasFocus) {
+      // Use microtask for stability with fast, external keyboard input
+      Future.microtask(() => node.requestFocus());
+    }
+  }
+
+  void _handleScanSubmitted(String barcode, FocusNode submittedNode) {
+    debugPrint("📦 Scanned Supplier Code: $barcode");
+
+    setState(() {
+      // Check which input currently has focus
+      if (_itemCode.hasFocus) {
+        // ✅ If filter input is focused → set scanned value
+        barCode.text = barcode;
+        itemCode.clear();
+        onCompleteTextEditItem();
+        isClickScanItem = false;
+      } else if (_bin.hasFocus) {
+        // ✅ If secondary input is focused → clear it
+        binCode.clear();
+        binId.clear();
+        MaterialDialog.warning(context,
+            title: 'Opps', body: "Scan Bin not impliment yet!");
+        isClickScanBin = false;
+      } else if (_quantity.hasFocus) {
+        quantity.clear();
+      } else if (_ref.hasFocus) {
+        ref.clear();
+      }
+      // else {
+      //   // ✅ Optional: fallback behavior if no input focused
+      //   debugPrint("⚠️ No input focused, ignoring scan");
+      // }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -807,69 +981,6 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Input(
-              //   label: 'Warehouse',
-              //   placeholder: 'Warehouse',
-              //   controller: warehouse,
-              //   readOnly: true,
-              //   onPressed: onChangeWhs,
-              // ),
-              // Input(
-              //   controller: ref,
-              //   label: 'Ref.',
-              //   placeholder: 'Referance',
-              // ),
-              // Input(
-              //   controller: itemCode,
-              //   onEditingComplete: onCompleteTextEditItem,
-              //   label: 'Item.',
-              //   placeholder: 'Item',
-              //   onPressed: onSelectItem,
-              // ),
-              // Input(
-              //   controller: uom,
-              //   label: 'UoM.',
-              //   placeholder: 'Unit Of Measurement',
-              //   onPressed: onChangeUoM,
-              // ),
-              // Input(
-              //   controller: binCode,
-              //   label: 'Bin.',
-              //   placeholder: 'Bin Location',
-              //   onPressed: onChangeBin,
-              // ),
-              // Input(
-              //   controller: inWhsQty,
-              //   label: 'In Whs Qty.',
-              //   placeholder: 'Total Qty',
-              //   readOnly: true,
-              // ),
-              // Input(
-              //   controller: quantity,
-              //   label: 'Quantity.',
-              //   placeholder: 'Quantity',
-              //   keyboardType: TextInputType.numberWithOptions(decimal: true),
-              //   onEditingComplete: onCompleteQuantiyInput,
-              //   onPressed: isSerialOrBatch
-              //       ? () {
-              //           onNavigateSerialOrBatch(force: true);
-              //         }
-              //       : null,
-              // ),
-              // const SizedBox(height: 40),
-              // ContentHeader(),
-              // Column(
-              //   children: items.asMap().entries.map((entry) {
-              //     final index = entry.key;
-              //     final item = entry.value;
-
-              //     return GestureDetector(
-              //       onTap: () =>
-              //           onEdit(item, index), // Pass both item and index
-              //       child: ItemRow(item: item),
-              //     );
-              //   }).toList(),
-              // ),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
@@ -896,6 +1007,10 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                 label: 'Reference',
                 placeholder: 'Please input reference',
                 controller: ref,
+                focusNode: _ref,
+                onFieldSubmitted: (value) {
+                  _handleScanSubmitted(value, _ref);
+                },
               ),
               const SizedBox(height: 8),
 
@@ -906,43 +1021,139 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                 children: [
                   Expanded(
                     child: InputCol(
+                      focusNode: _itemCode,
                       label: 'Item Code',
                       placeholder: 'Chose Item',
                       controller: itemCode,
-                      readOnly: true,
-                      onPressed: widget.isQuickCount ? onSelectItem : null,
+                      onTap: () => {
+                        setState(() {
+                          isClickScanItem = false; // turn on scan mode
+                          // itemCode.clear();
+                        }),
+                        // 2. Clear current focus before switching
+                        FocusScope.of(context).unfocus()
+                      },
+                      keyboardType: TextInputType.none,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _itemCode);
+                      },
+                      onPressed: onSelectItem,
                     ),
                   ),
                   SizedBox(
                     width: 15,
                   ),
-                  Container(
-                    margin: EdgeInsets.only(top: 30),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: IconButton(
-                      onPressed: () {
-                        // your action here
-                      },
-                      icon:
-                          const Icon(Icons.document_scanner_outlined, size: 22),
-                      color: Colors.black87,
-                      tooltip: 'Scan items', // optional hover/long-press text
+                  GestureDetector(
+                    onTap: () {
+                      // 1. Switch to scan mode
+                      setState(() {
+                        isClickScanItem = true; // turn on scan mode
+                        isClickScanBin = false; // turn on scan mode
+                        itemCode.clear();
+                      });
+
+                      // 2. Clear current focus before switching
+                      FocusScope.of(context).unfocus();
+
+                      // 3. Focus scanner input
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _requestFocus(_itemCode);
+                      });
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(top: 30),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isClickScanItem
+                              ? Colors.green
+                              : Colors
+                                  .transparent, // ✅ green border when active
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF12169D),
+                        size: 20,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                 ],
               ),
-
               const SizedBox(height: 7),
-              InputCol(
-                label: 'Bin Location',
-                placeholder: 'Chose Bin Location',
-                controller: binCode,
-                readOnly: true,
-                onPressed: onChangeBin,
+              Row(
+                children: [
+                  Expanded(
+                    child: InputCol(
+                      label: 'Bin Location',
+                      placeholder: 'Chose Bin Location',
+                      controller: binCode,
+                      focusNode: _bin,
+                      onTap: () => {
+                        setState(() {
+                          isClickScanBin = false; // turn on scan mode
+                          // itemCode.clear();
+                        }),
+                        // 2. Clear current focus before switching
+                        FocusScope.of(context).unfocus()
+                      },
+                      keyboardType: TextInputType.none,
+                      onPressed: onChangeBin,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _bin);
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 15,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // 1. Switch to scan mode
+                      setState(() {
+                        isClickScanBin = true; // turn on scan mode
+                        isClickScanItem = false;
+                        binCode.clear();
+                        binId.clear();
+                      });
+
+                      // 2. Clear current focus before switching
+                      FocusScope.of(context).unfocus();
+
+                      // 3. Focus scanner input
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _requestFocus(_bin);
+                      });
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(top: 30),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isClickScanBin
+                              ? Colors.green
+                              : Colors
+                                  .transparent, // ✅ green border when active
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF12169D),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
               ),
               const SizedBox(height: 8),
               // ====== Input Qty & UoM ======

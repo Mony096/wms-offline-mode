@@ -77,7 +77,7 @@ class MaterialDialog {
                           body,
                           textAlign: TextAlign.left,
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 12.5,
                             color: isDark ? Colors.grey[300] : Colors.grey[700],
                             height: 1.3,
                           ),
@@ -201,7 +201,7 @@ class MaterialDialog {
                         body,
                         textAlign: TextAlign.start,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 12.5,
                           color: isDark ? Colors.grey[300] : Colors.grey[700],
                           height: 1.3,
                         ),

@@ -31,9 +31,13 @@ class CreateBinLookUpScreen extends StatefulWidget {
 class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
   final warehouse = TextEditingController();
   final binCode = TextEditingController();
+  final barCode = TextEditingController();
+
   late BinLookUpCubit _bloc;
   List<dynamic> items = [];
   bool loading = false;
+  bool isClickScanBin = false;
+  final FocusNode _bin = FocusNode();
   Map<String, dynamic> detailItem = {
     "MinQty": 0.0,
     "MaxQty": 0.0,
@@ -176,6 +180,36 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
     }
   }
 
+  void _requestFocus(FocusNode node) {
+    if (!node.hasFocus) {
+      // Use microtask for stability with fast, external keyboard input
+      Future.microtask(() => node.requestFocus());
+    }
+  }
+
+  void _handleScanSubmitted(String barcode, FocusNode submittedNode) {
+    debugPrint("📦 Scanned Supplier Code: $barcode");
+
+    setState(() {
+      // Check which input currently has focus
+      if (_bin.hasFocus) {
+        // ✅ If filter input is focused → set scanned value
+        barCode.text = barcode;
+        binCode.clear();
+        isClickScanBin = false;
+        MaterialDialog.warning(context,
+            title: 'Oops.', body: "Scan Bin not impliment yet");
+        return;
+        onGetItem();
+      }
+
+      // else {
+      //   // ✅ Optional: fallback behavior if no input focused
+      //   debugPrint("⚠️ No input focused, ignoring scan");
+      // }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -200,31 +234,6 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Input(
-              //   label: 'Warehouse',
-              //   placeholder: 'Warehouse',
-              //   controller: warehouse,
-              //   readOnly: true,
-              //   onPressed: onChangeWhs,
-              // ),
-
-              // // Input(
-              // //   controller: binCode,
-              // //   label: 'Bin.',
-              // //   placeholder: 'Bin Location',
-              // //   onPressed: onSelectItem,
-              // // ),
-              // // Input(
-              // //   controller: itemName,
-              // //   label: 'Desc.',
-              // //   placeholder: 'Description',
-              // // ),
-              // Input(
-              //   controller: binCode,
-              //   label: 'Bin.',
-              //   placeholder: 'Bin Location',
-              //   onPressed: onChangeBin,
-              // ),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.grey.shade100,
@@ -252,14 +261,73 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
               const SizedBox(height: 7),
 
               // ====== Input Qty & UoM ======
-              InputCol(
-                label: 'Bin Location',
-                placeholder: 'Bin',
-                controller: binCode,
-                readOnly: true,
-                onPressed: onChangeBin,
-              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: InputCol(
+                      label: 'Bin Location',
+                      placeholder: 'Chose Bin Location',
+                      controller: binCode,
+                      focusNode: _bin,
+                      onTap: () => {
+                        setState(() {
+                          isClickScanBin = false; // turn on scan mode
+                          // itemCode.clear();
+                        }),
+                        // 2. Clear current focus before switching
+                        FocusScope.of(context).unfocus()
+                      },
+                      keyboardType: TextInputType.none,
+                      onPressed: onChangeBin,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _bin);
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 15,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // 1. Switch to scan mode
+                      setState(() {
+                        isClickScanBin = true; // turn on scan mode
+                        binCode.clear();
+                      });
 
+                      // 2. Clear current focus before switching
+                      FocusScope.of(context).unfocus();
+
+                      // 3. Focus scanner input
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _requestFocus(_bin);
+                      });
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(top: 30),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isClickScanBin
+                              ? Colors.green
+                              : Colors
+                                  .transparent, // ✅ green border when active
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF12169D),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+              ),
               const SizedBox(height: 8),
               items.isEmpty
                   ? Container()

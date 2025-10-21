@@ -630,24 +630,9 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
   void onSetItemTemp(dynamic value) async {
     try {
       if (value == null) return;
-      // final state = _blocBin.state;
-      // // If state is not BinData, just return (no data yet)
-      // if (state is! BinData) {
-      //   debugPrint("BinCubit has no data yet.");
-      //   return;
-      // }
-      // final bins = state.entities;
-      // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-      //   isBin.clear();
-      // }
       isSerialOrBatch = false;
       MaterialDialog.loading(context);
       FocusScope.of(context).requestFocus(FocusNode());
-      // final bin = await dio
-      //     .get("/BinLocations?\$filter=Warehouse eq '${warehouse.text}'");
-      // if (bin.data["value"].length == 0) {
-      //   isBin.clear();
-      // }
       itemCode.text = getDataFromDynamic(value['ItemCode']);
       itemName.text = getDataFromDynamic(value['ItemName']);
       // quantity.text = '0';
@@ -676,6 +661,57 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
     }
   }
 
+  void onCompleteQuantiyInput() {
+    FocusScope.of(context).requestFocus(FocusNode());
+    onNavigateSerialOrBatch();
+  }
+
+  void onNavigateSerialOrBatch({bool force = false}) {
+    if (isSerial.text == 'tYES') {
+      final serialList = serialsInput.text == "" || serialsInput.text == "null"
+          ? []
+          : jsonDecode(serialsInput.text) as List<dynamic>;
+
+      if (force == false && (quantity.text == serialList.length.toString())) {
+        return;
+      }
+      print(serialList);
+      goTo(
+        context,
+        GoodReceiptSerialScreen(
+            itemCode: itemCode.text,
+            quantity: quantity.text,
+            serials: serialList,
+            itemName: itemName.text,
+            warehouse: warehouse.text,
+            isEdit: isEdit),
+      ).then((value) {
+        if (value == null) return;
+
+        quantity.text = value['quantity'] ?? "0";
+        serialsInput.text = jsonEncode(value['items']);
+      });
+    } else if (isBatch.text == 'tYES') {
+      final batches = batchesInput.text == "" || batchesInput.text == "null"
+          ? []
+          : jsonDecode(batchesInput.text) as List<dynamic>;
+      goTo(
+        context,
+        GoodReceiptBatchScreen(
+            itemCode: itemCode.text,
+            quantity: quantity.text,
+            serials: batches,
+            itemName: itemName.text,
+            warehouse: warehouse.text,
+            isEdit: isEdit),
+      ).then((value) {
+        if (value == null) return;
+        quantity.text = value['quantity'] ?? "0";
+        batchesInput.text = jsonEncode(value['items']);
+      });
+    }
+  }
+
   void onCompleteTextEditItem() async {
     try {
       if (barCode.text == '') return;
@@ -700,7 +736,6 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
                 e['ItemCode'] == item['ItemCode']);
             onEdit(item, index);
           });
-
           return;
         }
         // Continue processing if there is only one matching item
@@ -781,62 +816,11 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       if (mounted) {
         MaterialDialog.close(context);
         if (e is ServerFailure) {
-          MaterialDialog.success(context, title: 'Failed', body: e.message);
+          MaterialDialog.warning(context, title: 'Failed', body: e.message);
         } else {
-          MaterialDialog.success(context, title: 'Failed', body: e.toString());
+          MaterialDialog.warning(context, title: 'Failed', body: e.toString());
         }
       }
-    }
-  }
-
-  void onCompleteQuantiyInput() {
-    FocusScope.of(context).requestFocus(FocusNode());
-    onNavigateSerialOrBatch();
-  }
-
-  void onNavigateSerialOrBatch({bool force = false}) {
-    if (isSerial.text == 'tYES') {
-      final serialList = serialsInput.text == "" || serialsInput.text == "null"
-          ? []
-          : jsonDecode(serialsInput.text) as List<dynamic>;
-
-      if (force == false && (quantity.text == serialList.length.toString())) {
-        return;
-      }
-      print(serialList);
-      goTo(
-        context,
-        GoodReceiptSerialScreen(
-            itemCode: itemCode.text,
-            quantity: quantity.text,
-            serials: serialList,
-            itemName: itemName.text,
-            warehouse: warehouse.text,
-            isEdit: isEdit),
-      ).then((value) {
-        if (value == null) return;
-
-        quantity.text = value['quantity'] ?? "0";
-        serialsInput.text = jsonEncode(value['items']);
-      });
-    } else if (isBatch.text == 'tYES') {
-      final batches = batchesInput.text == "" || batchesInput.text == "null"
-          ? []
-          : jsonDecode(batchesInput.text) as List<dynamic>;
-      goTo(
-        context,
-        GoodReceiptBatchScreen(
-            itemCode: itemCode.text,
-            quantity: quantity.text,
-            serials: batches,
-            itemName: itemName.text,
-            warehouse: warehouse.text,
-            isEdit: isEdit),
-      ).then((value) {
-        if (value == null) return;
-        quantity.text = value['quantity'] ?? "0";
-        batchesInput.text = jsonEncode(value['items']);
-      });
     }
   }
 
@@ -856,14 +840,17 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       if (_itemCode.hasFocus) {
         // ✅ If filter input is focused → set scanned value
         barCode.text = barcode;
+        itemCode.clear();
         onCompleteTextEditItem();
         isClickScanItem = false;
       } else if (_bin.hasFocus) {
         // ✅ If secondary input is focused → clear it
-        binCode.text = barcode;
+        binCode.clear();
+        binId.clear();
+        MaterialDialog.warning(context,
+            title: 'Opps', body: "Scan Bin not impliment yet!");
         isClickScanBin = false;
       } else if (_quantity.hasFocus) {
-        // ✅ If secondary input is focused → clear it
         quantity.clear();
       }
       // else {
@@ -1136,43 +1123,6 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
                               ),
                             ),
                           ),
-
-                          // Container(
-                          //   margin: EdgeInsets.only(top: 30),
-                          //   decoration: BoxDecoration(
-                          //     color: Colors.grey.shade100,
-                          //     borderRadius: BorderRadius.circular(8),
-                          //     border: Border.all(
-                          //       color: isClickScan
-                          //           ? Colors.green
-                          //           : Colors
-                          //               .transparent, // ✅ green border when active
-                          //       width: 2,
-                          //     ),
-                          //   ),
-                          //   child: IconButton(
-                          //     onPressed: () {
-                          //       setState(() {
-                          //         isClickScan = true; // turn on scan mode
-                          //         itemCode.clear();
-                          //       });
-
-                          //       // 2. Clear current focus before switching
-                          //       FocusScope.of(context).unfocus();
-
-                          //       // 3. Focus scanner input
-                          //       Future.delayed(
-                          //           const Duration(milliseconds: 100), () {
-                          //         _requestFocus(_itemCode);
-                          //       });
-                          //     },
-                          //     icon: const Icon(Icons.document_scanner_outlined,
-                          //         size: 22),
-                          //     color: Colors.black87,
-                          //     tooltip:
-                          //         'Scan items', // optional hover/long-press text
-                          //   ),
-                          // ),
                           const SizedBox(width: 12),
                         ],
                       ),

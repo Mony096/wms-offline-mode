@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -78,17 +77,22 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
           (getDataFromDynamic(po['CardName'])).toString().toLowerCase();
       final comments =
           (getDataFromDynamic(po['Comments'])).toString().toLowerCase();
-
+   final docNum =
+          (getDataFromDynamic(po['DocNum'])).toString().toLowerCase();
       // --- Filter A: textScan (Matches if textScan is not empty AND one field contains it) ---
       final matchesScan = textScan.isNotEmpty &&
           (cardCode.contains(textScan) ||
               cardName.contains(textScan) ||
-              comments.contains(textScan));
+              comments.contains(textScan) ||
+                docNum.contains(textScan)
+              );
 
       final matchesInput = textInput.isNotEmpty &&
           (cardCode.contains(textInput) ||
               cardName.contains(textInput) ||
-              comments.contains(textInput));
+              comments.contains(textInput) ||
+              docNum.contains(textInput)
+              );
       return matchesScan || matchesInput;
     }).toList();
 
@@ -181,6 +185,7 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
                       onTap: () {
                         setState(() {
                           filter.clear();
+                          filterInput.clear();
                           isClickScan = true;
                           isBorder = true;
                         });

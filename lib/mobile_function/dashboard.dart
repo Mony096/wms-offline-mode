@@ -5,12 +5,20 @@ import 'package:provider/provider.dart';
 import 'package:wms_mobile/download.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/business_partner/presentation/cubit/bussinessPartner_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/counting.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_cycle_count_offline_cubit.dart';
@@ -21,7 +29,10 @@ import 'package:wms_mobile/feature/list_batch/presentation/screen/batch_list_pag
 import 'package:wms_mobile/feature/list_serial/presentation/screen/Serial_list_page.dart';
 import 'package:wms_mobile/feature/lookup/lookup.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
+import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/outbound.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/serial/good_receip_serial_screen.dart';
@@ -136,7 +147,18 @@ class _DashboardState extends State<Dashboard> {
     context.read<ItemFindStockOfflineCubit>().clearData();
     context.read<ItemCycleCountOfflineCubit>().clearData();
     context.read<COSOfflineCubit>().clearData();
-
+    context.read<GoodReceiptPoOfflineCubit>().clearData();
+    context.read<QuickGoodReceiptOfflineCubit>().clearData();
+    context.read<ReturnReceiptOfflineCubit>().clearData();
+    context.read<GoodsReceiptOfflineCubit>().clearData();
+    context.read<PutAwayOfflineCubit>().clearData();
+    context.read<DeliveryOfflineCubit>().clearData();
+    context.read<PurchaseReturnOfflineCubit>().clearData();
+    context.read<GoodsIssueOfflineCubit>().clearData();
+    context.read<QuickCountOfflineCubit>().clearData();
+    context.read<PhysicalCountOfflineCubit>().clearData();
+    context.read<CycleCountOfflineCubit>().clearData();
+    context.read<BinCountOfflineCubit>().clearData();
     // 5️⃣ Update UI
     setState(() {
       LocalStorageManger.setString('isDownloaded', 'false');

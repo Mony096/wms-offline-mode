@@ -38,6 +38,7 @@ class InputCol extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        label.isNotEmpty ?
         Text(
           label,
           style: TextStyle(
@@ -45,7 +46,7 @@ class InputCol extends StatelessWidget {
             fontWeight: FontWeight.w400,
             color: Colors.grey.shade700,
           ),
-        ),
+        ):Container(),
         const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 15),
