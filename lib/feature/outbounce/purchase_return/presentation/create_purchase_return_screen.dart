@@ -377,7 +377,7 @@ class _CreatePurchaseReturnScreenState
           };
         }).toList(),
       };
-     context.read<PurchaseReturnOfflineCubit>().addData(data);
+      context.read<PurchaseReturnOfflineCubit>().addData(data);
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
@@ -641,6 +641,7 @@ class _CreatePurchaseReturnScreenState
 
     return combinedItemsMap.values.toList();
   }
+
   void onCompleteTextEditItem() async {
     try {
       if (barCode.text == '') return;
@@ -708,8 +709,6 @@ class _CreatePurchaseReturnScreenState
         MaterialDialog.warning(context,
             title: 'Opps', body: "Scan Bin not impliment yet!");
         isClickScanBin = false;
-      } else if (_quantity.hasFocus) {
-        quantity.clear();
       }
       // else {
       //   // ✅ Optional: fallback behavior if no input focused
@@ -717,6 +716,7 @@ class _CreatePurchaseReturnScreenState
       // }
     });
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -770,7 +770,6 @@ class _CreatePurchaseReturnScreenState
               : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                   
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey.shade100,
@@ -1046,7 +1045,7 @@ class _CreatePurchaseReturnScreenState
         ),
       ),
       bottomNavigationBar: Container(
-        height: size(context).height * 0.09,
+        height: 70,
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [

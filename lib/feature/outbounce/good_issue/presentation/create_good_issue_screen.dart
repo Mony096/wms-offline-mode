@@ -486,7 +486,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
   //     }
   //   }
   // }
- 
+
   void onCompleteQuantiyInput() {
     FocusScope.of(context).requestFocus(FocusNode());
     onNavigateSerialOrBatch();
@@ -548,6 +548,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
       warehouse.text = getDataFromDynamic(value);
     });
   }
+
   void onCompleteTextEditItem() async {
     try {
       if (barCode.text == '') return;
@@ -655,8 +656,6 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
         MaterialDialog.warning(context,
             title: 'Opps', body: "Scan Bin not impliment yet!");
         isClickScanBin = false;
-      } else if (_quantity.hasFocus) {
-        quantity.clear();
       }
       // else {
       //   // ✅ Optional: fallback behavior if no input focused
@@ -664,6 +663,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
       // }
     });
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -697,7 +697,6 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-               
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
@@ -967,7 +966,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
         ),
       ),
       bottomNavigationBar: Container(
-        height: size(context).height * 0.09,
+        height: 70,
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [

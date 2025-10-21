@@ -443,7 +443,7 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
         ),
       ),
       //  Container(
-      //   height: size(context).height * 0.09,
+      //   height: 70,
       //   padding: const EdgeInsets.all(12),
       //   child: Row(
       //     children: [

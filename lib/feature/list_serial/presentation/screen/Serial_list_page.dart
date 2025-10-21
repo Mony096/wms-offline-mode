@@ -370,7 +370,7 @@
 //         ),
 //       ),
 //       bottomNavigationBar: Container(
-//         height: size(context).height * 0.09,
+//         height: 70,
 //         padding: const EdgeInsets.all(12),
 //         color: Color.fromARGB(255, 243, 243, 243),
 //         child: Row(
