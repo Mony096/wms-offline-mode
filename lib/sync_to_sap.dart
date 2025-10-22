@@ -24,6 +24,7 @@ import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/go
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/review_quick_offline_save.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_log_quick.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_offline_cubit.dart';
@@ -52,12 +53,15 @@ class SyncItem {
   final int Function(BuildContext) getLog;
 
   final Future<void> Function(BuildContext) onSync;
+  final void Function(BuildContext) onFailedSync;
+
   final void Function(BuildContext)? onGotoReview;
   final void Function(BuildContext)? onGotoSyncLog;
   SyncItem(
       {required this.name,
       required this.getCount,
       required this.onSync,
+      required this.onFailedSync,
       required this.onGotoReview,
       required this.onGotoSyncLog,
       required this.getLog});
@@ -99,6 +103,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             onGotoSyncLog: (context) {
               goTo(context, SyncLogScreen());
             },
+            onFailedSync: (context) {
+              goTo(context, SyncFailLogScreen());
+            },
           ),
           SyncItem(
             name: 'Quick Goods Receipt',
@@ -117,6 +124,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             onGotoSyncLog: (context) {
               goTo(context, SyncLogQuickScreen());
             },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
+            },
           ),
           SyncItem(
             name: 'Customer Return Receipt',
@@ -132,6 +142,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogReturnReceiptScreen());
+            },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
             },
           ),
           SyncItem(
@@ -149,6 +162,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             onGotoSyncLog: (context) {
               goTo(context, SyncLogGoodsReceiptScreen());
             },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
+            },
           ),
           SyncItem(
             name: 'Put Away',
@@ -163,6 +179,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogPutAwayScreen());
+            },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
             },
           ),
         ],
@@ -186,6 +205,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             onGotoSyncLog: (context) {
               goTo(context, SyncLogDeliveryScreen());
             },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
+            },
           ),
           SyncItem(
             name: 'Return To Supplier',
@@ -202,6 +224,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             onGotoSyncLog: (context) {
               goTo(context, SyncLogPurchaseReturnScreen());
             },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
+            },
           ),
           SyncItem(
             name: 'Goods Issue',
@@ -217,6 +242,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogGoodsIssueScreen());
+            },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
             },
           ),
         ],
@@ -241,6 +269,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             onGotoSyncLog: (context) {
               goTo(context, SyncLogQuickCountScreen());
             },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
+            },
           ),
           SyncItem(
             name: 'Cycle Count',
@@ -256,6 +287,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogCycleCountScreen());
+            },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
             },
           ),
           SyncItem(
@@ -273,6 +307,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             onGotoSyncLog: (context) {
               goTo(context, SyncLogPhysicalCountScreen());
             },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
+            },
           ),
           SyncItem(
             name: 'Bin Count',
@@ -287,6 +324,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogBinCountScreen());
+            },
+            onFailedSync: (context) {
+              // goTo(context, SyncLogScreen());
             },
           ),
         ],
@@ -906,10 +946,13 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                                               padding: const EdgeInsets.only(
                                                   bottom: 9, right: 5),
                                               child: ElevatedButton.icon(
-                                                onPressed: () {
-                                                  Navigator.pop(
-                                                      context); // close dialog
-                                                },
+                                                onPressed: item.onFailedSync != null
+                                                    ? () {
+                                                        Navigator.pop(context);
+                                                        item.onGotoSyncLog!(
+                                                            context);
+                                                      }
+                                                    : null,
                                                 icon: const Icon(Icons.warning,
                                                     color: Colors.white,
                                                     size: 17),
