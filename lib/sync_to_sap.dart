@@ -847,7 +847,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                                           Expanded(
                                             child: Padding(
                                               padding: const EdgeInsets.only(
-                                                  left: 10, bottom: 9),
+                                                  left: 5, bottom: 9),
                                               child: ElevatedButton.icon(
                                                 onPressed:
                                                     item.onGotoSyncLog != null
@@ -860,11 +860,12 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                                                         : null,
                                                 icon: const Icon(Icons.history,
                                                     color: Colors.white,
-                                                    size: 18),
+                                                    size: 17),
                                                 label: const Text(
                                                   "Sync Log",
                                                   style: TextStyle(
-                                                      color: Colors.white),
+                                                      color: Colors.white,
+                                                      fontSize: 11.5),
                                                 ),
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor:
@@ -882,11 +883,11 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 10),
+                                          const SizedBox(width: 6),
                                           Expanded(
                                             child: Padding(
                                               padding: const EdgeInsets.only(
-                                                  bottom: 9, right: 10),
+                                                  bottom: 9, right: 5),
                                               child: ElevatedButton.icon(
                                                 onPressed:
                                                     item.onGotoReview != null
@@ -899,11 +900,12 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                                                         : null,
                                                 icon: const Icon(Icons.book,
                                                     color: Colors.white,
-                                                    size: 18),
+                                                    size: 17),
                                                 label: const Text(
                                                   "Review",
                                                   style: TextStyle(
-                                                      color: Colors.white),
+                                                      color: Colors.white,
+                                                      fontSize: 12),
                                                 ),
                                                 style: ElevatedButton.styleFrom(
                                                   backgroundColor: Colors.green,

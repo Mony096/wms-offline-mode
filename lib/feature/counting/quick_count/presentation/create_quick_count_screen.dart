@@ -291,7 +291,6 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
       if (itemCode.text == '') {
         throw Exception('Item is missing.');
       }
-
       final item = {
         "ItemCode": itemCode.text,
         "ItemDescription": itemName.text,
@@ -307,6 +306,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         "BinId": binId.text,
         "BinCode": binCode.text,
         "InWhsQty": inWhsQty.text,
+        "BarCode": barCode.text,
         "ManageSerialNumbers": isSerial.text,
         "ManageBatchNumbers": isBatch.text,
         "Serials":
@@ -314,6 +314,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
       };
+      print(item);
 
       if (isEdit == -1) {
         data.add(item);
@@ -343,6 +344,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
       confirmLabel: "Edit",
       cancelLabel: "Remove",
       onConfirm: () async {
+        print(item);
         itemCode.text = getDataFromDynamic(item['ItemCode']);
         itemName.text = getDataFromDynamic(item['ItemDescription']);
         quantity.text = getDataFromDynamic(item['Quantity']);
@@ -361,6 +363,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
         inWhsQty.text = getDataFromDynamic(item["InWhsQty"]);
+        barCode.text = getDataFromDynamic(item['BarCode']);
+
         final binCubit = context.read<BinOfflineCubit>();
         final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
 
@@ -412,7 +416,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   void onChangeBin() async {
     if (itemCode.text.isEmpty) {
       MaterialDialog.warning(context,
-          title: 'Warning', body: "Item Code is Required.");
+          title: 'Warning',
+          body: "Pleases chose item before select bin location");
       return;
     }
 
@@ -1033,7 +1038,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                       onFieldSubmitted: (value) {
                         _handleScanSubmitted(value, _itemCode);
                       },
-                      onPressed: onSelectItem,
+                      onPressed: widget.isQuickCount ? onSelectItem : null,
                     ),
                   ),
                   SizedBox(

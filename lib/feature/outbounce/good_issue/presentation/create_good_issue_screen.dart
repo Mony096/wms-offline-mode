@@ -687,281 +687,273 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
       body: Padding(
         padding: const EdgeInsets.all(15),
         child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: size(context).height,
-              maxHeight: size(context).height,
-              minWidth: size(context).width,
-              maxWidth: size(context).width,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.all(5),
-                  child: Column(
-                    children: [
-                      Input(
-                        label: 'Goods Issue Type',
-                        placeholder: 'Type',
-                        controller: giTypeName,
-                        readOnly: true,
-                        onPressed: onChangeGit,
-                      ),
-                      Input(
-                        label: 'Warehouse',
-                        placeholder: 'Warehouse',
-                        controller: warehouse,
-                        readOnly: true,
-                        onPressed: onChangeWhs,
-                      ),
-                      // Divider(thickness: 1, color: Colors.grey.shade400),
-                    ],
-                  ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 14),
-                Divider(thickness: 0.5, color: Colors.grey.shade500),
-                const SizedBox(height: 5),
-
-                // ====== Bin Location ======
-                Row(
+                padding: const EdgeInsets.all(5),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: InputCol(
-                        label: 'Bin Location',
-                        placeholder: 'Chose Bin Location',
-                        controller: binCode,
-                        focusNode: _bin,
-                        onTap: () => {
-                          setState(() {
-                            isClickScanBin = false; // turn on scan mode
-                            // itemCode.clear();
-                          }),
-                          // 2. Clear current focus before switching
-                          FocusScope.of(context).unfocus()
-                        },
-                        keyboardType: TextInputType.none,
-                        onPressed: onChangeBin,
-                        onFieldSubmitted: (value) {
-                          _handleScanSubmitted(value, _bin);
-                        },
-                      ),
+                    Input(
+                      label: 'Goods Issue Type',
+                      placeholder: 'Type',
+                      controller: giTypeName,
+                      readOnly: true,
+                      onPressed: onChangeGit,
                     ),
-                    SizedBox(
-                      width: 15,
+                    Input(
+                      label: 'Warehouse',
+                      placeholder: 'Warehouse',
+                      controller: warehouse,
+                      readOnly: true,
+                      onPressed: onChangeWhs,
                     ),
-                    GestureDetector(
-                      onTap: () {
-                        // 1. Switch to scan mode
-                        setState(() {
-                          isClickScanBin = true; // turn on scan mode
-                          isClickScanItem = false;
-                          binCode.clear();
-                          binId.clear();
-                        });
-
-                        // 2. Clear current focus before switching
-                        FocusScope.of(context).unfocus();
-
-                        // 3. Focus scanner input
-                        Future.delayed(const Duration(milliseconds: 100), () {
-                          _requestFocus(_bin);
-                        });
-                      },
-                      child: Container(
-                        margin: EdgeInsets.only(top: 30),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF2F3F4),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isClickScanBin
-                                ? Colors.green
-                                : Colors
-                                    .transparent, // ✅ green border when active
-                            width: 2,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.document_scanner_outlined,
-                          color: Color(0xFF12169D),
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
+                    // Divider(thickness: 1, color: Colors.grey.shade400),
                   ],
                 ),
-                const SizedBox(height: 8),
+              ),
+              const SizedBox(height: 14),
+              Divider(thickness: 0.5, color: Colors.grey.shade500),
+              const SizedBox(height: 5),
 
-                // ====== Scan & Select Items ======
-                Row(
-                  children: [
-                    Expanded(
-                      child: InputCol(
-                        focusNode: _itemCode,
-                        label: 'Item Code',
-                        placeholder: 'Chose Item',
-                        controller: itemCode,
-                        onTap: () => {
-                          setState(() {
-                            isClickScanItem = false; // turn on scan mode
-                            // itemCode.clear();
-                          }),
-                          // 2. Clear current focus before switching
-                          FocusScope.of(context).unfocus()
-                        },
-                        keyboardType: TextInputType.none,
-                        onFieldSubmitted: (value) {
-                          _handleScanSubmitted(value, _itemCode);
-                        },
-                        onPressed: onSelectItem,
-                      ),
-                    ),
-                    SizedBox(
-                      width: 15,
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        // 1. Switch to scan mode
+              // ====== Bin Location ======
+              Row(
+                children: [
+                  Expanded(
+                    child: InputCol(
+                      label: 'Bin Location',
+                      placeholder: 'Chose Bin Location',
+                      controller: binCode,
+                      focusNode: _bin,
+                      onTap: () => {
                         setState(() {
-                          isClickScanItem = true; // turn on scan mode
                           isClickScanBin = false; // turn on scan mode
-                          itemCode.clear();
-                        });
-
+                          // itemCode.clear();
+                        }),
                         // 2. Clear current focus before switching
-                        FocusScope.of(context).unfocus();
-
-                        // 3. Focus scanner input
-                        Future.delayed(const Duration(milliseconds: 100), () {
-                          _requestFocus(_itemCode);
-                        });
+                        FocusScope.of(context).unfocus()
                       },
-                      child: Container(
-                        margin: EdgeInsets.only(top: 30),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF2F3F4),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isClickScanItem
-                                ? Colors.green
-                                : Colors
-                                    .transparent, // ✅ green border when active
-                            width: 2,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.document_scanner_outlined,
-                          color: Color(0xFF12169D),
-                          size: 20,
+                      keyboardType: TextInputType.none,
+                      onPressed: onChangeBin,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _bin);
+                      },
+                    ),
+                  ),
+                  SizedBox(
+                    width: 15,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // 1. Switch to scan mode
+                      setState(() {
+                        isClickScanBin = true; // turn on scan mode
+                        isClickScanItem = false;
+                        binCode.clear();
+                        binId.clear();
+                      });
+
+                      // 2. Clear current focus before switching
+                      FocusScope.of(context).unfocus();
+
+                      // 3. Focus scanner input
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _requestFocus(_bin);
+                      });
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(top: 30),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isClickScanBin
+                              ? Colors.green
+                              : Colors
+                                  .transparent, // ✅ green border when active
+                          width: 2,
                         ),
                       ),
+                      child: const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF12169D),
+                        size: 20,
+                      ),
                     ),
-                    const SizedBox(width: 12),
-                  ],
+                  ),
+                  const SizedBox(width: 12),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // ====== Scan & Select Items ======
+              Row(
+                children: [
+                  Expanded(
+                    child: InputCol(
+                      focusNode: _itemCode,
+                      label: 'Item Code',
+                      placeholder: 'Chose Item',
+                      controller: itemCode,
+                      onTap: () => {
+                        setState(() {
+                          isClickScanItem = false; // turn on scan mode
+                          // itemCode.clear();
+                        }),
+                        // 2. Clear current focus before switching
+                        FocusScope.of(context).unfocus()
+                      },
+                      keyboardType: TextInputType.none,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _itemCode);
+                      },
+                      onPressed: onSelectItem,
+                    ),
+                  ),
+                  SizedBox(
+                    width: 15,
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      // 1. Switch to scan mode
+                      setState(() {
+                        isClickScanItem = true; // turn on scan mode
+                        isClickScanBin = false; // turn on scan mode
+                        itemCode.clear();
+                      });
+
+                      // 2. Clear current focus before switching
+                      FocusScope.of(context).unfocus();
+
+                      // 3. Focus scanner input
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _requestFocus(_itemCode);
+                      });
+                    },
+                    child: Container(
+                      margin: EdgeInsets.only(top: 30),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF2F3F4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isClickScanItem
+                              ? Colors.green
+                              : Colors
+                                  .transparent, // ✅ green border when active
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF12169D),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+              ),
+
+              const SizedBox(height: 7),
+
+              // ====== Input Qty & UoM ======
+              Row(
+                children: [
+                  Expanded(
+                    child: InputCol(
+                      label: 'Input Qty',
+                      placeholder: 'Quantity',
+                      controller: quantity,
+                      focusNode: _quantity,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _quantity);
+                      },
+                      readOnly: isSerialOrBatch ? true : false, // simpler
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      onTap: isSerialOrBatch
+                          ? () {
+                              onNavigateSerialOrBatch(force: true);
+                            }
+                          : null,
+                      onEditingComplete: onCompleteQuantiyInput,
+                      onPressed: isSerialOrBatch
+                          ? () {
+                              onNavigateSerialOrBatch(force: true);
+                            }
+                          : null, // remove if icon not needed
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InputCol(
+                      label: 'Input UoM',
+                      placeholder: 'UoM',
+                      controller: uom,
+                      readOnly: true,
+                      onPressed: onChangeUoM,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+              Container(
+                margin: EdgeInsets.fromLTRB(0, 0, 0, 20),
+                child: Button(
+                  bgColor: PRIMARY_COLOR,
+                  onPressed: onAddItem,
+                  child: Text(
+                    isEdit == -1 ? "Add Item" : "Update Item",
+                    style: TextStyle(
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-
-                const SizedBox(height: 7),
-
-                // ====== Input Qty & UoM ======
-                Row(
+              ),
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300, width: 0.5),
+                ),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: InputCol(
-                        label: 'Input Qty',
-                        placeholder: 'Quantity',
-                        controller: quantity,
-                        focusNode: _quantity,
-                        onFieldSubmitted: (value) {
-                          _handleScanSubmitted(value, _quantity);
-                        },
-                        readOnly: isSerialOrBatch ? true : false, // simpler
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        onTap: isSerialOrBatch
-                            ? () {
-                                onNavigateSerialOrBatch(force: true);
-                              }
-                            : null,
-                        onEditingComplete: onCompleteQuantiyInput,
-                        onPressed: isSerialOrBatch
-                            ? () {
-                                onNavigateSerialOrBatch(force: true);
-                              }
-                            : null, // remove if icon not needed
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InputCol(
-                        label: 'Input UoM',
-                        placeholder: 'UoM',
-                        controller: uom,
-                        readOnly: true,
-                        onPressed: onChangeUoM,
-                      ),
-                    ),
+                    ContentHeader(),
+                    items.isEmpty
+                        ? Container(
+                            padding: EdgeInsets.all(20),
+                            child: Text(
+                              "No Item available",
+                              style:
+                                  TextStyle(fontSize: 15, color: Colors.grey),
+                            ),
+                          )
+                        : Container(),
+                    ...items.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final item = entry.value;
+                      return GestureDetector(
+                        onTap: () => onEdit(item, index),
+                        child: ItemRow(
+                          item: item,
+
+                          // Optional: pass index if you need inside ItemRow
+                        ),
+                      );
+                    }).toList(),
                   ],
                 ),
-
-                const SizedBox(height: 20),
-                Container(
-                  margin: EdgeInsets.fromLTRB(0, 0, 0, 20),
-                  child: Button(
-                    bgColor: PRIMARY_COLOR,
-                    onPressed: onAddItem,
-                    child: Text(
-                      isEdit == -1 ? "Add Item" : "Update Item",
-                      style: TextStyle(
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade300, width: 0.5),
-                  ),
-                  child: Column(
-                    children: [
-                      ContentHeader(),
-                      items.isEmpty
-                          ? Container(
-                              padding: EdgeInsets.all(20),
-                              child: Text(
-                                "No Item available",
-                                style:
-                                    TextStyle(fontSize: 15, color: Colors.grey),
-                              ),
-                            )
-                          : Container(),
-                      ...items.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final item = entry.value;
-                        return GestureDetector(
-                          onTap: () => onEdit(item, index),
-                          child: ItemRow(
-                            item: item,
-
-                            // Optional: pass index if you need inside ItemRow
-                          ),
-                        );
-                      }).toList(),
-                    ],
-                  ),
-                )
-              ],
-            ),
+              )
+            ],
           ),
         ),
       ),

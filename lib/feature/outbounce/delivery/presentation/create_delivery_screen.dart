@@ -275,6 +275,12 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   }
 
   void onChangeBin() async {
+    if (itemCode.text.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Warning',
+          body: "Pleases chose item before select bin location");
+      return;
+    }
     goTo(context, BinPage(warehouse: warehouse.text, itemCode: itemCode.text))
         .then((value) {
       if (value == null) return;
@@ -809,77 +815,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                     const SizedBox(height: 5),
 
                     // ====== Bin Location ======
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InputCol(
-                            label: 'Bin Location',
-                            placeholder: 'Chose Bin Location',
-                            controller: binCode,
-                            focusNode: _bin,
-                            onTap: () => {
-                              setState(() {
-                                isClickScanBin = false; // turn on scan mode
-                                // itemCode.clear();
-                              }),
-                              // 2. Clear current focus before switching
-                              FocusScope.of(context).unfocus()
-                            },
-                            keyboardType: TextInputType.none,
-                            onPressed: onChangeBin,
-                            onFieldSubmitted: (value) {
-                              _handleScanSubmitted(value, _bin);
-                            },
-                          ),
-                        ),
-                        SizedBox(
-                          width: 15,
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            // 1. Switch to scan mode
-                            setState(() {
-                              isClickScanBin = true; // turn on scan mode
-                              isClickScanItem = false;
-                              binCode.clear();
-                              binId.clear();
-                            });
-
-                            // 2. Clear current focus before switching
-                            FocusScope.of(context).unfocus();
-
-                            // 3. Focus scanner input
-                            Future.delayed(const Duration(milliseconds: 100),
-                                () {
-                              _requestFocus(_bin);
-                            });
-                          },
-                          child: Container(
-                            margin: EdgeInsets.only(top: 30),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF2F3F4),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isClickScanBin
-                                    ? Colors.green
-                                    : Colors
-                                        .transparent, // ✅ green border when active
-                                width: 2,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.document_scanner_outlined,
-                              color: Color(0xFF12169D),
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
+                 
 
                     // ====== Scan & Select Items ======
                     Row(
@@ -951,7 +887,77 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                         const SizedBox(width: 12),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InputCol(
+                            label: 'Bin Location',
+                            placeholder: 'Chose Bin Location',
+                            controller: binCode,
+                            focusNode: _bin,
+                            onTap: () => {
+                              setState(() {
+                                isClickScanBin = false; // turn on scan mode
+                                // itemCode.clear();
+                              }),
+                              // 2. Clear current focus before switching
+                              FocusScope.of(context).unfocus()
+                            },
+                            keyboardType: TextInputType.none,
+                            onPressed: onChangeBin,
+                            onFieldSubmitted: (value) {
+                              _handleScanSubmitted(value, _bin);
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 15,
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            // 1. Switch to scan mode
+                            setState(() {
+                              isClickScanBin = true; // turn on scan mode
+                              isClickScanItem = false;
+                              binCode.clear();
+                              binId.clear();
+                            });
 
+                            // 2. Clear current focus before switching
+                            FocusScope.of(context).unfocus();
+
+                            // 3. Focus scanner input
+                            Future.delayed(const Duration(milliseconds: 100),
+                                () {
+                              _requestFocus(_bin);
+                            });
+                          },
+                          child: Container(
+                            margin: EdgeInsets.only(top: 30),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF2F3F4),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isClickScanBin
+                                    ? Colors.green
+                                    : Colors
+                                        .transparent, // ✅ green border when active
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.document_scanner_outlined,
+                              color: Color(0xFF12169D),
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                    ),
                     const SizedBox(height: 7),
 
                     // ====== Input Qty & UoM ======
@@ -1060,11 +1066,11 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                 onPressed: onPostToSAP,
                 child: Text(
                   'Post',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.white, fontSize: 12.5),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 5),
             isReview
                 ? Container()
                 : Expanded(
@@ -1077,13 +1083,11 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                       bgColor: Colors.green.shade700,
                       child: Text(
                         "Review",
-                        style: TextStyle(
-                          color: Colors.white,
-                        ),
+                        style: TextStyle(color: Colors.white, fontSize: 12.5),
                       ),
                     ),
                   ),
-            isReview ? Container() : const SizedBox(width: 12),
+            isReview ? Container() : const SizedBox(width: 5),
             Expanded(
               child: Button(
                 variant: ButtonVariant.outline,
@@ -1107,9 +1111,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                 },
                 child: Text(
                   'Cancel',
-                  style: TextStyle(
-                    color: PRIMARY_COLOR,
-                  ),
+                  style: TextStyle(color: PRIMARY_COLOR, fontSize: 12.5),
                 ),
               ),
             )
@@ -1136,7 +1138,7 @@ class ContentHeader extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       child: Row(
-        children: [
+        children: const [
           Expanded(
             flex: 3,
             child: Text(
