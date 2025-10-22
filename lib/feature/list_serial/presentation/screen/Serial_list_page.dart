@@ -1,401 +1,3 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter/services.dart';
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// // import 'package:iscan_data_plugin/iscan_data_plugin.dart';
-// import 'package:wms_mobile/component/button/button.dart';
-// import 'package:wms_mobile/feature/list_serial/presentation/cubit/serialNumber_list_cubit.dart';
-// import 'package:wms_mobile/helper/helper.dart';
-// import 'package:wms_mobile/utilies/storage/locale_storage.dart';
-// import '../../domain/entity/list_serial_entity.dart';
-// import '/constant/style.dart';
-
-// class SerialListPage extends StatefulWidget {
-//   const SerialListPage(
-//       {super.key,
-//       required this.warehouse,
-//       required this.itemCode,
-//       this.binCode});
-
-//   final String warehouse;
-//   final String itemCode;
-//   final dynamic binCode;
-
-//   @override
-//   State<SerialListPage> createState() => _SerialListPageState();
-// }
-
-// class _SerialListPageState extends State<SerialListPage> {
-//   final ScrollController _scrollController = ScrollController();
-
-//   String query = "?\$top=10&\$skip=0";
-//   int check = 1;
-//   List<dynamic> data = [];
-//   TextEditingController filter = TextEditingController();
-
-//   late SerialListCubit _bloc;
-//   Set<int> selectedIndices = <int>{};
-//   bool isFilter = false;
-
-//   bool loading = false;
-//   @override
-//   void initState() {
-//     super.initState();
-//     // Initialize controllers
-//     try {
-//     } catch (e) {
-//       print("Error setting method call handler: $e");
-//     }
-//     init(context);
-//   }
-
-//   @override
-//   void dispose() {
-//     // Dispose controllers
-//     super.dispose();
-//   }
-
-//   void init(BuildContext context) async {
-//     print(widget.binCode);
-//     print(widget.itemCode);
-//     try {
-//       final warehouse = await LocalStorageManger.getString('warehouse');
-//       print(warehouse);
-
-//       _bloc = context.read<SerialListCubit>();
-//       _bloc
-//           .get(
-//               "$query&\$filter=ItemCode eq '${widget.itemCode}' ${widget.binCode != "" ? "and AbsEntry eq ${widget.binCode}" : ""} and WhsCode eq '$warehouse'")
-//           .then((value) {
-//         print(value);
-//         if (mounted) {
-//           setState(() {
-//             data = value;
-//             data.sort((a, b) => (a["BinCode"]).compareTo(b["BinCode"]));
-//           });
-//         }
-//       });
-
-//       _scrollController.addListener(() {
-//         if (_scrollController.position.pixels ==
-//             _scrollController.position.maxScrollExtent) {
-//           final state = BlocProvider.of<SerialListCubit>(context).state;
-//           if (state is BinData && data.isNotEmpty) {
-//             if (isFilter) {
-//               _bloc
-//                   .next(
-//                       "?\$top=10&\$skip=${data.length}&\$filter=ItemCode eq '${widget.itemCode}' ${widget.binCode != "" ? "and BinCode eq '${widget.binCode}'" : ""} and contains(Batch_Serial,'${filter.text}') and WhsCode eq '$warehouse'")
-//                   .then((value) {
-//                 if (mounted) {
-//                   setState(() {
-//                     data = [...data, ...value];
-//                     // Sort combined list by Bin
-//                     data.sort((a, b) => (a["BinCode"]).compareTo(b["BinCode"]));
-//                   });
-//                 }
-//               });
-//             } else {
-//               _bloc
-//                   .next(
-//                       "?\$top=10&\$skip=${data.length}&\$filter=ItemCode eq '${widget.itemCode}' ${widget.binCode != "" ? "and BinCode eq '${widget.binCode}'" : ""} and WhsCode eq '$warehouse'")
-//                   .then((value) {
-//                 if (mounted) {
-//                   setState(() {
-//                     data = [...data, ...value];
-//                     data.sort((a, b) => (a["BinCode"]).compareTo(b["BinCode"]));
-//                   });
-//                 }
-//               });
-//             }
-//           }
-//         }
-//       });
-//     } catch (err) {
-//       print(err);
-//     }
-//   }
-
-//   void onFilter() async {
-//     final warehouse = await LocalStorageManger.getString('warehouse');
-
-//     setState(() {
-//       data = [];
-//       if (filter.text != "") {
-//         isFilter = true;
-//       }
-//     });
-//     _bloc
-//         .get(
-//       "$query&\$filter=ItemCode eq '${widget.itemCode}' and contains(Batch_Serial,'${filter.text}') ${widget.binCode != "" ? "and BinCode eq '${widget.binCode}'" : ""} and WhsCode eq '$warehouse'",
-//     )
-//         .then((value) {
-//       if (!mounted) return;
-
-//       setState(() {
-//         data = value as dynamic;
-//         data.sort((a, b) => (a["BinCode"]).compareTo(b["BinCode"]));
-//       });
-//     });
-//   }
-
-//   void _onSelected(bool? selected, int index) {
-//     setState(() {
-//       if (selected == true) {
-//         selectedIndices.add(index);
-//       } else {
-//         selectedIndices.remove(index);
-//       }
-//     });
-//   }
-
-//   void _onDone() {
-//     List<dynamic> selectedData =
-//         selectedIndices.map((index) => data[index]).toList();
-//     Navigator.of(context).pop(selectedData); // Pass selected data back
-//   }
-
-//   void _onChangeQty(String value, int index) {
-//     setState(() {
-//       data[index]["PickQty"] = value;
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     // data.sort((a, b) => a["BinCode"].compareTo(b["BinCode"]));
-//     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: PRIMARY_COLOR,
-//         iconTheme: IconThemeData(color: Colors.white),
-//         title: const Text(
-//           'Serial Lists',
-//           style: TextStyle(
-//               fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
-//         ),
-//         actions: const [
-//           // TextButton(
-//           //   onPressed: _onDone,
-//           //   child: const Text(
-//           //     'Done',
-//           //     style: TextStyle(color: Colors.white),
-//           //   ),
-//           // ),
-//         ],
-//       ),
-//       body: Container(
-//         width: double.infinity,
-//         height: double.infinity,
-//         color: Color.fromARGB(255, 243, 243, 243),
-//         child: Column(
-//           children: [
-//             Container(
-//               padding:
-//                   const EdgeInsets.only(left: 14, right: 14, bottom: 6, top: 4),
-//               width: double.infinity,
-//               decoration: BoxDecoration(color: Colors.white),
-//               child: Padding(
-//                 padding: const EdgeInsets.only(left: 15),
-//                 child: TextFormField(
-//                   controller: filter,
-//                   decoration: InputDecoration(
-//                     enabledBorder: UnderlineInputBorder(
-//                         borderSide: BorderSide(color: Colors.transparent)),
-//                     focusedBorder: UnderlineInputBorder(
-//                         borderSide: BorderSide(color: Colors.transparent)),
-//                     contentPadding: const EdgeInsets.only(top: 15),
-//                     hintText: 'Serial Number...',
-//                     suffixIcon: IconButton(
-//                       icon: Icon(
-//                         Icons.search,
-//                         color: PRIMARY_COLOR,
-//                       ),
-//                       onPressed: onFilter,
-//                     ),
-//                   ),
-//                 ),
-//               ),
-//             ),
-//             const Divider(thickness: 0.001, height: 25),
-//             Container(
-//               padding: const EdgeInsets.fromLTRB(30, 15, 15, 15),
-//               decoration: BoxDecoration(
-//                 color: const Color.fromARGB(255, 255, 255, 255),
-//                 border: Border(
-//                   bottom: BorderSide(width: 0.1),
-//                   top: BorderSide(width: 0.1),
-//                 ),
-//               ),
-//               child: Row(
-//                 children: const [
-//                   Expanded(
-//                     flex: 5,
-//                     child: Text(
-//                       'Serial Number.',
-//                       style: TextStyle(
-//                         fontWeight: FontWeight.w600,
-//                       ),
-//                     ),
-//                   ),
-//                   Expanded(
-//                     flex: 1,
-//                     child: Padding(
-//                       padding: EdgeInsets.only(left: 5),
-//                       child: Text('Qty'),
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ),
-//             const Divider(thickness: 0.001, height: 7),
-//             Expanded(
-//               child: BlocConsumer<SerialListCubit, SerialListState>(
-//                 listener: (context, state) {},
-//                 builder: (context, state) {
-//                   if (state is RequestingBin) {
-//                     return Center(child: CircularProgressIndicator());
-//                   }
-
-//                   return data.length == 0
-//                       ? Column(
-//                           children: [
-//                             SizedBox(
-//                               height: 100,
-//                             ),
-//                             Container(
-//                               child: Text("No Serial"),
-//                             ),
-//                           ],
-//                         )
-//                       : ListView(
-//                           controller: _scrollController,
-//                           children: [
-//                             ...data.asMap().entries.map(
-//                               (entry) {
-//                                 int index = entry.key;
-//                                 var Serial = entry.value;
-//                                 return GestureDetector(
-//                                   child: Container(
-//                                     padding: const EdgeInsets.fromLTRB(
-//                                         10, 15, 10, 15),
-//                                     decoration: BoxDecoration(
-//                                       color: Colors.white,
-//                                     ),
-//                                     margin: const EdgeInsets.only(bottom: 8),
-//                                     child: Row(
-//                                       mainAxisAlignment:
-//                                           MainAxisAlignment.spaceBetween,
-//                                       children: [
-//                                         Expanded(
-//                                           flex: 6,
-//                                           child: Row(
-//                                             children: [
-//                                               Padding(
-//                                                 padding: const EdgeInsets.only(
-//                                                     right: 7),
-//                                                 child: Checkbox(
-//                                                   value: selectedIndices
-//                                                       .contains(index),
-//                                                   onChanged: (bool? value) {
-//                                                     _onSelected(value, index);
-//                                                   },
-//                                                   checkColor: Colors
-//                                                       .white, // Color of the checkmark
-//                                                   activeColor:
-//                                                       Colors.green.shade900,
-//                                                 ),
-//                                               ),
-//                                               Column(
-//                                                 crossAxisAlignment:
-//                                                     CrossAxisAlignment.start,
-//                                                 children: [
-//                                                   Text(
-//                                                     getDataFromDynamic(
-//                                                         Serial["Batch_Serial"]),
-//                                                     style: TextStyle(
-//                                                       fontWeight:
-//                                                           FontWeight.w800,
-//                                                     ),
-//                                                   ),
-//                                                   SizedBox(
-//                                                     height: 10,
-//                                                   ),
-//                                                   Text(
-//                                                     getDataFromDynamicBin(
-//                                                         Serial["BinCode"]),
-//                                                     style:
-//                                                         TextStyle(fontSize: 13),
-//                                                   ),
-//                                                 ],
-//                                               ),
-//                                             ],
-//                                           ),
-//                                         ),
-//                                         Expanded(
-//                                           flex: 2,
-//                                           child: Padding(
-//                                             padding:
-//                                                 const EdgeInsets.only(left: 40),
-//                                             child: Text(
-//                                               getDataFromDynamic(
-//                                                   Serial["Quantity"]),
-//                                               style: TextStyle(fontSize: 13),
-//                                             ),
-//                                           ),
-//                                         ),
-//                                       ],
-//                                     ),
-//                                   ),
-//                                 );
-//                               },
-//                             ).toList(),
-//                             if (state is RequestingPaginationBin)
-//                               Container(
-//                                 margin:
-//                                     const EdgeInsets.symmetric(vertical: 20),
-//                                 child: Center(
-//                                   child: SizedBox(
-//                                     width: 30,
-//                                     height: 30,
-//                                     child: CircularProgressIndicator(
-//                                       strokeWidth: 3,
-//                                     ),
-//                                   ),
-//                                 ),
-//                               )
-//                           ],
-//                         );
-//                 },
-//               ),
-//             )
-//           ],
-//         ),
-//       ),
-//       bottomNavigationBar: Container(
-//         height: 70,
-//         padding: const EdgeInsets.all(12),
-//         color: Color.fromARGB(255, 243, 243, 243),
-//         child: Row(
-//           children: [
-//             const SizedBox(width: 12),
-//             Expanded(
-//               child: Button(
-//                 bgColor: Colors.green.shade900,
-//                 variant: ButtonVariant.primary,
-//                 onPressed: _onDone,
-//                 child: Text(
-//                   'Done',
-//                   style: TextStyle(color: Colors.white),
-//                 ),
-//               ),
-//             ),
-//             Expanded(child: Container()),
-//             Expanded(child: Container()),
-//             const SizedBox(width: 12),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/component/button/button.dart';
@@ -423,11 +25,17 @@ class SerialListPage extends StatefulWidget {
 class _SerialListPageState extends State<SerialListPage> {
   final ScrollController _scrollController = ScrollController();
   TextEditingController filter = TextEditingController();
+  TextEditingController filterInput = TextEditingController();
 
   List<dynamic> data = [];
   List<dynamic> filteredData = [];
   Set<int> selectedIndices = <int>{};
   bool isFilter = false;
+  final FocusNode _focusNode = FocusNode();
+  final FocusNode _focusNodeInput = FocusNode();
+
+  bool isClickScan = false;
+  bool isBorder = false;
 
   @override
   void initState() {
@@ -463,19 +71,48 @@ class _SerialListPageState extends State<SerialListPage> {
     });
   }
 
-  void onFilter() {
+  void onFilter() async {
+    final warehouse = await LocalStorageManger.getString('warehouse');
+    final offlineCubit = context.read<BatchListOfflineCubit>();
+    final offlineData = offlineCubit.state;
+
+    final search1 = filter.text.trim().toLowerCase();
+    final search2 = filterInput.text.trim().toLowerCase();
+
+    // ✅ Safely parse bin code
+    final parsedBinCode = int.tryParse(widget.binCode ?? '');
+
+    // ✅ If all filters are empty → return everything (refresh behavior)
+    final noFilters = search1.isEmpty && search2.isEmpty;
+
+    if (noFilters) {
+      _initOfflineData();
+      return;
+    }
+
+    // ✅ Apply filters
+    final filtered = offlineData.where((e) {
+      final matchesItem = e['ItemCode'] == widget.itemCode;
+      final matchesWarehouse = e['WhsCode'] == warehouse;
+
+      // ✅ Safe BinCode check (handles null, string, or int)
+      final binCodeValue = e['AbsEntry'];
+      final matchesBin = widget.binCode.isNotEmpty
+          ? (binCodeValue != null &&
+              (binCodeValue.toString() == widget.binCode ||
+                  binCodeValue == parsedBinCode))
+          : true;
+
+      // ✅ OR condition for batch filters
+      final matchesBatch = (search1.isNotEmpty &&
+              e['Batch_Serial'].toString().toLowerCase().contains(search1)) ||
+          (search2.isNotEmpty &&
+              e['Batch_Serial'].toString().toLowerCase().contains(search2));
+
+      return matchesItem && matchesWarehouse && matchesBin && matchesBatch;
+    }).toList();
     setState(() {
-      isFilter = filter.text.isNotEmpty;
-      if (isFilter) {
-        filteredData = data
-            .where((e) => e["Batch_Serial"]
-                .toString()
-                .toLowerCase()
-                .contains(filter.text.toLowerCase()))
-            .toList();
-      } else {
-        filteredData = [];
-      }
+      data = filtered;
     });
   }
 
@@ -494,6 +131,21 @@ class _SerialListPageState extends State<SerialListPage> {
     List<dynamic> selectedData =
         selectedIndices.map((index) => sourceList[index]).toList();
     Navigator.of(context).pop(selectedData);
+  }
+
+  void _handleScanSubmitted(String barcode, FocusNode submittedNode) {
+    debugPrint("📦 Scanned Supplier Code: $barcode");
+    setState(() {
+      filter.text = barcode;
+      isBorder = false;
+    });
+    onFilter();
+  }
+
+  void _requestFocus(FocusNode node) {
+    if (!node.hasFocus) {
+      Future.microtask(() => node.requestFocus());
+    }
   }
 
   @override
@@ -517,26 +169,125 @@ class _SerialListPageState extends State<SerialListPage> {
         child: Column(
           children: [
             // 🔍 Search Bar
+            SizedBox(
+              height: 12,
+            ),
+
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              width: double.infinity,
-              color: Colors.white,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 15),
-                child: TextFormField(
-                  controller: filter,
-                  decoration: InputDecoration(
-                    enabledBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.transparent)),
-                    focusedBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.transparent)),
-                    hintText: 'Serial Number...',
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.search, color: PRIMARY_COLOR),
-                      onPressed: onFilter,
+              padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+              child: Row(
+                children: [
+                  // 👇 Scan Button
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        filter.clear();
+                        filterInput.clear();
+                        isClickScan = true;
+                        isBorder = true;
+                      });
+                      FocusScope.of(context).unfocus();
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _requestFocus(_focusNode);
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 255, 255, 255),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isClickScan && isBorder
+                              ? Colors.green
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF12169D),
+                        size: 20,
+                      ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+
+                  // 👇 Input (Scan or Manual)
+                  Expanded(
+                    child: TextFormField(
+                      controller: isClickScan ? filter : filterInput,
+                      focusNode: isClickScan ? _focusNode : _focusNodeInput,
+                      keyboardType:
+                          isClickScan ? TextInputType.none : TextInputType.text,
+                      cursorColor: Colors.green,
+                      onTap: () {
+                        if (isClickScan) {
+                          setState(() {
+                            filter.clear();
+                            filterInput.clear();
+                            isClickScan = false;
+                            isBorder = false;
+                          });
+                          FocusScope.of(context).unfocus();
+                          Future.delayed(const Duration(milliseconds: 100),
+                              () => _requestFocus(_focusNodeInput));
+                          onFilter();
+                        }
+                      },
+                      onFieldSubmitted: (barcode) =>
+                          _handleScanSubmitted(barcode, _focusNode),
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        hintText: 'Serial Number...',
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              const BorderSide(color: Colors.transparent),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: const Color.fromARGB(255, 255, 255, 255),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // 👇 Search button
+                  GestureDetector(
+                    onTap: onFilter,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 13),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 255, 255, 255),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.search,
+                              color: Color(0xFF12169D), size: 20),
+                          SizedBox(width: 6),
+                          Text(
+                            "Search",
+                            style: TextStyle(
+                              color: Color(0xFF12169D),
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -549,17 +300,11 @@ class _SerialListPageState extends State<SerialListPage> {
               child: const Row(
                 children: [
                   Expanded(
-                    flex: 5,
+                    flex: 6,
                     child: Text(
                       'Serial Number',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 1,
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 5),
-                      child: Text('Qty'),
+                      style:
+                          TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
                     ),
                   ),
                 ],
@@ -571,7 +316,11 @@ class _SerialListPageState extends State<SerialListPage> {
             // List
             Expanded(
               child: displayList.isEmpty
-                  ? const Center(child: Text("No Serial Found"))
+                  ? const Center(
+                      child: Text(
+                      "No Serial Found",
+                      style: TextStyle(fontSize: 14),
+                    ))
                   : ListView.builder(
                       controller: _scrollController,
                       itemCount: displayList.length,
@@ -582,11 +331,14 @@ class _SerialListPageState extends State<SerialListPage> {
                           margin: const EdgeInsets.only(bottom: 8),
                           color: Colors.white,
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
+                              // ✅ Left section (Checkbox + Info)
                               Expanded(
                                 flex: 6,
                                 child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Padding(
                                       padding:
@@ -596,41 +348,62 @@ class _SerialListPageState extends State<SerialListPage> {
                                         onChanged: (val) =>
                                             _onSelected(val, index),
                                         checkColor: Colors.white,
-                                        activeColor: Colors.green.shade900,
+                                        activeColor: PRIMARY_COLOR,
                                       ),
                                     ),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          getDataFromDynamic(
-                                              serial["Batch_Serial"]),
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w800),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          getDataFromDynamicBin(
-                                              serial["BinCode"]),
-                                          style:
-                                              const TextStyle(fontSize: 13.0),
-                                        ),
-                                      ],
+                                    // ✅ Info Section
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Batch Serial
+                                          Text(
+                                            getDataFromDynamic(
+                                                serial["Batch_Serial"]),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 12, // dynamic
+                                            ),
+                                            softWrap: true,
+                                            overflow: TextOverflow.visible,
+                                          ),
+                                          const SizedBox(height: 8),
+
+                                          // Bin Code
+                                          Text(
+                                            getDataFromDynamicBin(
+                                                serial["BinCode"]),
+                                            style: TextStyle(
+                                              fontSize: 12, // dynamic
+                                              color: Colors.black87,
+                                            ),
+                                            softWrap: true,
+                                            overflow: TextOverflow.visible,
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
-                              Expanded(
-                                flex: 2,
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 40),
-                                  child: Text(
-                                    getDataFromDynamic(serial["Quantity"]),
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                ),
-                              ),
+
+                              // ✅ Right Section (Quantity)
+                              // Expanded(
+                              //   flex: 2,
+                              //   child: Align(
+                              //     alignment: Alignment.centerRight,
+                              //     child: Text(
+                              //       getDataFromDynamic(serial["Quantity"]),
+                              //       style: TextStyle(
+                              //         fontSize: 12, // dynamic
+                              //         fontWeight: FontWeight.w500,
+                              //       ),
+                              //       textAlign: TextAlign.right,
+                              //       softWrap: true,
+                              //     ),
+                              //   ),
+                              // ),
                             ],
                           ),
                         );
@@ -643,26 +416,24 @@ class _SerialListPageState extends State<SerialListPage> {
 
       // ✅ Done Button
       bottomNavigationBar: Container(
-        height: MediaQuery.of(context).size.height * 0.09,
+        height: 70,
         padding: const EdgeInsets.all(12),
         color: const Color.fromARGB(255, 243, 243, 243),
         child: Row(
           children: [
-            const SizedBox(width: 12),
+            // const SizedBox(width: 12),
             Expanded(
               child: Button(
-                bgColor: Colors.green.shade900,
+                bgColor: PRIMARY_COLOR,
                 variant: ButtonVariant.primary,
                 onPressed: _onDone,
-                child: const Text(
-                  'Done',
-                  style: TextStyle(color: Colors.white),
-                ),
+                child:
+                    const Text('Done', style: TextStyle(color: Colors.white)),
               ),
             ),
-            Expanded(child: Container()),
-            Expanded(child: Container()),
-            const SizedBox(width: 12),
+            // const Expanded(child: SizedBox()),
+            // const Expanded(child: SizedBox()),
+            // const SizedBox(width: 12),
           ],
         ),
       ),

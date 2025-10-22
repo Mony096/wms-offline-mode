@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/utilies/dialog/dialog.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 Future<dynamic> goTo<T extends Widget>(BuildContext context, T route,
     {bool removeAllPreviousRoutes = false}) async {
@@ -244,4 +247,46 @@ Map<String, dynamic>? findFullItemInformation(
     debugPrint('⚠️ [findFullItemInformation Error] $e');
     return null;
   }
+}
+
+Future<bool> hasInternet() async {
+  // 1. Check basic network connection state (Wi-Fi, Mobile, Ethernet, etc.)
+  final connectivityResult = await (Connectivity().checkConnectivity());
+
+  // Check if *any* type of connection is present.
+  // Note: connectivity_plus returns a List<ConnectivityResult> since version 5.0.0
+  // but many tutorials still use the old style.
+  // Let's adapt for the modern version which returns a List:
+  final isConnected = connectivityResult.contains(ConnectivityResult.mobile) ||
+      connectivityResult.contains(ConnectivityResult.wifi) ||
+      connectivityResult.contains(ConnectivityResult.ethernet) ||
+      connectivityResult.contains(ConnectivityResult.vpn);
+
+  if (!isConnected) {
+    // No active network interface is found
+    return false;
+  }
+
+  // 2. Perform a deeper check: Ping an external reliable server (like Google)
+  //    to confirm actual internet access (not just a connection to a local router).
+  try {
+    // Attempt to lookup a known domain.
+    // Setting a short timeout is often wise in real-world apps (e.g., .timeout(Duration(seconds: 5))).
+    final result = await InternetAddress.lookup('google.com')
+        .timeout(const Duration(seconds: 5));
+
+    if (result.isNotEmpty && result.first.rawAddress.isNotEmpty) {
+      // Lookup was successful and returned at least one IP address
+      return true;
+    }
+  } on SocketException catch (_) {
+    // The lookup failed, indicating no actual internet access.
+    return false;
+  } on TimeoutException catch (_) {
+    // The lookup timed out.
+    return false;
+  }
+
+  // Failsafe return, though the logic above should cover all cases.
+  return false;
 }

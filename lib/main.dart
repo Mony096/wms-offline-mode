@@ -21,6 +21,7 @@ import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/good_receipt_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_recipt_po_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/purchase_good_receipt_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
@@ -92,6 +93,7 @@ void main() async {
   await Hive.openBox("sale_order");
   await Hive.openBox("purchase_return_request");
   await Hive.openBox("goods_receipt_po");
+  await Hive.openBox("failed_goods_receipt_po");
   await Hive.openBox("quick_goods_receipt");
   await Hive.openBox("return_receipt");
   await Hive.openBox("goods_receipt");
@@ -191,10 +193,11 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => QuickCountOfflineCubit()),
         BlocProvider(create: (_) => ItemFindStockOfflineCubit()),
         BlocProvider(create: (_) => CycleCountOfflineCubit()),
-        BlocProvider(create: (_) => ItemCycleCountOfflineCubit()),  
+        BlocProvider(create: (_) => ItemCycleCountOfflineCubit()),
         BlocProvider(create: (_) => PhysicalCountOfflineCubit()),
         BlocProvider(create: (_) => COSOfflineCubit()),
-        BlocProvider(create: (_) => BinCountOfflineCubit())
+        BlocProvider(create: (_) => BinCountOfflineCubit()),
+        BlocProvider(create: (_) => GoodReciptPoFailedOfflineCubit())
       ],
       child: const MainScreen(),
     );

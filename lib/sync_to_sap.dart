@@ -20,6 +20,7 @@ import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_recipt_po_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/review_quick_offline_save.dart';
@@ -88,7 +89,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             getLog: (context) =>
                 context.read<GoodReceiptPoOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<GoodReceiptPoOfflineCubit>().post();
+              await context.read<GoodReceiptPoOfflineCubit>().post(
+                    context.read<GoodReciptPoFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
               goTo(context, ReviewOfflineSave());
@@ -293,6 +296,15 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
 
   Future<void> _syncAll(BuildContext context) async {
     // 1️⃣ Show loading dialog
+    final connected = await hasInternet();
+    if (!connected) {
+      MaterialDialog.warning(context,
+          title: "Error Connection",
+          body:
+              "No internet connection. Please connect to Wi-Fi or mobile data.");
+
+      return;
+    }
     MaterialDialog.loading(context);
 
     // 2️⃣ Load stored credentials
@@ -452,11 +464,16 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
       appBar: AppBar(
         backgroundColor: PRIMARY_COLOR,
         centerTitle: true,
-        title: const Text("Sync to SAP",
-            style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 17)),
+        title: GestureDetector(
+          onTap: () {
+            context.read<GoodReciptPoFailedOfflineCubit>().printAllData();
+          },
+          child: const Text("Sync to SAP",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17)),
+        ),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -889,26 +906,22 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                                               padding: const EdgeInsets.only(
                                                   bottom: 9, right: 5),
                                               child: ElevatedButton.icon(
-                                                onPressed:
-                                                    item.onGotoReview != null
-                                                        ? () {
-                                                            Navigator.pop(
-                                                                context); // close dialog
-                                                            item.onGotoReview!(
-                                                                context);
-                                                          }
-                                                        : null,
-                                                icon: const Icon(Icons.book,
+                                                onPressed: () {
+                                                  Navigator.pop(
+                                                      context); // close dialog
+                                                },
+                                                icon: const Icon(Icons.warning,
                                                     color: Colors.white,
                                                     size: 17),
                                                 label: const Text(
-                                                  "Review",
+                                                  "Failed",
                                                   style: TextStyle(
                                                       color: Colors.white,
                                                       fontSize: 12),
                                                 ),
                                                 style: ElevatedButton.styleFrom(
-                                                  backgroundColor: Colors.green,
+                                                  backgroundColor:
+                                                      Colors.redAccent,
                                                   padding: const EdgeInsets
                                                       .symmetric(
                                                       horizontal: 12,
@@ -931,8 +944,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                             },
                             child: const Icon(
                               Icons.more_horiz,
-                              size: 24,
-                              color: Color.fromARGB(255, 134, 131, 131),
+                              size: 30,
+                              color: Color.fromARGB(255, 177, 174, 174),
                             ),
                           ),
                         )
@@ -972,65 +985,101 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
 
           // --- Action Buttons ---
 
-          Align(
-            alignment: Alignment.topRight,
-            child: SizedBox(
-              width: 90,
-              child: ElevatedButton.icon(
-                onPressed: isReady
-                    ? () async {
-                        // 🌀 Show loading dialog
-                        MaterialDialog.loading(context);
-                        try {
-                          await item.onSync(context);
-                          if (context.mounted)
-                            Navigator.pop(context); // close loading
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                "Sync completed!",
-                                style: TextStyle(color: Colors.white),
-                              ),
-                              backgroundColor: PRIMARY_COLOR,
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        } catch (e) {
-                          if (context.mounted) Navigator.pop(context);
-
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                "Sync failed: $e",
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              backgroundColor: Colors.redAccent,
-                              duration: const Duration(seconds: 3),
-                            ),
-                          );
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              SizedBox(
+                width: 90,
+                child: ElevatedButton.icon(
+                  onPressed: item.onGotoReview != null && isReady
+                      ? () {
+                          item.onGotoReview!(context);
                         }
-
-                        if (context.mounted) setState(() {});
-                      }
-                    : null,
-                icon: const Icon(Icons.cloud_upload,
-                    color: Colors.white, size: 18),
-                label: const Text(
-                  "Sync",
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isReady ? PRIMARY_COLOR : Colors.grey.shade400,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                      : null,
+                  icon: const Icon(Icons.book, color: Colors.white, size: 17),
+                  label: const Text(
+                    "Saved",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
               ),
-            ),
+              SizedBox(
+                width: 12,
+              ),
+              SizedBox(
+                width: 90,
+                child: ElevatedButton.icon(
+                  onPressed: isReady
+                      ? () async {
+                          final connected = await hasInternet();
+                          if (!connected) {
+                            MaterialDialog.warning(context,
+                                title: "Error Connection",
+                                body:
+                                    "No internet connection. Please connect to Wi-Fi or mobile data.");
+                            return;
+                          }
+                          // 🌀 Show loading dialog
+                          MaterialDialog.loading(context);
+                          try {
+                            await item.onSync(context);
+                            if (context.mounted)
+                              Navigator.pop(context); // close loading
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  "Sync completed!",
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                                backgroundColor: PRIMARY_COLOR,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          } catch (e) {
+                            if (context.mounted) Navigator.pop(context);
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Sync failed: $e",
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                backgroundColor: Colors.redAccent,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
+
+                          if (context.mounted) setState(() {});
+                        }
+                      : null,
+                  icon: const Icon(Icons.cloud_upload,
+                      color: Colors.white, size: 17),
+                  label: const Text(
+                    "Sync",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        isReady ? PRIMARY_COLOR : Colors.grey.shade400,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

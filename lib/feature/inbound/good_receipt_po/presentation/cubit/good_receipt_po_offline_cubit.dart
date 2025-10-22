@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_recipt_po_failed_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
+import 'package:uuid/uuid.dart';
 
 class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
   GoodReceiptPoOfflineCubit() : super([]) {
@@ -12,6 +15,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
   }
 
   final Box box = Hive.box('goods_receipt_po');
+
   List<dynamic> failedRecords = []; // 🔴 store failed syncs separately
   List<dynamic> successRecords = []; //  success syncs separately
   String loginFail = "";
@@ -52,7 +56,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
     print("🟢 Hive Data: $items");
   }
 
-  Future<void> post() async {
+  Future<void> post(GoodReciptPoFailedOfflineCubit failCubit) async {
     final items = getJsonData();
     if (items.isEmpty) {
       print("⚠️ No offline records to sync.");
@@ -114,6 +118,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
 
     loginFailTime = "";
     loginFail = "";
+    var uuid = Uuid();
 
     // 3️⃣ Post each record to SAP
     for (var item in items) {
@@ -138,9 +143,20 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
           ...item,
           'error': e.toString(),
           'timestamp': startTime.toIso8601String(),
+          'failId': uuid.v4(),
         });
       }
     }
+    // Clean up failed records
+    final cleanedFailedRecords = failedRecords.map((item) {
+      final newItem = Map<String, dynamic>.from(item);
+      newItem.remove('error');
+      newItem.remove('timestamp');
+      return newItem;
+    }).toList();
+
+    // ✅ Add to failed box using the other cubit
+    failCubit.addData(cleanedFailedRecords);
 
     print(
         "🎯 Sync completed. Success: ${items.length - failedRecords.length}, Failed: ${failedRecords.length}");

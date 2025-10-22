@@ -485,12 +485,19 @@ class _BatchListPageState extends State<BatchListPage> {
   List<TextEditingController> controllers = [];
   Set<int> selectedIndices = <int>{};
   TextEditingController filter = TextEditingController();
+  TextEditingController filterInput = TextEditingController();
+
   bool isFilter = false;
+  final FocusNode _focusNode = FocusNode();
+  final FocusNode _focusNodeInput = FocusNode();
+
+  bool isClickScan = false;
+  bool isBorder = false;
 
   @override
   void initState() {
     super.initState();
-    init(context);
+    init();
   }
 
   @override
@@ -501,7 +508,7 @@ class _BatchListPageState extends State<BatchListPage> {
     super.dispose();
   }
 
-  void init(BuildContext context) async {
+  void init() async {
     final warehouse = await LocalStorageManger.getString('warehouse');
     final offlineCubit = context.read<BatchListOfflineCubit>();
     final offlineData = offlineCubit.state;
@@ -536,15 +543,39 @@ class _BatchListPageState extends State<BatchListPage> {
     final offlineCubit = context.read<BatchListOfflineCubit>();
     final offlineData = offlineCubit.state;
 
-    final search = filter.text.trim().toLowerCase();
+    final search1 = filter.text.trim().toLowerCase();
+    final search2 = filterInput.text.trim().toLowerCase();
 
+    // ✅ Safely parse bin code
+    final parsedBinCode = int.tryParse(widget.binCode ?? '');
+
+    // ✅ If all filters are empty → return everything (refresh behavior)
+    final noFilters = search1.isEmpty && search2.isEmpty;
+
+    if (noFilters) {
+      init();
+      return;
+    }
+
+    // ✅ Apply filters
     final filtered = offlineData.where((e) {
       final matchesItem = e['ItemCode'] == widget.itemCode;
       final matchesWarehouse = e['WhsCode'] == warehouse;
-      final matchesBin =
-          widget.binCode != "" ? e['BinCode'] == widget.binCode : true;
-      final matchesBatch =
-          e['Batch_Serial'].toString().toLowerCase().contains(search);
+
+      // ✅ Safe BinCode check (handles null, string, or int)
+      final binCodeValue = e['AbsEntry'];
+      final matchesBin = widget.binCode.isNotEmpty
+          ? (binCodeValue != null &&
+              (binCodeValue.toString() == widget.binCode ||
+                  binCodeValue == parsedBinCode))
+          : true;
+
+      // ✅ OR condition for batch filters
+      final matchesBatch = (search1.isNotEmpty &&
+              e['Batch_Serial'].toString().toLowerCase().contains(search1)) ||
+          (search2.isNotEmpty &&
+              e['Batch_Serial'].toString().toLowerCase().contains(search2));
+
       return matchesItem && matchesWarehouse && matchesBin && matchesBatch;
     }).toList();
 
@@ -579,6 +610,21 @@ class _BatchListPageState extends State<BatchListPage> {
     });
   }
 
+  void _handleScanSubmitted(String barcode, FocusNode submittedNode) {
+    debugPrint("📦 Scanned Supplier Code: $barcode");
+    setState(() {
+      filter.text = barcode;
+      isBorder = false;
+    });
+    onFilter();
+  }
+
+  void _requestFocus(FocusNode node) {
+    if (!node.hasFocus) {
+      Future.microtask(() => node.requestFocus());
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -586,9 +632,9 @@ class _BatchListPageState extends State<BatchListPage> {
         backgroundColor: PRIMARY_COLOR,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
-          'Batch List (Offline)',
+          'Batch List',
           style: TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+              fontWeight: FontWeight.bold, fontSize: 17, color: Colors.white),
         ),
       ),
       body: Container(
@@ -597,27 +643,127 @@ class _BatchListPageState extends State<BatchListPage> {
         color: const Color.fromARGB(255, 243, 243, 243),
         child: Column(
           children: [
-            // 🔹 Search Bar
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              color: Colors.white,
-              child: TextFormField(
-                controller: filter,
-                decoration: InputDecoration(
-                  enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.transparent)),
-                  focusedBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.transparent)),
-                  contentPadding: const EdgeInsets.only(top: 15),
-                  hintText: 'Batch Number...',
-                  suffixIcon: IconButton(
-                    icon: Icon(Icons.search, color: PRIMARY_COLOR),
-                    onPressed: onFilter,
-                  ),
-                ),
-              ),
+            SizedBox(
+              height: 12,
             ),
 
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
+              child: Row(
+                children: [
+                  // 👇 Scan Button
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        filter.clear();
+                        filterInput.clear();
+                        isClickScan = true;
+                        isBorder = true;
+                      });
+                      FocusScope.of(context).unfocus();
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        _requestFocus(_focusNode);
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 255, 255, 255),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isClickScan && isBorder
+                              ? Colors.green
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.document_scanner_outlined,
+                        color: Color(0xFF12169D),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // 👇 Input (Scan or Manual)
+                  Expanded(
+                    child: TextFormField(
+                      controller: isClickScan ? filter : filterInput,
+                      focusNode: isClickScan ? _focusNode : _focusNodeInput,
+                      keyboardType:
+                          isClickScan ? TextInputType.none : TextInputType.text,
+                      cursorColor: Colors.green,
+                      onTap: () {
+                        if (isClickScan) {
+                          setState(() {
+                            filter.clear();
+                            filterInput.clear();
+                            isClickScan = false;
+                            isBorder = false;
+                          });
+                          FocusScope.of(context).unfocus();
+                          Future.delayed(const Duration(milliseconds: 100),
+                              () => _requestFocus(_focusNodeInput));
+                          onFilter();
+                        }
+                      },
+                      onFieldSubmitted: (barcode) =>
+                          _handleScanSubmitted(barcode, _focusNode),
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 12),
+                        hintText: 'Batch Number...',
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide:
+                              const BorderSide(color: Colors.transparent),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(
+                            color: Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        filled: true,
+                        fillColor: const Color.fromARGB(255, 255, 255, 255),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+
+                  // 👇 Search button
+                  GestureDetector(
+                    onTap: onFilter,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 13),
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(255, 255, 255, 255),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.search,
+                              color: Color(0xFF12169D), size: 20),
+                          SizedBox(width: 6),
+                          Text(
+                            "Search",
+                            style: TextStyle(
+                              color: Color(0xFF12169D),
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const Divider(thickness: 0.001, height: 25),
 
             // 🔹 Header Row
@@ -629,14 +775,23 @@ class _BatchListPageState extends State<BatchListPage> {
                   Expanded(
                     flex: 4,
                     child: Text('Batch Number.',
-                        style: TextStyle(fontWeight: FontWeight.w600)),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 12)),
                   ),
                   Expanded(
                       flex: 2,
                       child: Padding(
                           padding: EdgeInsets.only(left: 10),
-                          child: Text('Available Qty'))),
-                  Expanded(flex: 1, child: Text('Alc.Qty')),
+                          child: Text(
+                            'Available Qty',
+                            style: TextStyle(fontSize: 11),
+                          ))),
+                  Expanded(
+                      flex: 1,
+                      child: Text(
+                        'Alc.Qty',
+                        style: TextStyle(fontSize: 11),
+                      )),
                 ],
               ),
             ),
@@ -646,7 +801,11 @@ class _BatchListPageState extends State<BatchListPage> {
             // 🔹 Batch List
             Expanded(
               child: data.isEmpty
-                  ? const Center(child: Text("No Batch"))
+                  ? const Center(
+                      child: Text(
+                      "No Batch",
+                      style: TextStyle(fontSize: 14),
+                    ))
                   : ListView.builder(
                       controller: _scrollController,
                       itemCount: data.length,
@@ -658,85 +817,145 @@ class _BatchListPageState extends State<BatchListPage> {
                           padding: const EdgeInsets.symmetric(
                               vertical: 15, horizontal: 10),
                           child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Checkbox + Batch Info
+                              // ✅ Checkbox + Batch Info
                               Expanded(
                                 flex: 5,
                                 child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Checkbox(
                                       value: selectedIndices.contains(index),
                                       onChanged: (value) =>
                                           _onSelected(value, index),
                                       checkColor: Colors.white,
-                                      activeColor: Colors.green.shade900,
+                                      activeColor: PRIMARY_COLOR,
                                     ),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          getDataFromDynamic(
-                                              batch["Batch_Serial"]),
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w800),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Text(
-                                          getDataFromDynamicBin(
-                                              batch["BinCode"]),
-                                          style: const TextStyle(fontSize: 13),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Row(
-                                          children: [
-                                            const Text("Expiry Date  :",
-                                                style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.grey)),
-                                            const SizedBox(width: 7),
-                                            Text(
-                                              getDataFromDynamic(
-                                                  batch["ExpDate"]),
-                                              style: const TextStyle(
-                                                  fontSize: 13,
-                                                  color: Colors.red),
+                                    const SizedBox(width: 5),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          // Batch Serial
+                                          Text(
+                                            getDataFromDynamic(
+                                                batch["Batch_Serial"]),
+                                            style: const TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w800),
+                                            overflow: TextOverflow.visible,
+                                            softWrap: true,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          // Bin Code
+                                          Text(
+                                            getDataFromDynamicBin(
+                                                batch["BinCode"]),
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              color: Colors.black87,
                                             ),
-                                          ],
-                                        ),
-                                      ],
+                                            softWrap: true,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          // Expiry Date
+                                          Wrap(
+                                            crossAxisAlignment:
+                                                WrapCrossAlignment.center,
+                                            children: [
+                                              Text(
+                                                "Expiry Date:",
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                getDataFromDynamic(
+                                                    batch["ExpDate"]),
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: Colors.red,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
 
-                              // Quantity Column
+                              // ✅ Quantity Column
                               Expanded(
                                 flex: 1,
                                 child: Text(
                                   getDataFromDynamic(batch["Quantity"]),
-                                  style: const TextStyle(),
+                                  style: TextStyle(
+                                    fontSize:
+                                        MediaQuery.of(context).size.width *
+                                            0.034,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  softWrap: true,
                                 ),
                               ),
 
-                              // Allocation Qty Input
+                              // ✅ Allocation Qty Input
                               Expanded(
                                 flex: 2,
                                 child: Padding(
-                                  padding: const EdgeInsets.only(left: 40),
+                                  padding: const EdgeInsets.only(left: 20),
                                   child: SizedBox(
-                                    width: 85,
+                                    width: double.infinity,
                                     child: TextField(
-                                      style: const TextStyle(fontSize: 14),
+                                      style: TextStyle(
+                                        fontSize:
+                                            MediaQuery.of(context).size.width *
+                                                0.034,
+                                      ),
                                       controller: controllers[index],
                                       onChanged: (value) =>
                                           _onChangeQty(value, index),
-                                      decoration: const InputDecoration(
-                                        border: InputBorder.none,
+                                      decoration: InputDecoration(
+                                        isDense: true,
+                                        border: OutlineInputBorder(
+                                          borderSide: const BorderSide(
+                                            color:
+                                                Color(0xFF94A3B8), // Slate 400
+                                            width: 0.8,
+                                          ),
+                                          borderRadius: const BorderRadius.all(
+                                              Radius.circular(6)),
+                                        ),
+                                        enabledBorder: const OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color:
+                                                Color(0xFF94A3B8), // Slate 400
+                                            width: 0.8,
+                                          ),
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(6)),
+                                        ),
+                                        focusedBorder: const OutlineInputBorder(
+                                          borderSide: BorderSide(
+                                            color: Color(
+                                                0xFF64748B), // Slate 500 (a bit darker when focused)
+                                            width: 1.0,
+                                          ),
+                                          borderRadius: BorderRadius.all(
+                                              Radius.circular(6)),
+                                        ),
                                         hintText: 'Qty',
-                                        hintStyle: TextStyle(fontSize: 14.0),
-                                        contentPadding: EdgeInsets.symmetric(
-                                            vertical: 10, horizontal: 10),
+                                        hintStyle:
+                                            const TextStyle(fontSize: 14.0),
+                                        contentPadding:
+                                            const EdgeInsets.symmetric(
+                                                vertical: 8, horizontal: 8),
                                       ),
                                       keyboardType: TextInputType.number,
                                     ),
@@ -755,24 +974,24 @@ class _BatchListPageState extends State<BatchListPage> {
 
       // 🔹 Bottom Done Button
       bottomNavigationBar: Container(
-        height: MediaQuery.of(context).size.height * 0.09,
+        height: 70,
         padding: const EdgeInsets.all(12),
         color: const Color.fromARGB(255, 243, 243, 243),
         child: Row(
           children: [
-            const SizedBox(width: 12),
+            // const SizedBox(width: 12),
             Expanded(
               child: Button(
-                bgColor: Colors.green.shade900,
+                bgColor: PRIMARY_COLOR,
                 variant: ButtonVariant.primary,
                 onPressed: _onDone,
                 child:
                     const Text('Done', style: TextStyle(color: Colors.white)),
               ),
             ),
-            const Expanded(child: SizedBox()),
-            const Expanded(child: SizedBox()),
-            const SizedBox(width: 12),
+            // const Expanded(child: SizedBox()),
+            // const Expanded(child: SizedBox()),
+            // const SizedBox(width: 12),
           ],
         ),
       ),

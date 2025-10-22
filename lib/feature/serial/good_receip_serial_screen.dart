@@ -44,11 +44,13 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
   final totalSerial = TextEditingController();
   final textSerial = TextEditingController();
   final warehouse = TextEditingController();
+  final barCode = TextEditingController();
 
   int updateIndex = -1;
 
   List<dynamic> items = [];
-
+  bool isClickScan = false;
+  final FocusNode _serial = FocusNode();
   @override
   void initState() {
     itemCode.text = widget.itemCode;
@@ -222,6 +224,32 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
     }
   }
 
+  // Generic function to request focus on a specific node
+  void _requestFocus(FocusNode node) {
+    if (!node.hasFocus) {
+      // Use microtask for stability with fast, external keyboard input
+      Future.microtask(() => node.requestFocus());
+    }
+  }
+
+  void _handleScanSubmitted(String barcode, FocusNode submittedNode) {
+    debugPrint("📦 Scanned Supplier Code: $barcode");
+
+    setState(() {
+      // Check which input currently has focus
+      if (_serial.hasFocus) {
+        // ✅ If filter input is focused → set scanned value
+        barCode.text = barcode;
+        // textSerial.clear();
+        isClickScan = false;
+      }
+      // else {
+      //   // ✅ Optional: fallback behavior if no input focused
+      //   debugPrint("⚠️ No input focused, ignoring scan");
+      // }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -245,190 +273,243 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
       body: Padding(
         padding: const EdgeInsets.all(15),
         child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: size(context).height,
-              maxHeight: size(context).height,
-              minWidth: size(context).width,
-              maxWidth: size(context).width,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.all(5),
-                  child: Column(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(5),
+                child: Column(
+                  children: [
+                    Input(
+                      label: 'Item Code',
+                      placeholder: 'Item',
+                      readOnly: true,
+                      controller: itemCode,
+                      // onPressed: onSelectItem,
+                    ),
+                    Input(
+                      controller: itemName,
+                      label: 'Description',
+                      placeholder: 'desc',
+                      readOnly: true,
+                      keyboardType:
+                          TextInputType.numberWithOptions(decimal: true),
+                    ),
+                    Input(
+                      controller: quantity,
+                      label: 'Quantity',
+                      placeholder: 'Qty',
+                      keyboardType:
+                          TextInputType.numberWithOptions(decimal: true),
+                    ),
+                    Divider(thickness: 1, color: Colors.grey.shade400),
+                    // if (widget.po != null)
+                    //   Input(
+                    //     label: 'PO #',
+                    //     placeholder: 'PO DocNum',
+                    //     controller: poText,
+                    //     readOnly: true,
+                    //   ),
+                    Input(
+                      label: 'Warehouse',
+                      placeholder: 'Warehouse',
+                      controller: warehouse,
+                      readOnly: true,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                height: 23,
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
                     children: [
-                      Input(
-                        label: 'Item Code',
-                        placeholder: 'Item',
-                        readOnly: true,
-                        controller: itemCode,
-                        // onPressed: onSelectItem,
+                      Text("Qty of Serial"),
+                      SizedBox(
+                        width: 6,
                       ),
-                      Input(
-                        controller: itemName,
-                        label: 'Description',
-                        placeholder: 'desc',
-                        readOnly: true,
-                        keyboardType:
-                            TextInputType.numberWithOptions(decimal: true),
-                      ),
-                      Input(
-                        controller: quantity,
-                        label: 'Quantity',
-                        placeholder: 'Qty',
-                        keyboardType:
-                            TextInputType.numberWithOptions(decimal: true),
-                      ),
-                      Divider(thickness: 1, color: Colors.grey.shade400),
-                      // if (widget.po != null)
-                      //   Input(
-                      //     label: 'PO #',
-                      //     placeholder: 'PO DocNum',
-                      //     controller: poText,
-                      //     readOnly: true,
-                      //   ),
-                      Input(
-                        label: 'Warehouse',
-                        placeholder: 'Warehouse',
-                        controller: warehouse,
-                        readOnly: true,
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(
-                  height: 23,
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        Text("Qty of Serial"),
-                        SizedBox(
-                          width: 6,
+                      Container(
+                        width: 40,
+                        height: 25,
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(255, 236, 238, 239),
+                          borderRadius: BorderRadius.circular(5),
                         ),
-                        Container(
-                          width: 40,
-                          height: 25,
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(255, 236, 238, 239),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Center(
-                            child: Text(
-                              totalSerial.text,
-                              style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        )
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Text("Serial No"),
-                        SizedBox(
-                          width: 6,
-                        ),
-                        Container(
-                          width: 60,
-                          height: 25,
-                          decoration: BoxDecoration(
-                            color: const Color.fromARGB(255, 236, 238, 239),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                          child: Center(
-                            child: Text(
-                              "${totalSerial.text}/${quantity.text == "" ? 0 : quantity.text}",
-                              style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black,
-                                  fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        )
-                      ],
-                    ),
-                  ],
-                ),
-                SizedBox(
-                  height: 15,
-                ),
-                Divider(thickness: 0.5, color: Colors.grey.shade400),
-                SizedBox(
-                  height: 15,
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: InputCol(
-                        controller: textSerial,
-                        label: 'Serial No',
-                        placeholder: 'Serial',
-                        onPressed: () async {
-                          if (widget.listAllSerial != true) return;
-                          onNavigateSerialList();
-                        },
-                        icon: Icons.barcode_reader,
-                        onEditingComplete: onEnterSerial,
-                      ),
-                    ),
-                    SizedBox(
-                      width: 20,
-                    ),
-                    Expanded(
-                      child: InputCol(
-                        controller: totalSerial,
-                        label: 'Serial Qty',
-                        placeholder: '0',
-                        readOnly: true,
-                        keyboardType:
-                            TextInputType.numberWithOptions(decimal: true),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 30),
-                ContentHeader(),
-                items.isEmpty
-                    ? Container(
-                        padding: EdgeInsets.all(20),
                         child: Center(
                           child: Text(
-                            "No Serial  available",
-                            style: TextStyle(fontSize: 15, color: Colors.grey),
+                            totalSerial.text,
+                            style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w500),
                           ),
                         ),
                       )
-                    : Container(),
-                Expanded(
-                  child: Scrollbar(
-                    child: ListView(
-                      // crossAxisAlignment: CrossAxisAlignment.start,
-                      children: items
-                          .map((item) => GestureDetector(
-                                onTap: () =>
-                                    onDelete(item['InternalSerialNumber']),
-                                child: ItemRow(item: item),
-                              ))
-                          .toList(),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Text("Serial No"),
+                      SizedBox(
+                        width: 6,
+                      ),
+                      Container(
+                        width: 60,
+                        height: 25,
+                        decoration: BoxDecoration(
+                          color: const Color.fromARGB(255, 236, 238, 239),
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Center(
+                          child: Text(
+                            "${totalSerial.text}/${quantity.text == "" ? 0 : quantity.text}",
+                            style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.black,
+                                fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      )
+                    ],
+                  ),
+                ],
+              ),
+              SizedBox(
+                height: 15,
+              ),
+              Divider(thickness: 0.5, color: Colors.grey.shade400),
+              SizedBox(
+                height: 15,
+              ),
+              // Row(
+              //   children: [
+              //     Expanded(
+              //       child: InputCol(
+              //         controller: textSerial,
+              //         label: 'Serial No',
+              //         placeholder: 'Serial',
+              //         onPressed: () async {
+              //           if (widget.listAllSerial != true) return;
+              //           onNavigateSerialList();
+              //         },
+              //         icon: Icons.barcode_reader,
+              //         onEditingComplete: onEnterSerial,
+              //       ),
+              //     ),
+              //   ],
+              // ),
+              Row(
+                children: [
+                  Expanded(
+                    child: InputCol(
+                      label: 'Serial Number',
+                      placeholder: 'Enter Serial',
+                      controller: textSerial,
+                      focusNode: _serial,
+                      readOnly: widget.listAllSerial != null,
+                      onTap: () => {
+                        setState(() {
+                          isClickScan = false; // turn on scan mode
+                          // itemCode.clear();
+                        }),
+                        // 2. Clear current focus before switching
+                        FocusScope.of(context).unfocus()
+                      },
+                      keyboardType:
+                          isClickScan ? TextInputType.none : TextInputType.text,
+                      onPressed: widget.listAllSerial != null
+                          ? onNavigateSerialList
+                          : null,
+                      onFieldSubmitted: (value) {
+                        _handleScanSubmitted(value, _serial);
+                      },
                     ),
                   ),
-                ),
-              ],
-            ),
+                  widget.listAllSerial == null
+                      ? SizedBox(
+                          width: 15,
+                        )
+                      : SizedBox(),
+                  widget.listAllSerial == null
+                      ? GestureDetector(
+                          onTap: () {
+                            // 1. Switch to scan mode
+                            setState(() {
+                              isClickScan = true; // turn on scan mode
+                              textSerial.clear();
+                            });
+
+                            // 2. Clear current focus before switching
+                            FocusScope.of(context).unfocus();
+
+                            // 3. Focus scanner input
+                            Future.delayed(const Duration(milliseconds: 100),
+                                () {
+                              _requestFocus(_serial);
+                            });
+                          },
+                          child: Container(
+                            margin: EdgeInsets.only(top: 30),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF2F3F4),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isClickScan
+                                    ? Colors.green
+                                    : Colors
+                                        .transparent, // ✅ green border when active
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.document_scanner_outlined,
+                              color: Color(0xFF12169D),
+                              size: 20,
+                            ),
+                          ),
+                        )
+                      : Container(),
+                  widget.listAllSerial == null
+                      ? const SizedBox(width: 12)
+                      : SizedBox(),
+                ],
+              ),
+              const SizedBox(height: 30),
+              ContentHeader(),
+              items.isEmpty
+                  ? Container(
+                      padding: EdgeInsets.all(20),
+                      child: Center(
+                        child: Text(
+                          "No Serial  available",
+                          style: TextStyle(fontSize: 15, color: Colors.grey),
+                        ),
+                      ),
+                    )
+                  : Container(),
+              Column(
+                // crossAxisAlignment: CrossAxisAlignment.start,
+                children: items
+                    .map((item) => GestureDetector(
+                          onTap: () => onDelete(item['InternalSerialNumber']),
+                          child: ItemRow(item: item),
+                        ))
+                    .toList(),
+              ),
+            ],
           ),
         ),
       ),
+
       bottomNavigationBar: Container(
         margin: EdgeInsets.fromLTRB(15, 0, 15, 15),
         child: Button(
