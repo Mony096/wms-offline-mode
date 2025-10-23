@@ -51,13 +51,15 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
     return items.length;
   }
 
- // 🔹 Update record by failId
+  // 🔹 Update record by failId
   void updateBySaveId(dynamic failId, Map<String, dynamic> newData) {
     final List<dynamic> items =
         box.get('data', defaultValue: []).cast<dynamic>();
 
     final updatedItems = items.map((item) {
-      if (item is Map && item.containsKey('SaveId') && item['SaveId'] == failId) {
+      if (item is Map &&
+          item.containsKey('SaveId') &&
+          item['SaveId'] == failId) {
         return {...item, ...newData}; // merge old data with new data
       }
       return item;
@@ -150,6 +152,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
         print("✅ Synced: ${item['DocEntry'] ?? 'N/A'}");
       } catch (e) {
         print("🔥 Failed to sync record: $e");
+        print(item);
         failedRecords.add({
           ...item,
           'error': e.toString(),

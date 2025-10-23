@@ -317,7 +317,8 @@ class SyncFailLogScreen extends StatelessWidget {
                                                       context,
                                                       CreateGoodReceiptPOScreen(
                                                         isEdit: record,
-                                                        quickReceipt: false
+                                                        quickReceipt: false,
+                                                        isEditFaildGRPO: true,
                                                       ));
                                                 },
                                                 child: Ink(
