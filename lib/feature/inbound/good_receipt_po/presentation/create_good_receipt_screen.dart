@@ -4,12 +4,16 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/batch/good_receip_batch_screen.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_recipt_po_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/duplicateItem_GPO_Screen.dart';
+import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
@@ -38,9 +42,10 @@ import '../../../../constant/style.dart';
 
 class CreateGoodReceiptPOScreen extends StatefulWidget {
   const CreateGoodReceiptPOScreen(
-      {super.key, this.po = null, this.quickReceipt});
+      {super.key, this.po = null, this.quickReceipt, this.isEdit});
   final dynamic quickReceipt;
   final dynamic po;
+  final dynamic isEdit;
 
   @override
   State<CreateGoodReceiptPOScreen> createState() =>
@@ -67,15 +72,13 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
   final serialsInput = TextEditingController();
   final batchesInput = TextEditingController();
   final barCode = TextEditingController();
+  final saveIdGRPO = TextEditingController();
+  final saveIdQGR = TextEditingController();
+
   List<dynamic> isBin = [{}];
   //
   final isBatch = TextEditingController();
   final isSerial = TextEditingController();
-
-  late PurchaseGoodReceiptCubit _bloc;
-  late ItemCubit _blocItem;
-  late PurchaseOrderCubit _blocCubit;
-  late BinCubit _blocBin;
 
   final DioClient dio = DioClient();
 
@@ -94,34 +97,182 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
 //scanner
   @override
   void initState() {
-    init();
-    _bloc = context.read<PurchaseGoodReceiptCubit>();
-    _blocItem = context.read<ItemCubit>();
-    _blocCubit = context.read<PurchaseOrderCubit>();
-    _blocBin = context.read<BinCubit>();
-
-    //
-    // IscanDataPlugin.methodChannel.setMethodCallHandler((MethodCall call) async {
-    //   if (call.method == "onScanResults") {
-    //     if (loading) return;
-
-    //     setState(() {
-    //       if (call.arguments['data'] == "decode error") return;
-    //       //
-    //       barCode.text = call.arguments['data'];
-    //       onCompleteTextEditItem();
-    //     });
-    //   }
-    // });
     super.initState();
+
+    init();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fromFailed();
+    });
+  }
+
+  void fromFailed() async {
+    try {
+      if (widget.isEdit == null) return;
+
+      // ✅ Populate text fields safely
+      cardCode.text = getDataFromDynamic(widget.isEdit['CardCode']);
+      cardName.text = getDataFromDynamic(widget.isEdit['CardName']);
+      warehouse.text = getDataFromDynamic(widget.isEdit['WarehouseCode']);
+      saveIdGRPO.text = getDataFromDynamic(widget.isEdit['SaveId']);
+      if (mounted) MaterialDialog.loading(context);
+
+      final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+      final purchaseOrders = context.read<PurchaseOrderOfflineCubit>().state;
+
+      final List<Map<String, dynamic>> rawItems = [];
+      final List<dynamic> lines =
+          (widget.isEdit['DocumentLines'] as List?) ?? [];
+
+      final refDocEntry = getDataFromDynamic(
+          widget.isEdit["DocumentReferences"]?[0]?["RefDocEntr"]);
+      final matchedPO = purchaseOrders.firstWhere(
+        (po) => po['DocEntry'].toString() == refDocEntry,
+        orElse: () => {},
+      );
+      if (matchedPO.isEmpty) {
+        if (mounted) MaterialDialog.close(context);
+
+        MaterialDialog.warning(
+          context,
+          title: 'Error',
+          body: "Purchase Order Not Found!",
+        );
+        return;
+      }
+      // for (var element in lines) {
+      //   try {
+      //     final Map<String, dynamic> line =
+      //         Map<String, dynamic>.from(element as Map);
+
+      //     final itemCode = getDataFromDynamic(line["ItemCode"]);
+      //     final uomEntry =
+      //         int.tryParse(getDataFromDynamic(line["UoMEntry"]).toString()) ??
+      //             0;
+
+      //     // ✅ Find matching barcode record
+      //     final matchedBarcode = barcodeList.firstWhere(
+      //       (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+      //       orElse: () => {},
+      //     );
+
+      //     final matchedPOLine = (matchedPO.isNotEmpty &&
+      //             matchedPO["DocumentLines"] != null)
+      //         ? (matchedPO["DocumentLines"] as List).firstWhere(
+      //             (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+      //             orElse: () => {},
+      //           )
+      //         : {};
+
+      //     final updatedLine = {
+      //       ...line,
+      //       if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+      //       if (matchedPOLine.isNotEmpty)
+      //         "TotalQuantity": matchedPOLine["Quantity"],
+      //     };
+
+      //     rawItems.add(updatedLine);
+      //     itemCodeFilter.add(itemCode);
+      //   } catch (innerError) {
+      //     debugPrint("⚠️ Error processing line: $innerError");
+      //   }
+      // }
+      for (var element in lines) {
+        final itemList = context.read<ItemOfflineCubit>().state;
+        final binList = context.read<BinOfflineCubit>().state;
+
+        final itemCode = getDataFromDynamic(element["ItemCode"]);
+        final uomEntry =
+            int.tryParse(getDataFromDynamic(element["UoMEntry"]).toString()) ??
+                0;
+
+        // ✅ Find matching barcode record
+        final matchedBarcode = barcodeList.firstWhere(
+          (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+          orElse: () => {},
+        );
+
+        final matchedPOLine =
+            (matchedPO.isNotEmpty && matchedPO["DocumentLines"] != null)
+                ? (matchedPO["DocumentLines"] as List).firstWhere(
+                    (b) =>
+                        b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+                    orElse: () => {},
+                  )
+                : {};
+
+        final matchedItem = itemList.firstWhere(
+            (e) => e['ItemCode'] == element['ItemCode'],
+            orElse: () => null);
+
+        if (matchedItem == null) {
+          MaterialDialog.success(context,
+              title: 'Oops.', body: "Item not found");
+          return;
+        }
+        final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+        final uomGroup = uomGroupCubit.state.firstWhere(
+          (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+          orElse: () => {},
+        );
+        final itemMapped = {
+          ...matchedItem,
+          "BaseUoM": uomGroup['BaseUoM'],
+          "UoMGroupDefinitionCollection":
+              uomGroup['UoMGroupDefinitionCollection']
+        };
+        // final binCodeFind = binList.firstWhere(
+        //   (u) =>
+        //       u['AbsEntry'] ==
+        //       element["DocumentLinesBinAllocations"][0]["BinAbsEntry"],
+        //   orElse: () => {},
+        // );
+        // binCode.text = binCodeFind;
+        // binId.text =
+        //     (element["DocumentLinesBinAllocations"] as List)[0]["BinAbsEntry"];
+        print((element["DocumentLinesBinAllocations"][0]["BinAbsEntry"]));
+        // print(
+        //     (element["DocumentLinesBinAllocations"] as List)[0]["BinAbsEntry"]);
+        rawItems.add({
+          "ItemCode": element['ItemCode'],
+          "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
+          "Quantity": element['Quantity'],
+          "TotalQuantity": matchedPOLine["Quantity"],
+          "WarehouseCode": warehouse.text,
+          "UoMEntry": getDataFromDynamic(element['UoMEntry']),
+          "UoMCode": element['UoMCode'],
+          "UoMGroupDefinitionCollection":
+              itemMapped['UoMGroupDefinitionCollection'],
+          "BaseUoM": itemMapped['BaseUoM'],
+          "BinId": binId.text,
+          "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
+          "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
+          if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+        });
+
+        itemCodeFilter.add(element['ItemCode']);
+      }
+      // ✅ Update items
+      items = rawItems;
+
+      // Debug
+      debugPrint("✅ Processed ${items.length} item(s)");
+      debugPrint("🧾 rawItems: $items");
+
+      // ✅ Close loading indicator
+      if (mounted) MaterialDialog.close(context);
+
+      // ✅ Refresh UI
+      if (mounted) setState(() {});
+    } catch (e, stackTrace) {
+      if (mounted) MaterialDialog.close(context);
+      debugPrint("❌ fromFailed error: $e\n$stackTrace");
+    }
   }
 
   void init() async {
     try {
-      // Retrieve warehouse information
       final whs = await LocalStorageManger.getString('warehouse');
       warehouse.text = whs;
-
       if (widget.po != null) {
         // Populate text fields with PO data
         poText.text = getDataFromDynamic(widget.po['DocNum']);
@@ -130,18 +281,6 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
 
         // Show loading indicator
         if (mounted) MaterialDialog.loading(context);
-        // final state = _blocBin.state;
-        // // If state is not BinData, just return (no data yet)
-        // if (state is! BinData) {
-        //   debugPrint("BinCubit has no data yet.");
-        //   return;
-        // }
-        // final bins = state.entities;
-        // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-        //   isBin.clear();
-        // }
-        // Initialize the list of items
-        print(widget.po['DocumentLines'][0]["LineStatus"]);
         List<Map<String, dynamic>> rawItems = [];
         final openLines = widget.po['DocumentLines']
             .where((line) => line['LineStatus'] == 'bost_Open')
@@ -206,11 +345,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         }
       }
     } catch (e) {
-      // Handle errors
       if (mounted) {
         MaterialDialog.close(context);
-        // Optionally show an error message
-        // MaterialDialog.showError(context, 'An error occurred: $e');
       }
     }
   }
@@ -395,6 +531,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
         barCode.text = getDataFromDynamic(item['BarCode']);
+
         setState(() {
           isEdit = index;
 
@@ -451,16 +588,24 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
   void onPostToSAP() async {
     // print(widget.po);
     // return;
+    var uuid = Uuid();
+
     try {
       final filteredItems = items.where((item) {
         final qty = int.tryParse(item["Quantity"].toString()) ?? 0;
         return qty != 0;
       }).toList();
 
-      // print(filteredItems);
+      // print(items);
+      // print(widget.isEdit != null);
       // return;
       Map<String, dynamic> data = {
         // "BPL_IDAssignedToInvoice": 1,
+        "SaveId": widget.isEdit != null
+            ? widget.quickReceipt
+                ? null
+                : saveIdGRPO.text
+            : uuid.v4(),
         "CardCode": cardCode.text,
         "CardName": cardName.text,
         "WarehouseCode": warehouse.text,
@@ -569,6 +714,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           }
         ];
       }
+      // print(data);
+      // return;
       MaterialDialog.loading(context);
       // setState(() {
       //   print(data);
@@ -577,7 +724,13 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       if (widget.quickReceipt) {
         context.read<QuickGoodReceiptOfflineCubit>().addData(data);
       } else {
-        context.read<GoodReceiptPoOfflineCubit>().addData(data);
+        if (widget.isEdit != null) {
+          context
+              .read<GoodReceiptPoOfflineCubit>()
+              .updateBySaveId(saveIdGRPO.text, data);
+        } else {
+          context.read<GoodReceiptPoOfflineCubit>().addData(data);
+        }
       }
 
       if (mounted) {
@@ -587,7 +740,9 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           title: 'Successfully',
           body: widget.quickReceipt
               ? "Saved Quick Receipt "
-              : "Saved Good Receipt PO ",
+              : widget.isEdit != null
+                  ? "Edited Good Receipt PO "
+                  : "Saved Good Receipt PO ",
           onOk: () => Navigator.of(context).pop(),
         );
         // final response = await _bloc.post(data);

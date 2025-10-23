@@ -8,28 +8,56 @@ class GoodReciptPoFailedOfflineCubit extends Cubit<List<dynamic>> {
 
   final Box box = Hive.box('failed_goods_receipt_po');
 
-  // Load existing data from Hive
+  // 🔹 Load existing data from Hive
   void loadData() {
-    final List<dynamic> items = box.get('data', defaultValue: []).cast<dynamic>();
+    final List<dynamic> items =
+        box.get('data', defaultValue: []).cast<dynamic>();
     emit(items);
   }
 
-  // Add data to Hive
+  // 🔹 Add data to Hive
   void addData(dynamic item) {
-    final List<dynamic> items = box.get('data', defaultValue: []).cast<dynamic>();
+    final List<dynamic> items =
+        box.get('data', defaultValue: []).cast<dynamic>();
     items.addAll(item);
     box.put('data', items);
     emit(items);
   }
 
-  // Clear data
+  // 🔹 Clear all data
   void clearData() {
     box.put('data', []);
     emit([]);
   }
-   // 👇 New function to print all saved data
+
+  // 🔹 Print all saved data
   void printAllData() {
-    final List<dynamic> items = box.get('data', defaultValue: []).cast<dynamic>();
+    final List<dynamic> items =
+        box.get('data', defaultValue: []).cast<dynamic>();
     print("🟢 Hive Data: $items");
   }
+
+  // 🔹 Count failed records
+  int getFailed() {
+    final items = box.get('data', defaultValue: []).cast<dynamic>();
+    return items.length;
+  }
+
+  void updateBySaveId(dynamic failId, Map<String, dynamic> newData) {
+    final List<dynamic> items =
+        box.get('data', defaultValue: []).cast<dynamic>();
+
+    final updatedItems = items.map((item) {
+      if (item is Map &&
+          item.containsKey('SaveId') &&
+          item['SaveId'] == failId) {
+        return {...item, ...newData}; // merge old data with new data
+      }
+      return item;
+    }).toList();
+
+    box.put('data', updatedItems);
+    emit(updatedItems);
+  }
+
 }

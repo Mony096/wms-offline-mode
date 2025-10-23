@@ -114,18 +114,20 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   void initState() {
-    init();
     super.initState();
+
+    init();
   }
 
   void init() async {
     final value = await LocalStorageManger.getString('warehouse');
     final name = await LocalStorageManger.getString('warehouseName');
-
-    setState(() {
-      warehouseCode = value;
-      warehouseName = name;
-    });
+    if (mounted) {
+      setState(() {
+        warehouseCode = value;
+        warehouseName = name;
+      });
+    }
   }
 
   Future<void> _clearAllData() async {

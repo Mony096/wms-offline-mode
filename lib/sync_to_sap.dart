@@ -51,6 +51,7 @@ class SyncItem {
   final String name;
   final int Function(BuildContext) getCount;
   final int Function(BuildContext) getLog;
+  final int Function(BuildContext) getFaild;
 
   final Future<void> Function(BuildContext) onSync;
   final void Function(BuildContext) onFailedSync;
@@ -64,7 +65,8 @@ class SyncItem {
       required this.onFailedSync,
       required this.onGotoReview,
       required this.onGotoSyncLog,
-      required this.getLog});
+      required this.getLog,
+      required this.getFaild});
 }
 
 class SyncToSAPScreen extends StatefulWidget {
@@ -88,6 +90,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
         items: [
           SyncItem(
             name: 'Goods Receipt PO',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<GoodReceiptPoOfflineCubit>().getJsonData().length,
             getLog: (context) =>
@@ -109,6 +113,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           ),
           SyncItem(
             name: 'Quick Goods Receipt',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) => context
                 .read<QuickGoodReceiptOfflineCubit>()
                 .getJsonData()
@@ -130,6 +136,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           ),
           SyncItem(
             name: 'Customer Return Receipt',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<ReturnReceiptOfflineCubit>().getJsonData().length,
             getLog: (context) =>
@@ -149,6 +157,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           ),
           SyncItem(
             name: 'Goods Receipt',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<GoodsReceiptOfflineCubit>().getJsonData().length,
             getLog: (context) =>
@@ -168,6 +178,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           ),
           SyncItem(
             name: 'Put Away',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<PutAwayOfflineCubit>().getJsonData().length,
             getLog: (context) => context.read<PutAwayOfflineCubit>().getLog(),
@@ -193,6 +205,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
         items: [
           SyncItem(
             name: 'Delivery',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<DeliveryOfflineCubit>().getJsonData().length,
             getLog: (context) => context.read<DeliveryOfflineCubit>().getLog(),
@@ -211,6 +225,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           ),
           SyncItem(
             name: 'Return To Supplier',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<PurchaseReturnOfflineCubit>().getJsonData().length,
             getLog: (context) =>
@@ -230,6 +246,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           ),
           SyncItem(
             name: 'Goods Issue',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<GoodsIssueOfflineCubit>().getJsonData().length,
             getLog: (context) =>
@@ -256,6 +274,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
         items: [
           SyncItem(
             name: 'Quick Count',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<QuickCountOfflineCubit>().getJsonData().length,
             getLog: (context) =>
@@ -275,6 +295,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           ),
           SyncItem(
             name: 'Cycle Count',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<CycleCountOfflineCubit>().getJsonData().length,
             getLog: (context) =>
@@ -294,6 +316,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           ),
           SyncItem(
             name: 'Physical Count',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<PhysicalCountOfflineCubit>().getJsonData().length,
             getLog: (context) =>
@@ -313,6 +337,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           ),
           SyncItem(
             name: 'Bin Count',
+            getFaild: (context) =>
+                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<BinCountOfflineCubit>().getJsonData().length,
             getLog: (context) => context.read<BinCountOfflineCubit>().getLog(),
@@ -676,7 +702,11 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
       0,
       (sum, item) => sum + (item.getLog(context)),
     );
-    totalAlert = totalPending + totalLog;
+    int totalFaild = group.items.fold(
+      0,
+      (sum, item) => sum + (item.getFaild(context)),
+    );
+    totalAlert = totalPending + totalLog + totalFaild;
     return StatefulBuilder(
       builder: (context, setState) {
         return Container(
@@ -825,6 +855,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
     final count = item.getCount(context);
     final isReady = count > 0;
     final totalLog = item.getLog(context);
+    final totalFaild = item.getFaild(context);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
       padding: const EdgeInsets.all(10),
@@ -946,13 +977,10 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                                               padding: const EdgeInsets.only(
                                                   bottom: 9, right: 5),
                                               child: ElevatedButton.icon(
-                                                onPressed: item.onFailedSync != null
-                                                    ? () {
-                                                        Navigator.pop(context);
-                                                        item.onGotoSyncLog!(
-                                                            context);
-                                                      }
-                                                    : null,
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                  item.onFailedSync(context);
+                                                },
                                                 icon: const Icon(Icons.warning,
                                                     color: Colors.white,
                                                     size: 17),
@@ -1016,6 +1044,17 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                             ),
                           )
                         : Container(),
+                    totalFaild > 0 ? const SizedBox(height: 4) : Container(),
+                    totalFaild > 0
+                        ? Text(
+                            '$totalFaild record(s) synced failed',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.redAccent,
+                            ),
+                          )
+                        : Container(),
+                    // as
                     const SizedBox(height: 3),
                   ],
                 ),

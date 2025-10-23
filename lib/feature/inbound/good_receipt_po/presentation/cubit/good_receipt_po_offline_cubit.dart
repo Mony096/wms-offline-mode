@@ -51,9 +51,20 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
     return items.length;
   }
 
-  void printAllData() {
-    final items = getJsonData();
-    print("🟢 Hive Data: $items");
+ // 🔹 Update record by failId
+  void updateBySaveId(dynamic failId, Map<String, dynamic> newData) {
+    final List<dynamic> items =
+        box.get('data', defaultValue: []).cast<dynamic>();
+
+    final updatedItems = items.map((item) {
+      if (item is Map && item.containsKey('SaveId') && item['SaveId'] == failId) {
+        return {...item, ...newData}; // merge old data with new data
+      }
+      return item;
+    }).toList();
+
+    box.put('data', updatedItems);
+    emit(updatedItems);
   }
 
   Future<void> post(GoodReciptPoFailedOfflineCubit failCubit) async {
@@ -151,7 +162,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
     final cleanedFailedRecords = failedRecords.map((item) {
       final newItem = Map<String, dynamic>.from(item);
       newItem.remove('error');
-      newItem.remove('timestamp');
+      // newItem.remove('timestamp');
       return newItem;
     }).toList();
 

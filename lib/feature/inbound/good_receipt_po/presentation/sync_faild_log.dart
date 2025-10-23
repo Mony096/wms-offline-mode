@@ -1,13 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/create_good_receipt_screen.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_recipt_po_failed_offline_cubit.dart';
+import 'package:wms_mobile/helper/helper.dart';
 
 class SyncFailLogScreen extends StatelessWidget {
   const SyncFailLogScreen({super.key});
+  Future<void> _clearAllData(BuildContext context) async {
+    // 1️⃣ Clear all Cubits
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("Clear Failed Data?"),
+        content: const Text(
+            "This will remove all offline failed data. Are you sure?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Clear",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // User canceled
+    if (confirm != true) return;
+    context.read<GoodReciptPoFailedOfflineCubit>().clearData();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,13 +49,33 @@ class SyncFailLogScreen extends StatelessWidget {
         backgroundColor: PRIMARY_COLOR,
         centerTitle: true,
         title: const Text(
-          "Failed",
+          "Failed GRPO",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 17,
           ),
         ),
+        actions: [
+          // IconButton(
+          //   icon: const Icon(Icons.refresh),
+          //   tooltip: 'Reset Status',
+          //   onPressed: _resetSyncStatus,
+          // ),
+
+          IconButton(
+            icon: const Icon(
+              Icons.delete,
+              color: Colors.white,
+              size: 25,
+            ),
+            tooltip: 'Clear Data',
+            onPressed: () => _clearAllData(context),
+          ),
+          SizedBox(
+            width: 10,
+          )
+        ],
         elevation: 3,
       ),
       body: BlocBuilder<GoodReciptPoFailedOfflineCubit, List<dynamic>>(
@@ -101,6 +153,12 @@ class SyncFailLogScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Text(
+                                    "Timestamp: $formattedTime",
+                                    style: const TextStyle(
+                                        fontSize: 13, color: Colors.redAccent),
+                                  ),
+                                  const SizedBox(height: 5),
                                   _buildRow("Supplier Code",
                                       record['CardCode'] ?? 'N/A'),
                                   const SizedBox(height: 5),
@@ -243,6 +301,60 @@ class SyncFailLogScreen extends StatelessWidget {
                                           ),
                                           const Divider(
                                               height: 8, color: Colors.black12),
+                                          SizedBox(
+                                            height: 10,
+                                          ),
+                                          Align(
+                                            alignment: Alignment.topRight,
+                                            child: Material(
+                                              color: Colors
+                                                  .transparent, // keep background transparent outside the button
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                                onTap: () {
+                                                  goTo(
+                                                      context,
+                                                      CreateGoodReceiptPOScreen(
+                                                        isEdit: record,
+                                                        quickReceipt: false
+                                                      ));
+                                                },
+                                                child: Ink(
+                                                  width: 117,
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 8),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                  ),
+                                                  child: Row(
+                                                    children: const [
+                                                      Icon(
+                                                        Icons.edit,
+                                                        size: 22,
+                                                        color: Colors.white,
+                                                      ),
+                                                      SizedBox(width: 6),
+                                                      Text(
+                                                        "Resync Data",
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     );
@@ -263,14 +375,14 @@ class SyncFailLogScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(8),
+                          // color: const Color.fromARGB(255, 195, 194, 194),
+                          borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
                           "No. ${index + 1}",
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 130, 126, 126),
+                            // fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
                         ),

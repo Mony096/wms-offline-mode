@@ -467,7 +467,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
   }
 
   Future<void> _clearAllData() async {
-    if (context.read<UOMGroupOfflineCubit>().state.isEmpty) return;
+    if (context.read<ItemOfflineCubit>().state.isEmpty) return;
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -810,7 +810,17 @@ class _DownloadScreenState extends State<DownloadScreen> {
                       ],
                     ),
                     onPressed: () async {
-                      isDownloadingAll ? null : _downloadAllSequentially();
+                      if (isDownloadedString == "true") return;
+                      final connected = await hasInternet();
+                      if (!connected) {
+                        MaterialDialog.warning(context,
+                            title: "Error Connection",
+                            body:
+                                "No internet connection. Please connect to Wi-Fi or mobile data.");
+
+                        return;
+                      }
+                      _downloadAllSequentially();
                     },
                   ),
                 ),
@@ -855,7 +865,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
                         Icon(
-                          Icons.cloud_upload,
+                          Icons.delete,
                           color: Colors.white,
                           size: 20,
                         ),
