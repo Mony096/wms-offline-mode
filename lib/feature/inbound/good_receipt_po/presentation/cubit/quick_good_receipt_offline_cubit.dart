@@ -39,6 +39,11 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
     emit([]);
   }
 
+  void clearCachLog() {
+    failedRecords = [];
+    successRecords = [];
+  }
+
   List<dynamic> getJsonData() {
     final items = box.get('data', defaultValue: []).cast<dynamic>();
     return items;

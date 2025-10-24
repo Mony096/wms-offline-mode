@@ -36,7 +36,10 @@ class QuickCountOfflineCubit extends Cubit<List<dynamic>> {
     box.put('data', []);
     emit([]);
   }
-
+  void clearCachLog() {
+    failedRecords = [];
+    successRecords = [];
+  }
   List<dynamic> getJsonData() {
     final items = box.get('data', defaultValue: []).cast<dynamic>();
     return items;
