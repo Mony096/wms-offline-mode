@@ -41,8 +41,10 @@ import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/ret
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/sync_log.dart';
+import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/outbounce/delivery/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/good_issue/presentation/review_offline_save.dart';
@@ -316,12 +318,12 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           SyncItem(
             name: 'Delivery',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<DeliveryFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<DeliveryOfflineCubit>().getJsonData().length,
             getLog: (context) => context.read<DeliveryOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<DeliveryOfflineCubit>().post();
+              await context.read<DeliveryOfflineCubit>().post( context.read<DeliveryFailedOfflineCubit>(),);
             },
             onGotoReview: (context) {
               goTo(context, ReviewDeiveryOfflineSave()).then((e) async => {
@@ -339,7 +341,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogDeliveryScreen());
             },
             onFailedSync: (context) {
-              goTo(context, SyncLogScreen()).then((e) async => {
+              goTo(context, SyncFailLogDeliveryScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
                       isExpanded = true;

@@ -2,14 +2,21 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/duplicateItem_GPO_Screen.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/duplicateItem_DLR_Screen.dart';
+import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/sale_order/presentation/sale_order_page.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '/feature/inbound/return_receipt_request/presentation/return_receipt_request_page.dart';
@@ -33,8 +40,13 @@ import '/utilies/storage/locale_storage.dart';
 import '../../../../constant/style.dart';
 
 class CreateDeliveryScreen extends StatefulWidget {
-  const CreateDeliveryScreen({super.key});
-
+  const CreateDeliveryScreen({
+    super.key,
+    this.isEdit,
+    this.isEditFaild,
+  });
+  final dynamic isEdit;
+  final dynamic isEditFaild;
   @override
   State<CreateDeliveryScreen> createState() => _CreateDeliveryScreenState();
 }
@@ -59,6 +71,8 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   final docEntry = TextEditingController();
   final refLineNo = TextEditingController();
   final totalQty = TextEditingController();
+  final saveId = TextEditingController();
+
   List<dynamic> isBin = [{}];
   //
   final isBatch = TextEditingController();
@@ -66,15 +80,12 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   final DioClient dio = DioClient();
   List<dynamic> itemCodeFilter = [];
   final barCode = TextEditingController();
-  late DeliveryCubit _bloc;
-  late ItemCubit _blocItem;
 
   int isEdit = -1;
   bool isSerialOrBatch = false;
   List<dynamic> items = [];
   List<dynamic> baseEntry = [];
   bool loading = false;
-  late BinCubit _blocBin;
   bool isReview = false;
   bool isClickScanItem = false;
   bool isClickScanBin = false;
@@ -83,11 +94,12 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   final FocusNode _bin = FocusNode();
   @override
   void initState() {
-    init();
-    _bloc = context.read<DeliveryCubit>();
-    _blocItem = context.read<ItemCubit>();
-    _blocBin = context.read<BinCubit>();
+    super.initState();
 
+    init();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fromEdit();
+    });
     //
     // IscanDataPlugin.methodChannel.setMethodCallHandler((MethodCall call) async {
     //   if (call.method == "onScanResults") {
@@ -101,7 +113,138 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     //     });
     //   }
     // });
-    super.initState();
+  }
+
+  void fromEdit() async {
+    try {
+      if (widget.isEdit == null) return;
+      print(widget.isEdit);
+      // ✅ Populate text fields safely
+      poText.text = getDataFromDynamic(widget.isEdit['DocumentLines'].length > 0
+          ? widget.isEdit['DocumentLines'][0]["BaseEntry"]
+          : null);
+
+      cardCode.text = getDataFromDynamic(widget.isEdit['CardCode']);
+      cardName.text = getDataFromDynamic(widget.isEdit['CardName']);
+      warehouse.text = getDataFromDynamic(widget.isEdit['WarehouseCode']);
+      saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
+      if (mounted) MaterialDialog.loading(context);
+
+      final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+      final saleOrder = context.read<SaleOrderOfflineCubit>().state;
+
+      final List<Map<String, dynamic>> rawItems = [];
+      final List<dynamic> lines =
+          (widget.isEdit['DocumentLines'] as List?) ?? [];
+
+      final refDocEntry =
+          getDataFromDynamic(widget.isEdit["DocumentLines"]?[0]?["BaseEntry"]);
+      docEntry.text = refDocEntry;
+      final matchedSaleOrde = saleOrder.firstWhere(
+        (rcr) => rcr['DocEntry'].toString() == refDocEntry,
+        orElse: () => {},
+      );
+      if (matchedSaleOrde.isEmpty) {
+        if (mounted) MaterialDialog.close(context);
+
+        MaterialDialog.warning(
+          context,
+          title: 'Error',
+          body: "Sale order Not Found!",
+        );
+        return;
+      }
+      for (var element in lines) {
+        final itemList = context.read<ItemOfflineCubit>().state;
+        final binList = context.read<BinOfflineCubit>().state;
+
+        final itemCode = getDataFromDynamic(element["ItemCode"]);
+        final uomEntry =
+            int.tryParse(getDataFromDynamic(element["UoMEntry"]).toString()) ??
+                0;
+
+        // ✅ Find matching barcode record
+        final matchedBarcode = barcodeList.firstWhere(
+          (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+          orElse: () => {},
+        );
+
+        final matchedPOLine = (matchedSaleOrde.isNotEmpty &&
+                matchedSaleOrde["DocumentLines"] != null)
+            ? (matchedSaleOrde["DocumentLines"] as List).firstWhere(
+                (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+                orElse: () => {},
+              )
+            : {};
+
+        final matchedItem = itemList.firstWhere(
+            (e) => e['ItemCode'] == element['ItemCode'],
+            orElse: () => null);
+
+        if (matchedItem == null) {
+          MaterialDialog.success(context,
+              title: 'Oops.', body: "Item not found");
+          return;
+        }
+        final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+        final uomGroup = uomGroupCubit.state.firstWhere(
+          (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+          orElse: () => {},
+        );
+        final itemMapped = {
+          ...matchedItem,
+          "BaseUoM": uomGroup['BaseUoM'],
+          "UoMGroupDefinitionCollection":
+              uomGroup['UoMGroupDefinitionCollection']
+        };
+        final binID = element["DocumentLinesBinAllocations"].length > 0
+            ? element["DocumentLinesBinAllocations"][0]["BinAbsEntry"]
+            : -1;
+        final binCodeFind = binList.firstWhere(
+          (u) => u['AbsEntry'] == int.tryParse(getDataFromDynamic(binID)),
+          orElse: () => {},
+        );
+
+        rawItems.add({
+          "ItemCode": element['ItemCode'],
+          "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
+          "Quantity": element['Quantity'],
+          "TotalQuantity": matchedPOLine["RemainingOpenQuantity"],
+          "WarehouseCode": warehouse.text,
+          "UoMEntry": getDataFromDynamic(element['UoMEntry']),
+          "UoMCode": element['UoMCode'],
+          "UoMGroupDefinitionCollection":
+              itemMapped['UoMGroupDefinitionCollection'],
+          "BaseUoM": itemMapped['BaseUoM'],
+          "BinId": binID,
+          "DocEntry":refDocEntry,
+          "BinCode": binCodeFind["BinCode"],
+          "BaseLine": element['BaseLine'],
+          "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
+          "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
+          "Serials": element["SerialNumbers"] ?? [],
+          "Batches": element["BatchNumbers"] ?? [],
+          if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+        });
+
+        itemCodeFilter.add(element['ItemCode']);
+      }
+      // ✅ Update items
+      items = rawItems;
+
+      // Debug
+      // debugPrint("✅ Processed ${items.length} item(s)");
+      // debugPrint("🧾 rawItems: $items");
+
+      // ✅ Close loading indicator
+      if (mounted) MaterialDialog.close(context);
+
+      // ✅ Refresh UI
+      if (mounted) setState(() {});
+    } catch (e, stackTrace) {
+      if (mounted) MaterialDialog.close(context);
+      debugPrint("❌ fromFailed error: $e\n$stackTrace");
+    }
   }
 
   void init() async {
@@ -176,6 +319,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         "BinCode": binCode.text,
         "ManageSerialNumbers": isSerial.text,
         "ManageBatchNumbers": isBatch.text,
+        "BaseLine": refLineNo.text,
         "Serials":
             serialsInput.text == "" ? [] : jsonDecode(serialsInput.text) ?? [],
         "Batches":
@@ -220,7 +364,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     // final index = items.indexWhere((e) => e['ItemCode'] == item['ItemCode']);
 
     if (index < 0) return;
-
+    print(item);
     MaterialDialog.warning(
       context,
       title: 'Item (${item['ItemCode']})',
@@ -235,7 +379,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         binCode.text = getDataFromDynamic(item['BinCode']);
         binId.text = getDataFromDynamic(item['BinId']);
         baseUoM.text = getDataFromDynamic(item['BaseUoM']);
-        docEntry.text = getDataFromDynamic(item['DocEntry']);
+        docEntry.text =getDataFromDynamic(item['DocEntry']);
         refLineNo.text = getDataFromDynamic(item['BaseLine']);
         totalQty.text = getDataFromDynamic(item['TotalQuantity']);
         uoMGroupDefinitionCollection.text = jsonEncode(
@@ -300,6 +444,9 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
 
   void onPostToSAP() async {
     try {
+      // print(items);
+      // return;
+      var uuid = Uuid();
       MaterialDialog.loading(context);
       if (poText.text == '') {
         throw Exception(
@@ -310,6 +457,11 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         return qty != 0;
       }).toList();
       Map<String, dynamic> data = {
+        "SaveId": widget.isEdit != null && widget.isEditFaild == true
+            ? saveId.text
+            : widget.isEdit != null
+                ? saveId.text
+                : uuid.v4(),
         "CardCode": cardCode.text,
         "CardName": cardName.text,
         "WarehouseCode": warehouse.text,
@@ -378,7 +530,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
             "WarehouseCode": warehouse.text,
             "BaseType": 17, // sale order object
             "BaseEntry": item['DocEntry'],
-            "BaseLine": parentIndex,
+            "BaseLine": item['BaseLine'],
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
             "DocumentLinesBinAllocations":
@@ -386,14 +538,24 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           };
         }).toList(),
       };
-
-      context.read<DeliveryOfflineCubit>().addData(data);
+      if (widget.isEdit != null && widget.isEditFaild == true) {
+        context.read<DeliveryFailedOfflineCubit>().removeByFailId(saveId.text);
+        context.read<DeliveryOfflineCubit>().addData(data);
+      } else if (widget.isEdit != null) {
+        context.read<DeliveryOfflineCubit>().updateBySaveId(saveId.text, data);
+      } else {
+        context.read<DeliveryOfflineCubit>().addData(data);
+      }
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Saved Delivery",
+          body: widget.isEdit != null && widget.isEditFaild == true
+              ? "Edited Faild Delivery"
+              : widget.isEdit != null
+                  ? "Edited Delivery"
+                  : "Saved Delivery",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -419,7 +581,6 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
     uomAbEntry.text = '';
     isBatch.text = '';
     isSerial.text = '';
-    docEntry.text = '';
     refLineNo.text = '';
     isEdit = -1;
   }
@@ -429,16 +590,16 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       if (value == null) return;
       MaterialDialog.loading(context);
       FocusScope.of(context).requestFocus(FocusNode());
-      final state = _blocBin.state;
-      // If state is not BinData, just return (no data yet)
-      if (state is! BinData) {
-        debugPrint("BinCubit has no data yet.");
-        return;
-      }
-      final bins = state.entities;
-      if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
-        isBin.clear();
-      }
+      // final state = _blocBin.state;
+      // // If state is not BinData, just return (no data yet)
+      // if (state is! BinData) {
+      //   debugPrint("BinCubit has no data yet.");
+      //   return;
+      // }
+      // final bins = state.entities;
+      // if (bins.where((b) => b.warehouse == warehouse.text).isEmpty) {
+      //   isBin.clear();
+      // }
       itemCode.text = getDataFromDynamic(value['ItemCode']);
       itemName.text = getDataFromDynamic(value['ItemName']);
       // quantity.text = '0';
@@ -466,32 +627,6 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       print(e);
     }
   }
-
-  // void onCompleteTextEditItem() async {
-  //   try {
-  //     if (itemCode.text == '') return;
-
-  //     //
-  //     MaterialDialog.loading(context);
-  //     final item = await _blocItem.find("('${itemCode.text}')");
-  //     if (getDataFromDynamic(item['PurchaseItem']) == '' ||
-  //         getDataFromDynamic(item['PurchaseItem']) == 'tNO') {
-  //       throw Exception('${itemCode.text} is not purchase item.');
-  //     }
-  //     if (mounted) {
-  //       MaterialDialog.close(context);
-  //     }
-
-  //     onSetItemTemp(item);
-  //   } catch (e) {
-  //     if (mounted) {
-  //       MaterialDialog.close(context);
-  //       if (e is ServerFailure) {
-  //         MaterialDialog.success(context, title: 'Failed', body: e.message);
-  //       }
-  //     }
-  //   }
-  // }
 
   void onCompleteQuantiyInput() {
     FocusScope.of(context).requestFocus(FocusNode());
@@ -564,7 +699,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         final itemResponse =
             findFullItemInformation(context, element['ItemCode']);
         if (itemResponse == null) return;
-
+        // print(element);
         rawItems.add({
           "DocEntry": element['DocEntry'],
           "BaseEntry": element['DocEntry'],
@@ -579,8 +714,11 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
               itemResponse['UoMGroupDefinitionCollection'],
           "BaseUoM": itemResponse['BaseUoM'],
           "BinId": binId.text,
+          "BaseLine": element['LineNum'],
           "ManageSerialNumbers": itemResponse["ManageSerialNumbers"],
           "ManageBatchNumbers": itemResponse["ManageBatchNumbers"],
+          "Serials": element["SerialNumbers"] ?? [],
+          "Batches": element["BatchNumbers"] ?? [],
           "BarCode": element['BarCode'],
         });
         baseEntry.add({
@@ -631,6 +769,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           "WarehouseCode": item["WarehouseCode"],
           "UoMEntry": item["UoMEntry"],
           "UoMCode": item["UoMCode"],
+          "BaseLine": item['BaseLine'],
           "UoMGroupDefinitionCollection": item["UoMGroupDefinitionCollection"],
           "BaseUoM": item["BaseUoM"],
           "BinId": item["BinId"],
@@ -816,7 +955,6 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                     const SizedBox(height: 5),
 
                     // ====== Bin Location ======
-                 
 
                     // ====== Scan & Select Items ======
                     Row(
@@ -1066,7 +1204,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Post',
+                  'Save',
                   style: TextStyle(color: Colors.white, fontSize: 12.5),
                 ),
               ),

@@ -46,6 +46,7 @@ import 'package:wms_mobile/feature/list_serial/presentation/cubit/serial_list_of
 import 'package:wms_mobile/feature/lookup/bin_lookup/presentation/cubit/binlocation_lookup_cubit.dart';
 import 'package:wms_mobile/feature/lookup/product_lookup/presentation/cubit/product_lookup_cubit.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
+import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_cubit.dart';
@@ -116,6 +117,7 @@ void main() async {
   await Hive.openBox("failed_return_recept");
   await Hive.openBox("failed_good_recept");
   await Hive.openBox("failed_put_away");
+  await Hive.openBox("failed_delivery");
 
   // (Optional) Only print directory AFTER Hive init
   // final dir = await getApplicationDocumentsDirectory();
@@ -209,7 +211,8 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => QuickGoodReceiptFailedOfflineCubit()),
         BlocProvider(create: (_) => ReturnReceiptFailedOfflineCubit()),
         BlocProvider(create: (_) => GoodReceiptFailedOfflineCubit()),
-        BlocProvider(create: (_) => PutAwayFailedOfflineCubit())
+        BlocProvider(create: (_) => PutAwayFailedOfflineCubit()),
+        BlocProvider(create: (_) => DeliveryFailedOfflineCubit())
       ],
       child: const MainScreen(),
     );
