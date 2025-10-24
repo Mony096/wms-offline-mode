@@ -39,6 +39,43 @@ class ReviewOfflineSave extends StatelessWidget {
     if (confirm != true) return;
     context.read<GoodReceiptPoOfflineCubit>().clearData();
   }
+
+  Future<void> _removeById(BuildContext context, dynamic id) async {
+    // 1️⃣ Clear all Cubits
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text(
+          "Remove this data ?",
+          style: TextStyle(fontSize: 19),
+        ),
+        content: const Text(
+          "This will remove this offline failed data. Are you sure?",
+          style: TextStyle(fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("No"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Ok",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // User canceled
+    if (confirm != true) return;
+    context.read<GoodReceiptPoOfflineCubit>().removeByFailId(id);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,7 +91,7 @@ class ReviewOfflineSave extends StatelessWidget {
             fontSize: 17,
           ),
         ),
-         actions: [
+        actions: [
           // IconButton(
           //   icon: const Icon(Icons.refresh),
           //   tooltip: 'Reset Status',
@@ -300,50 +337,108 @@ class ReviewOfflineSave extends StatelessWidget {
                                   SizedBox(
                                     height: 6,
                                   ),
-                                  Align(
-                                    alignment: Alignment.topRight,
-                                    child: Material(
-                                      color: Colors
-                                          .transparent, // keep background transparent outside the button
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(5),
-                                        onTap: () {
-                                          goTo(
-                                              context,
-                                              CreateGoodReceiptPOScreen(
-                                                  isEdit: record,
-                                                  quickReceipt: false));
-                                        },
-                                        child: Ink(
-                                          width: 78,
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green,
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Align(
+                                        alignment: Alignment.topRight,
+                                        child: Material(
+                                          color: Colors
+                                              .transparent, // keep background transparent outside the button
+                                          child: InkWell(
                                             borderRadius:
                                                 BorderRadius.circular(5),
-                                          ),
-                                          child: Row(
-                                            children: const [
-                                              Icon(
-                                                Icons.edit,
-                                                size: 22,
-                                                color: Colors.white,
+                                            onTap: () {
+                                              _removeById(
+                                                  context, record['SaveId']);
+                                            },
+                                            child: Ink(
+                                              width: 100,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.redAccent,
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
                                               ),
-                                              SizedBox(width: 6),
-                                              Text(
-                                                "Edit",
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 12,
-                                                ),
+                                              child: Row(
+                                                children: const [
+                                                  Icon(
+                                                    Icons.remove,
+                                                    size: 22,
+                                                    color: Colors.white,
+                                                  ),
+                                                  SizedBox(width: 6),
+                                                  Text(
+                                                    "Remove",
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
+                                      SizedBox(
+                                        width: 10,
+                                      ),
+                                      Align(
+                                        alignment: Alignment.topRight,
+                                        child: Material(
+                                          color: Colors
+                                              .transparent, // keep background transparent outside the button
+                                          child: InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                            onTap: () {
+                                              goTo(
+                                                  context,
+                                                  CreateGoodReceiptPOScreen(
+                                                      isEdit: record,
+                                                      quickReceipt: false));
+                                            },
+                                            child: Ink(
+                                              width: 78,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.green,
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                              ),
+                                              child: Row(
+                                                children: const [
+                                                  Icon(
+                                                    Icons.edit,
+                                                    size: 22,
+                                                    color: Colors.white,
+                                                  ),
+                                                  SizedBox(width: 6),
+                                                  Text(
+                                                    "Edit",
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),

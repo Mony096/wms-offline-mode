@@ -3,22 +3,22 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/create_good_receipt_screen.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_failed_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/create_good_receipt_screen.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/create_put_away_screen.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_failed_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 
-class ReviewQuickOfflineSave extends StatelessWidget {
-  const ReviewQuickOfflineSave({super.key});
+class SyncFailLogPutAwayScreen extends StatelessWidget {
+  const SyncFailLogPutAwayScreen({super.key});
   Future<void> _clearAllData(BuildContext context) async {
     // 1️⃣ Clear all Cubits
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Clear Failed Data?",style: TextStyle(fontSize: 19),),
+        title: const Text("Clear Failed Data?"),
         content: const Text(
-            "This will remove all offline failed data. Are you sure?",style: TextStyle(fontSize: 14),),
+            "This will remove all offline failed data. Are you sure?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -38,7 +38,7 @@ class ReviewQuickOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<QuickGoodReceiptOfflineCubit>().clearData();
+    context.read<PutAwayFailedOfflineCubit>().clearData();
   }
 
   Future<void> _removeById(BuildContext context, dynamic id) async {
@@ -47,11 +47,12 @@ class ReviewQuickOfflineSave extends StatelessWidget {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Remove this data ?",
+        title: const Text(
+          "Remove this data ?",
           style: TextStyle(fontSize: 19),
         ),
         content: const Text(
-            "This will remove this offline failed data. Are you sure?",
+          "This will remove this offline failed data. Are you sure?",
           style: TextStyle(fontSize: 14),
         ),
         actions: [
@@ -73,7 +74,7 @@ class ReviewQuickOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<QuickGoodReceiptOfflineCubit>().removeByFailId(id);
+    context.read<PutAwayFailedOfflineCubit>().removeByFailId(id);
   }
 
   @override
@@ -113,7 +114,7 @@ class ReviewQuickOfflineSave extends StatelessWidget {
         ],
         elevation: 3,
       ),
-      body: BlocBuilder<QuickGoodReceiptOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<PutAwayFailedOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
@@ -129,9 +130,8 @@ class ReviewQuickOfflineSave extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemBuilder: (context, index) {
               final record = records[index];
-              final lines = record['DocumentLines'] ?? [];
+              final lines = record['StockTransferLines'] ?? [];
               final timestamp = record["timestamp"];
-
               String formattedTime = '';
               if (timestamp != null && timestamp.toString().isNotEmpty) {
                 try {
@@ -142,7 +142,6 @@ class ReviewQuickOfflineSave extends StatelessWidget {
                   formattedTime = timestamp.toString();
                 }
               }
-
               return Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -188,14 +187,14 @@ class ReviewQuickOfflineSave extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildRow("Supplier Code",
-                                      record['CardCode'] ?? 'N/A'),
-                                  const SizedBox(height: 5),
-                                  _buildRow("Supplier Name",
-                                      record['CardName'] ?? 'N/A'),
+                                     Text(
+                                    "Timestamp: $formattedTime",
+                                    style: const TextStyle(
+                                        fontSize: 13, color: Colors.redAccent),
+                                  ),
                                   const SizedBox(height: 5),
                                   _buildRow("Warehouse",
-                                      record['WarehouseCode'] ?? ''),
+                                      record['FromWarehouse'] ?? ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),
@@ -211,29 +210,42 @@ class ReviewQuickOfflineSave extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 6),
                                   ...lines.map<Widget>((line) {
-                                    final binCubit =
-                                        context.read<BinOfflineCubit>();
-
-                                    // Try to extract BinAbsEntry safely
-                                    final binAllocations =
-                                        line['DocumentLinesBinAllocations'];
-                                    final binAbsEntry = (binAllocations !=
+                                    final binAllocations = line[
+                                        'StockTransferLinesBinAllocations'];
+                                    final sBinAbsEntry = (binAllocations !=
                                                 null &&
                                             binAllocations.isNotEmpty &&
                                             binAllocations[0]?['BinAbsEntry'] !=
                                                 null)
                                         ? binAllocations[0]['BinAbsEntry']
                                         : null;
-
-                                    final bin = binCubit.state.firstWhere(
+                                    final tBinAbsEntry = (binAllocations !=
+                                                null &&
+                                            binAllocations.isNotEmpty &&
+                                            binAllocations[1]?['BinAbsEntry'] !=
+                                                null)
+                                        ? binAllocations[1]['BinAbsEntry']
+                                        : null;
+                                    final binCubit =
+                                        context.read<BinOfflineCubit>();
+                                    final sbin = binCubit.state.firstWhere(
                                       (u) =>
                                           u['AbsEntry'] ==
-                                          int.tryParse(binAbsEntry.toString()),
+                                          int.tryParse(sBinAbsEntry.toString()),
+                                      orElse: () =>
+                                          {}, // return empty map if not found
+                                    );
+                                    final tbin = binCubit.state.firstWhere(
+                                      (u) =>
+                                          u['AbsEntry'] ==
+                                          int.tryParse(tBinAbsEntry.toString()),
                                       orElse: () =>
                                           {}, // return empty map if not found
                                     );
 
-                                    final displayBin = bin['BinCode'] ?? '';
+                                    final displaySBin = sbin['BinCode'] ?? '';
+                                    final displayTBin = tbin['BinCode'] ?? '';
+
                                     return Padding(
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 4),
@@ -270,7 +282,7 @@ class ReviewQuickOfflineSave extends StatelessWidget {
                                                   .isNotEmpty)
                                             Padding(
                                               padding: const EdgeInsets.only(
-                                                  top: 2, left: 2),
+                                                  top: 6, left: 2),
                                               child: Row(
                                                 children: [
                                                   Text(
@@ -296,37 +308,64 @@ class ReviewQuickOfflineSave extends StatelessWidget {
                                                 ],
                                               ),
                                             ),
-                                          if (displayBin != "")
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                  top: 2, left: 2),
-                                              child: Row(
-                                                children: [
-                                                  Text(
-                                                    "Bin Location :",
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                top: 6, left: 2),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  "Source Bin :",
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black54),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    displaySBin,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: const TextStyle(
-                                                        fontSize: 13,
-                                                        color: Colors.black54),
-                                                  ),
-                                                  const SizedBox(width: 4),
-                                                  Expanded(
-                                                    child: Text(
-                                                      displayBin,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: const TextStyle(
-                                                        fontSize: 12,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        color: Colors.black87,
-                                                      ),
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Colors.black87,
                                                     ),
                                                   ),
-                                                ],
-                                              ),
+                                                ),
+                                              ],
                                             ),
+                                          ),
                                           SizedBox(
                                             height: 2,
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                top: 6, left: 2),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  "To Bin :",
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black54),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    displayTBin,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color: Colors.black87,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                           const Divider(
                                               height: 8, color: Colors.black12),
@@ -400,12 +439,13 @@ class ReviewQuickOfflineSave extends StatelessWidget {
                                             onTap: () {
                                               goTo(
                                                   context,
-                                                  CreateGoodReceiptPOScreen(
-                                                      isEdit: record,
-                                                      quickReceipt: true));
+                                                  CreatePutAwayScreen(
+                                                    isEdit: record,
+                                                    isEditFaild: true,
+                                                  ));
                                             },
                                             child: Ink(
-                                              width: 78,
+                                           width: 117,
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                       horizontal: 8,
@@ -424,7 +464,7 @@ class ReviewQuickOfflineSave extends StatelessWidget {
                                                   ),
                                                   SizedBox(width: 6),
                                                   Text(
-                                                    "Edit",
+                                                    "Resync Data",
                                                     style: TextStyle(
                                                       color: Colors.white,
                                                       fontWeight:
@@ -449,7 +489,7 @@ class ReviewQuickOfflineSave extends StatelessWidget {
                     ),
 
                     // 🔹 Index Badge
-                    Positioned(
+                   Positioned(
                       top: 8,
                       right: 8,
                       child: Container(
@@ -483,7 +523,7 @@ class ReviewQuickOfflineSave extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 110,
+          width: 90,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

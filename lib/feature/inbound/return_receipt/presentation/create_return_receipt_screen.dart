@@ -2,15 +2,22 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/business_partner/presentation/screen/business_partner_page.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/component/item/presentation/cubit/item_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/component/item/presentation/screen/item_page.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/duplicateItem_RTR_Screen.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/return_receipt_request_page.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '/feature/batch/good_receip_batch_screen.dart';
@@ -31,8 +38,13 @@ import '../../../../constant/style.dart';
 import 'cubit/return_receipt_cubit.dart';
 
 class CreateReturnReceiptScreen extends StatefulWidget {
-  const CreateReturnReceiptScreen({super.key});
-
+  const CreateReturnReceiptScreen({
+    super.key,
+    this.isEdit,
+    this.isEditFaild,
+  });
+  final dynamic isEdit;
+  final dynamic isEditFaild;
   @override
   State<CreateReturnReceiptScreen> createState() =>
       _CreateReturnReceiptScreenState();
@@ -59,18 +71,13 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
   final refLineNo = TextEditingController();
   final barCode = TextEditingController();
   final totalQuantity = TextEditingController();
+  final saveId = TextEditingController();
 
-  List<dynamic> isBin = [{}];
   //
   final isBatch = TextEditingController();
   final isSerial = TextEditingController();
   final DioClient dio = DioClient();
-
-  late ReturnReceiptCubit _bloc;
-  late ItemCubits _blocItem;
   List<dynamic> itemCodeFilter = [];
-  late BinCubit _blocBin;
-
   int isEdit = -1;
   bool isSerialOrBatch = false;
   List<dynamic> items = [];
@@ -83,25 +90,142 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
   final FocusNode _bin = FocusNode();
   @override
   void initState() {
-    init();
-    _bloc = context.read<ReturnReceiptCubit>();
-    _blocItem = context.read<ItemCubits>();
-    _blocBin = context.read<BinCubit>();
-
-    //
-    // IscanDataPlugin.methodChannel.setMethodCallHandler((MethodCall call) async {
-    //   if (call.method == "onScanResults") {
-    //     if (loading) return;
-
-    //     setState(() {
-    //       if (call.arguments['data'] == "decode error") return;
-    //       //
-    //       barCode.text = call.arguments['data'];
-    //       onCompleteTextEditItem();
-    //     });
-    //   }
-    // });
     super.initState();
+
+    init();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fromEdit();
+    });
+  }
+
+  void fromEdit() async {
+    try {
+      if (widget.isEdit == null) return;
+      print(widget.isEdit);
+      // ✅ Populate text fields safely
+      cardCode.text = getDataFromDynamic(widget.isEdit['CardCode']);
+      cardName.text = getDataFromDynamic(widget.isEdit['CardName']);
+      warehouse.text = getDataFromDynamic(widget.isEdit['WarehouseCode']);
+      saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
+      if (mounted) MaterialDialog.loading(context);
+
+      final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+      final receiptRequest =
+          context.read<ReturnReceiptRequestOfflineCubit>().state;
+
+      final List<Map<String, dynamic>> rawItems = [];
+      final List<dynamic> lines =
+          (widget.isEdit['DocumentLines'] as List?) ?? [];
+
+      final refDocEntry =
+          getDataFromDynamic(widget.isEdit["DocumentLines"]?[0]?["BaseEntry"]);
+      docEntry.text = refDocEntry;
+      final matchedRReq = receiptRequest.firstWhere(
+        (rcr) => rcr['DocEntry'].toString() == refDocEntry,
+        orElse: () => {},
+      );
+      if (matchedRReq.isEmpty) {
+        if (mounted) MaterialDialog.close(context);
+
+        MaterialDialog.warning(
+          context,
+          title: 'Error',
+          body: "Return Receipt Request Not Found!",
+        );
+        return;
+      }
+
+      for (var element in lines) {
+        final itemList = context.read<ItemOfflineCubit>().state;
+        final binList = context.read<BinOfflineCubit>().state;
+
+        final itemCode = getDataFromDynamic(element["ItemCode"]);
+        final uomEntry =
+            int.tryParse(getDataFromDynamic(element["UoMEntry"]).toString()) ??
+                0;
+
+        // ✅ Find matching barcode record
+        final matchedBarcode = barcodeList.firstWhere(
+          (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+          orElse: () => {},
+        );
+
+        final matchedPOLine =
+            (matchedRReq.isNotEmpty && matchedRReq["DocumentLines"] != null)
+                ? (matchedRReq["DocumentLines"] as List).firstWhere(
+                    (b) =>
+                        b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+                    orElse: () => {},
+                  )
+                : {};
+
+        final matchedItem = itemList.firstWhere(
+            (e) => e['ItemCode'] == element['ItemCode'],
+            orElse: () => null);
+
+        if (matchedItem == null) {
+          MaterialDialog.success(context,
+              title: 'Oops.', body: "Item not found");
+          return;
+        }
+        final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+        final uomGroup = uomGroupCubit.state.firstWhere(
+          (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+          orElse: () => {},
+        );
+        final itemMapped = {
+          ...matchedItem,
+          "BaseUoM": uomGroup['BaseUoM'],
+          "UoMGroupDefinitionCollection":
+              uomGroup['UoMGroupDefinitionCollection']
+        };
+        final binID = element["DocumentLinesBinAllocations"].length > 0
+            ? element["DocumentLinesBinAllocations"][0]["BinAbsEntry"]
+            : -1;
+        final binCodeFind = binList.firstWhere(
+          (u) => u['AbsEntry'] == int.tryParse(getDataFromDynamic(binID)),
+          orElse: () => {},
+        );
+
+        rawItems.add({
+          "ItemCode": element['ItemCode'],
+          "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
+          "Quantity": element['Quantity'],
+          "TotalQuantity": matchedPOLine["Quantity"],
+          "WarehouseCode": warehouse.text,
+          "UoMEntry": getDataFromDynamic(element['UoMEntry']),
+          "UoMCode": element['UoMCode'],
+          "UoMGroupDefinitionCollection":
+              itemMapped['UoMGroupDefinitionCollection'],
+          "BaseUoM": itemMapped['BaseUoM'],
+          "BinId": binID,
+          "BinCode": binCodeFind["BinCode"],
+          "BaseLine": element['BaseLine'],
+          "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
+          "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
+          "Serials": element["SerialNumbers"] ?? [],
+          "Batches": element["BatchNumbers"] ?? [],
+          if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+        });
+
+        itemCodeFilter.add(element['ItemCode']);
+      }
+      // ✅ Update items
+      items = rawItems;
+
+      // Debug
+      // debugPrint("✅ Processed ${items.length} item(s)");
+      // debugPrint("🧾 rawItems: $items");
+
+      // ✅ Close loading indicator
+      if (mounted) MaterialDialog.close(context);
+
+      // ✅ Refresh UI
+      if (mounted) setState(() {});
+    } catch (e, stackTrace) {
+      if (mounted) MaterialDialog.close(context);
+      debugPrint("❌ fromFailed error: $e\n$stackTrace");
+    }
   }
 
   void init() async {
@@ -186,7 +310,8 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
       };
-
+      batchesInput.clear();
+      serialsInput.clear();
       if (isEdit == -1) {
         // if (!force) {
         //   final exist = items.indexWhere((row) =>
@@ -300,6 +425,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
 
   void onPostToSAP() async {
     try {
+      var uuid = Uuid();
       MaterialDialog.loading(context);
       if (cardCode.text == '') {
         throw Exception(
@@ -311,6 +437,11 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
       }).toList();
       Map<String, dynamic> data = {
         // "BPL_IDAssignedToInvoice": 1,
+        "SaveId": widget.isEdit != null && widget.isEditFaild == true
+            ? saveId.text
+            : widget.isEdit != null
+                ? saveId.text
+                : uuid.v4(),
         "CardCode": cardCode.text,
         "CardName": cardName.text,
         "WarehouseCode": warehouse.text,
@@ -380,22 +511,38 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
             "WarehouseCode": warehouse.text,
             "BaseEntry": docEntry.text,
             "BaseType": 234000031,
-            "BaseLine": parentIndex,
+            "BaseLine": item['BaseLine'],
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
-            "DocumentLinesBinAllocations":
-                isBin.length > 0 ? binAllocations : []
+            "DocumentLinesBinAllocations": binAllocations
           };
         }).toList(),
       };
+      // print(data);
+      // return;
+      if (widget.isEdit != null && widget.isEditFaild == true) {
+        context
+            .read<ReturnReceiptFailedOfflineCubit>()
+            .removeByFailId(saveId.text);
+        context.read<ReturnReceiptOfflineCubit>().addData(data);
+      } else if (widget.isEdit != null) {
+        context
+            .read<ReturnReceiptOfflineCubit>()
+            .updateBySaveId(saveId.text, data);
+      } else {
+        context.read<ReturnReceiptOfflineCubit>().addData(data);
+      }
       // final response = await _bloc.post(data);
-      context.read<ReturnReceiptOfflineCubit>().addData(data);
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Saved Return Receipt",
+          body: widget.isEdit != null && widget.isEditFaild == true
+              ? "Edited Faild Return Receipt"
+              : widget.isEdit != null
+                  ? "Edited Return Receipt"
+                  : "Saved Return Receipt",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -762,8 +909,6 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
                     Divider(thickness: 0.5, color: Colors.grey.shade500),
                     const SizedBox(height: 5),
 
-                  
-
                     // ====== Scan & Select Items ======
                     Row(
                       children: [
@@ -835,7 +980,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                      // ====== Bin Location ======
+                    // ====== Bin Location ======
                     Row(
                       children: [
                         Expanded(
@@ -1013,7 +1158,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Post',
+                  'Save',
                   style: TextStyle(color: Colors.white, fontSize: 12.5),
                 ),
               ),

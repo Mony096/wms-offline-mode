@@ -74,15 +74,7 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
     // } else {
     // quantityPerBatch.text = widget.alcQty.toString();
     // }
-    if (widget.isEdit >= 0) {
-      setState(() {
-        items = widget.serials ?? [];
-      });
-    } else {
-      setState(() {
-        items = [];
-      });
-    }
+    items = widget.serials ?? [];
     final totalQty = items.fold<int>(0, (sum, item) {
       final qty = int.tryParse(item["Quantity"].toString()) ?? 0;
       return sum + qty;
@@ -448,57 +440,65 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
                         // 2. Clear current focus before switching
                         FocusScope.of(context).unfocus()
                       },
-                      keyboardType:isClickScan ? TextInputType.none : TextInputType.text,
-                      onPressed:
-                          widget.listAllBatch != null ? onNavigateBatchList : null,
+                      keyboardType:
+                          isClickScan ? TextInputType.none : TextInputType.text,
+                      onPressed: widget.listAllBatch != null
+                          ? onNavigateBatchList
+                          : null,
                       onFieldSubmitted: (value) {
                         _handleScanSubmitted(value, _serial);
                       },
                     ),
                   ),
-                  widget.listAllBatch == null ? SizedBox(
-                    width: 15,
-                  ):SizedBox(),
-                  widget.listAllBatch == null ?
-                  GestureDetector(
-                    onTap: () {
-                      // 1. Switch to scan mode
-                      setState(() {
-                        isClickScan = true; // turn on scan mode
-                        textSerial.clear();
-                      });
+                  widget.listAllBatch == null
+                      ? SizedBox(
+                          width: 15,
+                        )
+                      : SizedBox(),
+                  widget.listAllBatch == null
+                      ? GestureDetector(
+                          onTap: () {
+                            // 1. Switch to scan mode
+                            setState(() {
+                              isClickScan = true; // turn on scan mode
+                              textSerial.clear();
+                            });
 
-                      // 2. Clear current focus before switching
-                      FocusScope.of(context).unfocus();
+                            // 2. Clear current focus before switching
+                            FocusScope.of(context).unfocus();
 
-                      // 3. Focus scanner input
-                      Future.delayed(const Duration(milliseconds: 100), () {
-                        _requestFocus(_serial);
-                      });
-                    },
-                    child: Container(
-                      margin: EdgeInsets.only(top: 30),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF2F3F4),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isClickScan
-                              ? Colors.green
-                              : Colors
-                                  .transparent, // ✅ green border when active
-                          width: 2,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.document_scanner_outlined,
-                        color: Color(0xFF12169D),
-                        size: 20,
-                      ),
-                    ),
-                  ):Container(),
-                   widget.listAllBatch == null ? const SizedBox(width: 12):SizedBox(),
+                            // 3. Focus scanner input
+                            Future.delayed(const Duration(milliseconds: 100),
+                                () {
+                              _requestFocus(_serial);
+                            });
+                          },
+                          child: Container(
+                            margin: EdgeInsets.only(top: 30),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF2F3F4),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isClickScan
+                                    ? Colors.green
+                                    : Colors
+                                        .transparent, // ✅ green border when active
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.document_scanner_outlined,
+                              color: Color(0xFF12169D),
+                              size: 20,
+                            ),
+                          ),
+                        )
+                      : Container(),
+                  widget.listAllBatch == null
+                      ? const SizedBox(width: 12)
+                      : SizedBox(),
                 ],
               ),
               SizedBox(
@@ -515,15 +515,16 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
                           const TextInputType.numberWithOptions(decimal: true),
                     ),
                   ),
-                   widget.listAllBatch == null ?
-                  SizedBox(
-                    width: 20,
-                  ):Container(),
-                  widget.listAllBatch == null ?
-                  Expanded(
-                    child: Column(
-                      children: [
-                      DatePicker(
+                  widget.listAllBatch == null
+                      ? SizedBox(
+                          width: 20,
+                        )
+                      : Container(),
+                  widget.listAllBatch == null
+                      ? Expanded(
+                          child: Column(
+                            children: [
+                              DatePicker(
                                 key: _datePickerKey,
                                 title: "Expiry Date",
                                 restorationId: 'main_date_picker',
@@ -531,9 +532,10 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
                                 onDateSelected: _selectPostingDate,
                                 defaultValue: expDate,
                               ),
-                      ],
-                    ),
-                  ):Container(),
+                            ],
+                          ),
+                        )
+                      : Container(),
                 ],
               ),
               const SizedBox(height: 20),

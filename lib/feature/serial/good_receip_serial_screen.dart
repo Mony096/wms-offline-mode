@@ -58,17 +58,10 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
     itemName.text = widget.itemName;
     warehouse.text = widget.warehouse;
     totalSerial.text = items.length.toString();
-    if (widget.isEdit >= 0) {
-      setState(() {
-        print(widget.serials);
-        items = widget.serials ?? [];
-        totalSerial.text = items.length.toString();
-      });
-    } else {
-      setState(() {
-        items = [];
-      });
-    }
+
+    items = widget.serials ?? [];
+    totalSerial.text = items.length.toString();
+
     // IscanDataPlugin.methodChannel.setMethodCallHandler((MethodCall call) async {
     //   if (call.method == "onScanResults") {
     //     setState(() {

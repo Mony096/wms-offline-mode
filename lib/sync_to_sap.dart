@@ -16,22 +16,30 @@ import 'package:wms_mobile/feature/counting/quick_count/presentation/review_cycl
 import 'package:wms_mobile/feature/counting/quick_count/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_log_cycle_count.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/good_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_recipt_po_failed_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/review_quick_offline_save.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_faild_log.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_faild_log_quick.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_log_quick.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/sync_log.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/review_offline_save.dart';
@@ -102,19 +110,35 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                   );
             },
             onGotoReview: (context) {
-              goTo(context, ReviewOfflineSave());
+              goTo(context, ReviewOfflineSave()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogScreen());
             },
             onFailedSync: (context) {
-              goTo(context, SyncFailLogScreen());
+              goTo(context, SyncFailLogScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
           SyncItem(
             name: 'Quick Goods Receipt',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<QuickGoodReceiptFailedOfflineCubit>().getFailed(),
             getCount: (context) => context
                 .read<QuickGoodReceiptOfflineCubit>()
                 .getJsonData()
@@ -122,78 +146,152 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             getLog: (context) =>
                 context.read<QuickGoodReceiptOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<QuickGoodReceiptOfflineCubit>().post();
+              await context.read<QuickGoodReceiptOfflineCubit>().post(
+                    context.read<QuickGoodReceiptFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
-              goTo(context, ReviewQuickOfflineSave());
+              goTo(context, ReviewQuickOfflineSave()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogQuickScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncFailLogQuickScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
           SyncItem(
             name: 'Customer Return Receipt',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<ReturnReceiptFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<ReturnReceiptOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<ReturnReceiptOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<ReturnReceiptOfflineCubit>().post();
+              await context.read<ReturnReceiptOfflineCubit>().post(
+                    context.read<ReturnReceiptFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
-              goTo(context, ReviewReturnReceiptOfflineSave());
+              goTo(context, ReviewReturnReceiptOfflineSave()).then((e) async =>
+                  {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogReturnReceiptScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncFailLogReturnReceiptScreen()).then((e) async =>
+                  {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
           SyncItem(
             name: 'Goods Receipt',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<GoodReceiptFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<GoodsReceiptOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<GoodsReceiptOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<GoodsReceiptOfflineCubit>().post();
+              await context.read<GoodsReceiptOfflineCubit>().post(
+                    context.read<GoodReceiptFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
-              goTo(context, ReviewGoodsReceiptOfflineSave());
+              goTo(context, ReviewGoodsReceiptOfflineSave()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogGoodsReceiptScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncFailLogGoodReceiptScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
           SyncItem(
             name: 'Put Away',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<PutAwayFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<PutAwayOfflineCubit>().getJsonData().length,
             getLog: (context) => context.read<PutAwayOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<PutAwayOfflineCubit>().post();
+              await context.read<PutAwayOfflineCubit>().post(
+                    context.read<PutAwayFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
-              goTo(context, ReviewPutAwayOfflineSave());
+              goTo(context, ReviewPutAwayOfflineSave()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogPutAwayScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncFailLogPutAwayScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
         ],
@@ -214,13 +312,29 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               await context.read<DeliveryOfflineCubit>().post();
             },
             onGotoReview: (context) {
-              goTo(context, ReviewDeiveryOfflineSave());
+              goTo(context, ReviewDeiveryOfflineSave()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogDeliveryScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncLogScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
           SyncItem(
@@ -235,13 +349,30 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               await context.read<PurchaseReturnOfflineCubit>().post();
             },
             onGotoReview: (context) {
-              goTo(context, ReviewPurchaseReturnOfflineSave());
+              goTo(context, ReviewPurchaseReturnOfflineSave()).then((e) async =>
+                  {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogPurchaseReturnScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncLogScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
           SyncItem(
@@ -256,13 +387,29 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               await context.read<GoodsIssueOfflineCubit>().post();
             },
             onGotoReview: (context) {
-              goTo(context, ReviewGoodsIssueOfflineSave());
+              goTo(context, ReviewGoodsIssueOfflineSave()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogGoodsIssueScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncLogScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
         ],
@@ -284,13 +431,29 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               await context.read<QuickCountOfflineCubit>().post();
             },
             onGotoReview: (context) {
-              goTo(context, ReviewQuickCountOfflineSave());
+              goTo(context, ReviewQuickCountOfflineSave()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogQuickCountScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncLogScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
           SyncItem(
@@ -305,13 +468,29 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               await context.read<CycleCountOfflineCubit>().post();
             },
             onGotoReview: (context) {
-              goTo(context, ReviewCycleCountOfflineSave());
+              goTo(context, ReviewCycleCountOfflineSave()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogCycleCountScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncLogScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
           SyncItem(
@@ -326,13 +505,30 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               await context.read<PhysicalCountOfflineCubit>().post();
             },
             onGotoReview: (context) {
-              goTo(context, ReviewPhysicalCountOfflineSave());
+              goTo(context, ReviewPhysicalCountOfflineSave()).then((e) async =>
+                  {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogPhysicalCountScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncLogScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
           SyncItem(
@@ -346,13 +542,29 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               await context.read<BinCountOfflineCubit>().post();
             },
             onGotoReview: (context) {
-              goTo(context, ReviewBinCountOfflineSave());
+              goTo(context, ReviewBinCountOfflineSave()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
             onGotoSyncLog: (context) {
               goTo(context, SyncLogBinCountScreen());
             },
             onFailedSync: (context) {
-              // goTo(context, SyncLogScreen());
+              goTo(context, SyncLogScreen()).then((e) async => {
+                    setState(() {
+                      isLoading = true;
+                    }),
+                    await Future.delayed(const Duration(milliseconds: 1000)),
+                    setState(() {
+                      isLoading = false;
+                    }),
+                  });
             },
           ),
         ],
@@ -439,6 +651,13 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
 
       // 7️⃣ Close loading dialog and show success message
       MaterialDialog.close(context);
+      setState(() {
+        isLoading = true;
+      });
+      await Future.delayed(const Duration(milliseconds: 500));
+      setState(() {
+        isLoading = false;
+      });
       MaterialDialog.success(
         context,
         title: "Sync Completed",
@@ -505,7 +724,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
     context.read<CycleCountOfflineCubit>().clearData();
     context.read<BinCountOfflineCubit>().clearData();
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 1000));
 
     setState(() {
       isLoading = false;
@@ -1071,7 +1290,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               SizedBox(
-                width: 90,
+                width: 140,
                 child: ElevatedButton.icon(
                   onPressed: item.onGotoReview != null && isReady
                       ? () {
@@ -1080,7 +1299,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                       : null,
                   icon: const Icon(Icons.book, color: Colors.white, size: 17),
                   label: const Text(
-                    "Saved",
+                    "Ready to Sync",
                     style: TextStyle(color: Colors.white),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -1113,8 +1332,17 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                           MaterialDialog.loading(context);
                           try {
                             await item.onSync(context);
-                            if (context.mounted)
-                              Navigator.pop(context); // close loading
+
+                            if (context.mounted) MaterialDialog.close(context);
+                            setState(() {
+                              isLoading = true;
+                            });
+                            await Future.delayed(
+                                const Duration(milliseconds: 500));
+                            setState(() {
+                              isLoading = false;
+                            });
+                            Navigator.pop(context); // close loading
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(

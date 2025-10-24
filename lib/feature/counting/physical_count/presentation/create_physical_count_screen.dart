@@ -157,7 +157,8 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
       };
-
+      batchesInput.clear();
+      serialsInput.clear();
       if (isEdit == -1) {
         data.add(item);
       } else {

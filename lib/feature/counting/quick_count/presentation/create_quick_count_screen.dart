@@ -314,7 +314,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
       };
-      print(item);
+      batchesInput.clear();
+      serialsInput.clear();
 
       if (isEdit == -1) {
         data.add(item);

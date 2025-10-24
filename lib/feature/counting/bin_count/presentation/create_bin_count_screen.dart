@@ -182,6 +182,8 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
       };
+      batchesInput.clear();
+      serialsInput.clear();
       if (isEdit == -1) {
         data.add(item);
       } else {

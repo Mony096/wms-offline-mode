@@ -11,6 +11,7 @@ import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dar
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_recipt_po_failed_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/duplicateItem_GPO_Screen.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
@@ -46,11 +47,13 @@ class CreateGoodReceiptPOScreen extends StatefulWidget {
       this.po = null,
       this.quickReceipt,
       this.isEdit,
-      this.isEditFaildGRPO});
+      this.isEditFaildGRPO,
+      this.isEditFaildQGR});
   final dynamic quickReceipt;
   final dynamic po;
   final dynamic isEdit;
   final dynamic isEditFaildGRPO;
+  final dynamic isEditFaildQGR;
 
   @override
   State<CreateGoodReceiptPOScreen> createState() =>
@@ -106,11 +109,11 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
 
     init();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      fromFailed();
+      fromEdit();
     });
   }
 
-  void fromFailed() async {
+  void fromEdit() async {
     try {
       if (widget.isEdit == null) return;
       print(widget.isEdit);
@@ -119,6 +122,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       cardName.text = getDataFromDynamic(widget.isEdit['CardName']);
       warehouse.text = getDataFromDynamic(widget.isEdit['WarehouseCode']);
       saveIdGRPO.text = getDataFromDynamic(widget.isEdit['SaveId']);
+      saveIdQGR.text = getDataFromDynamic(widget.isEdit['SaveId']);
       if (mounted) MaterialDialog.loading(context);
 
       final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
@@ -134,7 +138,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         (po) => po['DocEntry'].toString() == refDocEntry,
         orElse: () => {},
       );
-      if (matchedPO.isEmpty) {
+      if (matchedPO.isEmpty && !widget.quickReceipt) {
         if (mounted) MaterialDialog.close(context);
 
         MaterialDialog.warning(
@@ -144,43 +148,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         );
         return;
       }
-      // for (var element in lines) {
-      //   try {
-      //     final Map<String, dynamic> line =
-      //         Map<String, dynamic>.from(element as Map);
 
-      //     final itemCode = getDataFromDynamic(line["ItemCode"]);
-      //     final uomEntry =
-      //         int.tryParse(getDataFromDynamic(line["UoMEntry"]).toString()) ??
-      //             0;
-
-      //     // ✅ Find matching barcode record
-      //     final matchedBarcode = barcodeList.firstWhere(
-      //       (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
-      //       orElse: () => {},
-      //     );
-
-      //     final matchedPOLine = (matchedPO.isNotEmpty &&
-      //             matchedPO["DocumentLines"] != null)
-      //         ? (matchedPO["DocumentLines"] as List).firstWhere(
-      //             (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
-      //             orElse: () => {},
-      //           )
-      //         : {};
-
-      //     final updatedLine = {
-      //       ...line,
-      //       if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
-      //       if (matchedPOLine.isNotEmpty)
-      //         "TotalQuantity": matchedPOLine["Quantity"],
-      //     };
-
-      //     rawItems.add(updatedLine);
-      //     itemCodeFilter.add(itemCode);
-      //   } catch (innerError) {
-      //     debugPrint("⚠️ Error processing line: $innerError");
-      //   }
-      // }
       for (var element in lines) {
         final itemList = context.read<ItemOfflineCubit>().state;
         final binList = context.read<BinOfflineCubit>().state;
@@ -244,10 +212,13 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           "UoMGroupDefinitionCollection":
               itemMapped['UoMGroupDefinitionCollection'],
           "BaseUoM": itemMapped['BaseUoM'],
-          "BinId": binId.text,
+          "BinId": binID,
           "BinCode": binCodeFind["BinCode"],
+          "BaseLine": element['BaseLine'],
           "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
           "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
+          "Serials": element["SerialNumbers"] ?? [],
+          "Batches": element["BatchNumbers"] ?? [],
           if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
         });
 
@@ -471,7 +442,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
         "BarCode": barCode.text,
       };
-
+      batchesInput.clear();
+      serialsInput.clear();
       if (isEdit == -1) {
         // if (!force) {
         //   final exist = items.indexWhere((row) =>
@@ -590,9 +562,13 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
   void onPostToSAP() async {
     // print(widget.po);
     // return;
-    var uuid = Uuid();
 
     try {
+      if (cardCode.text == '') {
+        throw Exception("Opp, Supplier Code is required");
+      }
+      var uuid = Uuid();
+
       final filteredItems = items.where((item) {
         final qty = int.tryParse(item["Quantity"].toString()) ?? 0;
         return qty != 0;
@@ -605,7 +581,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         // "BPL_IDAssignedToInvoice": 1,
         "SaveId": widget.isEdit != null
             ? widget.quickReceipt
-                ? null
+                ? saveIdQGR.text
                 : saveIdGRPO.text
             : uuid.v4(),
         "CardCode": cardCode.text,
@@ -727,7 +703,19 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       // });
       // return;
       if (widget.quickReceipt) {
-        context.read<QuickGoodReceiptOfflineCubit>().addData(data);
+        // context.read<QuickGoodReceiptOfflineCubit>().addData(data);
+        if (widget.isEdit != null && widget.isEditFaildQGR == true) {
+          context
+              .read<QuickGoodReceiptFailedOfflineCubit>()
+              .removeByFailId(saveIdQGR.text);
+          context.read<QuickGoodReceiptOfflineCubit>().addData(data);
+        } else if (widget.isEdit != null) {
+          context
+              .read<QuickGoodReceiptOfflineCubit>()
+              .updateBySaveId(saveIdQGR.text, data);
+        } else {
+          context.read<QuickGoodReceiptOfflineCubit>().addData(data);
+        }
       } else {
         if (widget.isEdit != null && widget.isEditFaildGRPO == true) {
           context
@@ -749,12 +737,16 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           context,
           title: 'Successfully',
           body: widget.quickReceipt
-              ? "Saved Quick Receipt "
-              : widget.isEdit != null && widget.isEditFaildGRPO == true
-                  ? "Edited Failed Good Receipt PO "
+              ? widget.isEdit != null && widget.isEditFaildQGR == true
+                  ? "Edited Faild Quick Receipt"
                   : widget.isEdit != null
-                      ? "Edited Good Receipt PO "
-                      : "Saved Good Receipt PO ",
+                      ? "Edited Quick Receipt"
+                      : "Saved Quick Receipt"
+              : widget.isEdit != null && widget.isEditFaildGRPO == true
+                  ? "Edited Faild Receipt PO "
+                  : widget.isEdit != null
+                      ? "Edited Receipt PO "
+                      : "Saved Receipt PO ",
           onOk: () => Navigator.of(context).pop(),
         );
         // final response = await _bloc.post(data);
@@ -867,6 +859,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       final batches = batchesInput.text == "" || batchesInput.text == "null"
           ? []
           : jsonDecode(batchesInput.text) as List<dynamic>;
+      print(batches);
       goTo(
         context,
         GoodReceiptBatchScreen(
@@ -1412,7 +1405,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Post ',
+                  'Save ',
                   style: TextStyle(color: Colors.white, fontSize: 12.5),
                 ),
               ),

@@ -19,15 +19,19 @@ import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_ty
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/grt_cubit.dart';
 import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/good_receipt_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/good_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_recipt_po_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/purchase_good_receipt_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_cubit.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/component/item/presentation/cubit/item_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
@@ -108,6 +112,10 @@ void main() async {
   await Hive.openBox("physical_count");
   await Hive.openBox("cos");
   await Hive.openBox("bin_count");
+  await Hive.openBox("failed_quick_goods_recept");
+  await Hive.openBox("failed_return_recept");
+  await Hive.openBox("failed_good_recept");
+  await Hive.openBox("failed_put_away");
 
   // (Optional) Only print directory AFTER Hive init
   // final dir = await getApplicationDocumentsDirectory();
@@ -197,7 +205,11 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => PhysicalCountOfflineCubit()),
         BlocProvider(create: (_) => COSOfflineCubit()),
         BlocProvider(create: (_) => BinCountOfflineCubit()),
-        BlocProvider(create: (_) => GoodReciptPoFailedOfflineCubit())
+        BlocProvider(create: (_) => GoodReciptPoFailedOfflineCubit()),
+        BlocProvider(create: (_) => QuickGoodReceiptFailedOfflineCubit()),
+        BlocProvider(create: (_) => ReturnReceiptFailedOfflineCubit()),
+        BlocProvider(create: (_) => GoodReceiptFailedOfflineCubit()),
+        BlocProvider(create: (_) => PutAwayFailedOfflineCubit())
       ],
       child: const MainScreen(),
     );

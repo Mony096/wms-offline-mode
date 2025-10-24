@@ -2,8 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
@@ -32,8 +35,13 @@ import '../../../../constant/style.dart';
 import 'cubit/put_away_cubit.dart';
 
 class CreatePutAwayScreen extends StatefulWidget {
-  const CreatePutAwayScreen({super.key});
-
+  const CreatePutAwayScreen({
+    super.key,
+    this.isEdit,
+    this.isEditFaild,
+  });
+  final dynamic isEdit;
+  final dynamic isEditFaild;
   @override
   State<CreatePutAwayScreen> createState() => _CreatePutAwayScreenState();
 }
@@ -63,10 +71,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
   //
   final isBatch = TextEditingController();
   final isSerial = TextEditingController();
-
-  late PutAwayCubit _bloc;
-  late ItemCubit _blocItem;
-  late WarehouseCubit _blocWarehouse;
+  final saveId = TextEditingController();
 
   final DioClient dio = DioClient();
   List<dynamic> itemCodeFilter = [];
@@ -76,7 +81,6 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
   bool isSerialOrBatch = false;
   List<dynamic> items = [];
   bool loading = false;
-  late BinCubit _blocBin;
   bool isClickScanItem = false;
   bool isClickScanSBin = false;
   bool isClickScanTBin = false;
@@ -88,26 +92,125 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
 
   @override
   void initState() {
-    init();
-    _bloc = context.read<PutAwayCubit>();
-    _blocItem = context.read<ItemCubit>();
-    _blocWarehouse = context.read<WarehouseCubit>();
-    _blocBin = context.read<BinCubit>();
-
-    //
-    // IscanDataPlugin.methodChannel.setMethodCallHandler((MethodCall call) async {
-    //   if (call.method == "onScanResults") {
-    //     if (loading) return;
-
-    //     setState(() {
-    //       if (call.arguments['data'] == "decode error") return;
-    //       //
-    //       barCode.text = call.arguments['data'];
-    //       onCompleteTextEditItem();
-    //     });
-    //   }
-    // });
     super.initState();
+    init();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fromEdit();
+    });
+  }
+
+  void fromEdit() async {
+    try {
+      if (widget.isEdit == null) return;
+      print(widget.isEdit);
+      // ✅ Populate text fields safely
+      warehouse.text = getDataFromDynamic(widget.isEdit['FromWarehouse']);
+      saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
+      if (mounted) MaterialDialog.loading(context);
+
+      final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+
+      final List<Map<String, dynamic>> rawItems = [];
+      final List<dynamic> lines =
+          (widget.isEdit['StockTransferLines'] as List?) ?? [];
+
+      for (var element in lines) {
+        final itemList = context.read<ItemOfflineCubit>().state;
+        final binList = context.read<BinOfflineCubit>().state;
+
+        final itemCode = getDataFromDynamic(element["ItemCode"]);
+        final uomEntry =
+            int.tryParse(getDataFromDynamic(element["UoMEntry"]).toString()) ??
+                0;
+
+        // ✅ Find matching barcode record
+        final matchedBarcode = barcodeList.firstWhere(
+          (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+          orElse: () => {},
+        );
+
+        final matchedItem = itemList.firstWhere(
+            (e) => e['ItemCode'] == element['ItemCode'],
+            orElse: () => null);
+
+        if (matchedItem == null) {
+          MaterialDialog.success(context,
+              title: 'Oops.', body: "Item not found");
+          return;
+        }
+        final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+        final uomGroup = uomGroupCubit.state.firstWhere(
+          (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+          orElse: () => {},
+        );
+        final itemMapped = {
+          ...matchedItem,
+          "BaseUoM": uomGroup['BaseUoM'],
+          "UoMGroupDefinitionCollection":
+              uomGroup['UoMGroupDefinitionCollection']
+        };
+        final sbinID = element["StockTransferLinesBinAllocations"].length > 0
+            ? element["StockTransferLinesBinAllocations"][0]["BinAbsEntry"]
+            : -1;
+        final tbinID = element["StockTransferLinesBinAllocations"].length > 0
+            ? element["StockTransferLinesBinAllocations"][1]["BinAbsEntry"]
+            : -1;
+        final sbinCodeFind = binList.firstWhere(
+          (u) => u['AbsEntry'] == int.tryParse(getDataFromDynamic(sbinID)),
+          orElse: () => {},
+        );
+        final tbinCodeFind = binList.firstWhere(
+          (u) => u['AbsEntry'] == int.tryParse(getDataFromDynamic(tbinID)),
+          orElse: () => {},
+        );
+        // print(sbinID);
+        // print(tbinID);
+        // print(sbinCodeFind);
+        // print(tbinCodeFind);
+        rawItems.add({
+          "ItemCode": element['ItemCode'],
+          "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
+          "Quantity": element['Quantity'],
+          "WarehouseCode": warehouse.text,
+          "UoMEntry": getDataFromDynamic(element['UoMEntry']),
+          "UoMCode": element['UoMCode'],
+          "UoMGroupDefinitionCollection":
+              itemMapped['UoMGroupDefinitionCollection'],
+          "BaseUoM": itemMapped['BaseUoM'],
+          "BaseLine": element['BaseLine'],
+          "SBinCode": getDataFromDynamic(sbinCodeFind["BinCode"]),
+          "SBinId": getDataFromDynamic(sbinID),
+          "TBinCode": getDataFromDynamic(tbinCodeFind["BinCode"]),
+          "TBinId": getDataFromDynamic(tbinID),
+          //       sbinCode.text = getDataFromDynamic(item['SBinCode']);
+          // sbinId.text = getDataFromDynamic(item['SBinId']);
+          // tbinCode.text = getDataFromDynamic(item['TBinCode']);
+          // tbinId.text = getDataFromDynamic(item['TBinId']);
+          "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
+          "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
+          "Serials": element["SerialNumbers"] ?? [],
+          "Batches": element["BatchNumbers"] ?? [],
+          if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+        });
+
+        itemCodeFilter.add(element['ItemCode']);
+      }
+      // ✅ Update items
+      items = rawItems;
+
+      // Debug
+      // debugPrint("✅ Processed ${items.length} item(s)");
+      // debugPrint("🧾 rawItems: $items");
+
+      // ✅ Close loading indicator
+      if (mounted) MaterialDialog.close(context);
+
+      // ✅ Refresh UI
+      if (mounted) setState(() {});
+    } catch (e, stackTrace) {
+      if (mounted) MaterialDialog.close(context);
+      debugPrint("❌ fromFailed error: $e\n$stackTrace");
+    }
   }
 
   void init() async {
@@ -115,28 +218,28 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
     final whs = await LocalStorageManger.getString('warehouse');
     warehouse.text = whs;
     // Get current BinCubit state
-    final state = _blocBin.state;
-    final stateWarehouse = _blocWarehouse.state;
+    // final state = _blocBin.state;
+    // final stateWarehouse = _blocWarehouse.state;
     // If state is not BinData, just return (no data yet)
-    if (state is! BinData) {
-      debugPrint("BinCubit has no data yet.");
-      return;
-    }
-    if (stateWarehouse is! WarehouseData) {
-      debugPrint("WarehouseCubit has no data yet.");
-      return;
-    }
-    final warehouses = stateWarehouse.entities;
-    final bins = state.entities; // List<BinEntity>
+    // if (state is! BinData) {
+    //   debugPrint("BinCubit has no data yet.");
+    //   return;
+    // }
+    // if (stateWarehouse is! WarehouseData) {
+    //   debugPrint("WarehouseCubit has no data yet.");
+    //   return;
+    // }
+    // final warehouses = stateWarehouse.entities;
+    // final bins = state.entities; // List<BinEntity>
     // Try to find bin with matching warehouse
     try {
-      final defBinFromWhs =
-          warehouses.firstWhere((w) => w.code == warehouse.text).defBin;
-      final binInit = bins.firstWhere(
-          (b) => b.id == int.tryParse(defBinFromWhs?.toString() ?? ''));
-      // Assign values to your text controllers
-      sbinId.text = binInit.id.toString();
-      sbinCode.text = binInit.code;
+      // final defBinFromWhs =
+      //     warehouses.firstWhere((w) => w.code == warehouse.text).defBin;
+      // final binInit = bins.firstWhere(
+      //     (b) => b.id == int.tryParse(defBinFromWhs?.toString() ?? ''));
+      // // Assign values to your text controllers
+      // sbinId.text = binInit.id.toString();
+      // sbinCode.text = binInit.code;
     } catch (e) {
       debugPrint("No bin found for warehouse ${warehouse.text}: $e");
     }
@@ -216,7 +319,8 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
       };
-
+      batchesInput.clear();
+      serialsInput.clear();
       if (isEdit == -1) {
         // if (!force) {
         //   final exist = items.indexWhere((row) =>
@@ -337,11 +441,17 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
 
   void onPostToSAP() async {
     try {
+      var uuid = Uuid();
+
       MaterialDialog.loading(context);
       Map<String, dynamic> data = {
         // "BPLID": 1,
         // "CardCode": cardCode.text,
-        // "CardName": cardName.text,
+        "SaveId": widget.isEdit != null && widget.isEditFaild == true
+            ? saveId.text
+            : widget.isEdit != null
+                ? saveId.text
+                : uuid.v4(),
         "FromWarehouse": warehouse.text,
         "ToWarehouse": warehouse.text,
         "DocumentStatus": "bost_Open",
@@ -435,7 +545,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
             "ItemCode": item['ItemCode'],
             "ItemDescription": item['ItemDescription'],
             "UoMCode": item['UoMCode'],
-            // "UoMEntry": item['UoMEntry'],
+            "UoMEntry": item['UoMEntry'],
             "Quantity": item['Quantity'],
             "WarehouseCode": warehouse.text,
             "FromWarehouseCode": warehouse.text,
@@ -452,13 +562,24 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
       //   print(data);
       // });
       // return;
-      context.read<PutAwayOfflineCubit>().addData(data);
+      if (widget.isEdit != null && widget.isEditFaild == true) {
+        context.read<PutAwayFailedOfflineCubit>().removeByFailId(saveId.text);
+        context.read<PutAwayOfflineCubit>().addData(data);
+      } else if (widget.isEdit != null) {
+        context.read<PutAwayOfflineCubit>().updateBySaveId(saveId.text, data);
+      } else {
+        context.read<PutAwayOfflineCubit>().addData(data);
+      }
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Saved Put Away",
+          body: widget.isEdit != null && widget.isEditFaild == true
+              ? "Edited Faild Put Away"
+              : widget.isEdit != null
+                  ? "Edited Put Away"
+                  : "Saved Put Away",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -1150,7 +1271,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Post',
+                  'Save',
                   style: TextStyle(color: Colors.white),
                 ),
               ),

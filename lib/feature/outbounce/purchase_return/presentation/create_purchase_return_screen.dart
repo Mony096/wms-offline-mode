@@ -187,7 +187,8 @@ class _CreatePurchaseReturnScreenState
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
         "BarCode": barCode.text,
       };
-
+      batchesInput.clear();
+      serialsInput.clear();
       if (isEdit == -1) {
         // if (!force) {
         //   final exist = items.indexWhere((row) =>

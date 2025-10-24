@@ -3,22 +3,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/create_good_receipt_screen.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_failed_offline_cubit.dart';
-import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/create_return_receipt_screen.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 
-class ReviewQuickOfflineSave extends StatelessWidget {
-  const ReviewQuickOfflineSave({super.key});
+class SyncFailLogReturnReceiptScreen extends StatelessWidget {
+  const SyncFailLogReturnReceiptScreen({super.key});
   Future<void> _clearAllData(BuildContext context) async {
     // 1️⃣ Clear all Cubits
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Clear Failed Data?",style: TextStyle(fontSize: 19),),
+        title: const Text("Clear Failed Data?"),
         content: const Text(
-            "This will remove all offline failed data. Are you sure?",style: TextStyle(fontSize: 14),),
+            "This will remove all offline failed data. Are you sure?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -38,7 +37,7 @@ class ReviewQuickOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<QuickGoodReceiptOfflineCubit>().clearData();
+    context.read<ReturnReceiptFailedOfflineCubit>().clearData();
   }
 
   Future<void> _removeById(BuildContext context, dynamic id) async {
@@ -47,11 +46,12 @@ class ReviewQuickOfflineSave extends StatelessWidget {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Remove this data ?",
+        title: const Text(
+          "Remove this data ?",
           style: TextStyle(fontSize: 19),
         ),
         content: const Text(
-            "This will remove this offline failed data. Are you sure?",
+          "This will remove this offline failed data. Are you sure?",
           style: TextStyle(fontSize: 14),
         ),
         actions: [
@@ -73,7 +73,7 @@ class ReviewQuickOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<QuickGoodReceiptOfflineCubit>().removeByFailId(id);
+    context.read<ReturnReceiptFailedOfflineCubit>().removeByFailId(id);
   }
 
   @override
@@ -84,7 +84,7 @@ class ReviewQuickOfflineSave extends StatelessWidget {
         backgroundColor: PRIMARY_COLOR,
         centerTitle: true,
         title: const Text(
-          "Data Saved",
+          "Failed Return Receipt",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -113,12 +113,12 @@ class ReviewQuickOfflineSave extends StatelessWidget {
         ],
         elevation: 3,
       ),
-      body: BlocBuilder<QuickGoodReceiptOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<ReturnReceiptFailedOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
               child: Text(
-                "No saved records.",
+                "No faild records.",
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             );
@@ -188,8 +188,14 @@ class ReviewQuickOfflineSave extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildRow("Supplier Code",
-                                      record['CardCode'] ?? 'N/A'),
+                                  Text(
+                                    "Timestamp: $formattedTime",
+                                    style: const TextStyle(
+                                        fontSize: 13, color: Colors.redAccent),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  _buildRow(
+                                      "RTR#", record['CardCode'] ?? 'N/A'),
                                   const SizedBox(height: 5),
                                   _buildRow("Supplier Name",
                                       record['CardName'] ?? 'N/A'),
@@ -330,116 +336,126 @@ class ReviewQuickOfflineSave extends StatelessWidget {
                                           ),
                                           const Divider(
                                               height: 8, color: Colors.black12),
+                                          SizedBox(
+                                            height: 10,
+                                          ),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
+                                            children: [
+                                              Align(
+                                                alignment: Alignment.topRight,
+                                                child: Material(
+                                                  color: Colors
+                                                      .transparent, // keep background transparent outside the button
+                                                  child: InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                    onTap: () {
+                                                      _removeById(context,
+                                                          record['SaveId']);
+                                                    },
+                                                    child: Ink(
+                                                      width: 100,
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 8),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.redAccent,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(5),
+                                                      ),
+                                                      child: Row(
+                                                        children: const [
+                                                          Icon(
+                                                            Icons.remove,
+                                                            size: 22,
+                                                            color: Colors.white,
+                                                          ),
+                                                          SizedBox(width: 6),
+                                                          Text(
+                                                            "Remove",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(
+                                                width: 10,
+                                              ),
+                                              Align(
+                                                alignment: Alignment.topRight,
+                                                child: Material(
+                                                  color: Colors
+                                                      .transparent, // keep background transparent outside the button
+                                                  child: InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                    onTap: () {
+                                                      goTo(
+                                                          context,
+                                                          CreateReturnReceiptScreen(
+                                                            isEdit: record,
+                                                            isEditFaild: true,
+                                                          ));
+                                                    },
+                                                    child: Ink(
+                                                      width: 117,
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 8),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(5),
+                                                      ),
+                                                      child: Row(
+                                                        children: const [
+                                                          Icon(
+                                                            Icons.edit,
+                                                            size: 22,
+                                                            color: Colors.white,
+                                                          ),
+                                                          SizedBox(width: 6),
+                                                          Text(
+                                                            "Resync Data",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ],
                                       ),
                                     );
                                   }).toList(),
-                                  SizedBox(
-                                    height: 6,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Align(
-                                        alignment: Alignment.topRight,
-                                        child: Material(
-                                          color: Colors
-                                              .transparent, // keep background transparent outside the button
-                                          child: InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(5),
-                                            onTap: () {
-                                              _removeById(
-                                                  context, record['SaveId']);
-                                            },
-                                            child: Ink(
-                                              width: 100,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.redAccent,
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                              ),
-                                              child: Row(
-                                                children: const [
-                                                  Icon(
-                                                    Icons.remove,
-                                                    size: 22,
-                                                    color: Colors.white,
-                                                  ),
-                                                  SizedBox(width: 6),
-                                                  Text(
-                                                    "Remove",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 10,
-                                      ),
-                                      Align(
-                                        alignment: Alignment.topRight,
-                                        child: Material(
-                                          color: Colors
-                                              .transparent, // keep background transparent outside the button
-                                          child: InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(5),
-                                            onTap: () {
-                                              goTo(
-                                                  context,
-                                                  CreateGoodReceiptPOScreen(
-                                                      isEdit: record,
-                                                      quickReceipt: true));
-                                            },
-                                            child: Ink(
-                                              width: 78,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green,
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                              ),
-                                              child: Row(
-                                                children: const [
-                                                  Icon(
-                                                    Icons.edit,
-                                                    size: 22,
-                                                    color: Colors.white,
-                                                  ),
-                                                  SizedBox(width: 6),
-                                                  Text(
-                                                    "Edit",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
                                 ],
                               ),
                             ),
