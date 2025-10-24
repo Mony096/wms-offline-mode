@@ -565,7 +565,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
 
     try {
       if (cardCode.text == '') {
-        throw Exception("Opp, Supplier Code is required");
+        MaterialDialog.warning(context, title: 'Error', body: "Opp, Supplier Code is required");
+        return;
       }
       var uuid = Uuid();
 

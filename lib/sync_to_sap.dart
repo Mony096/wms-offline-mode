@@ -87,6 +87,8 @@ class SyncToSAPScreen extends StatefulWidget {
 class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
   final List<SyncGroup> _syncGroups = [];
   bool isLoading = false;
+  bool isExpanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -113,6 +115,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -127,6 +130,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -154,6 +158,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewQuickOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -168,6 +173,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogQuickScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -194,6 +200,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                   {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -209,6 +216,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                   {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -238,6 +246,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
                       isLoading = false;
+                      isExpanded = true;
                     }),
                   });
             },
@@ -248,6 +257,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogGoodReceiptScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -272,6 +282,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewPutAwayOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -286,6 +297,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogPutAwayScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -315,6 +327,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewDeiveryOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -329,6 +342,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -353,6 +367,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                   {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -367,6 +382,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -390,6 +406,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewGoodsIssueOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -404,6 +421,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -434,6 +452,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewQuickCountOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -448,6 +467,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -471,6 +491,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewCycleCountOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -485,6 +506,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -509,6 +531,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                   {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -523,6 +546,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -545,6 +569,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewBinCountOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -559,6 +584,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
+                      isExpanded = true;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -909,8 +935,6 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
   }
 
   Widget _buildExpandableGroup(BuildContext context, SyncGroup group) {
-    bool isExpanded = false;
-
     // Compute total pending items for the group
     int totalAlert;
     int totalPending = group.items.fold(
