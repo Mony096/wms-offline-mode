@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/good_issue_failed_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 
@@ -55,92 +57,41 @@ class GoodsIssueOfflineCubit extends Cubit<List<dynamic>> {
     print("🟢 Hive Data: $items");
   }
 
-  // ✅ Post all offline data to SAP
-  // Future<void> post() async {
-  //   final items = getJsonData();
-  //   if (items.isEmpty) {
-  //     print("⚠️ No offline records to sync.");
-  //     return;
-  //   }
+  // 🔹 Update record by failId
+  void updateBySaveId(dynamic failId, Map<String, dynamic> newData) {
+    final List<dynamic> items =
+        box.get('data', defaultValue: []).cast<dynamic>();
 
-  //   // 1️⃣ Clear data before sync attempt
-  //   box.put('data', []);
-  //   emit([]);
+    final updatedItems = items.map((item) {
+      if (item is Map &&
+          item.containsKey('SaveId') &&
+          item['SaveId'] == failId) {
+        return {...item, ...newData}; // merge old data with new data
+      }
+      return item;
+    }).toList();
 
-  //   // 2️⃣ Load stored credentials
-  //   final username = await LocalStorageManger.getString('username');
-  //   final password = await LocalStorageManger.getString('password');
-  //   final host = await LocalStorageManger.getString('host');
-  //   final port = await LocalStorageManger.getString('port');
-  //   final company = await LocalStorageManger.getString('db');
+    box.put('data', updatedItems);
+    emit(updatedItems);
+  }
 
-  //   if (username.isEmpty || password.isEmpty || company.isEmpty) {
-  //     debugPrint("❌ Missing username, password, or companyDB");
-  //     return;
-  //   }
+// 🔹 Remove record by failId
+  void removeByFailId(dynamic failId) {
+    final List<dynamic> items =
+        box.get('data', defaultValue: []).cast<dynamic>();
 
-  //   print("🌐 Logging in to SAP...");
-  //   final loginResponse = await http.post(
-  //     Uri.parse('$host:$port/b1s/v1/Login'),
-  //     headers: {"Content-Type": "application/json"},
-  //     body: jsonEncode({
-  //       "CompanyDB": company,
-  //       "UserName": username,
-  //       "Password": password,
-  //     }),
-  //   );
+    final updatedItems = items.where((item) {
+      if (item is Map && item.containsKey('SaveId')) {
+        return item['SaveId'] != failId;
+      }
+      return true; // keep items without failId field
+    }).toList();
 
-  //   if (loginResponse.statusCode != 200) {
-  //     debugPrint("❌ Login failed: ${loginResponse.body}");
-  //     final startTime = DateTime.now();
-  //     loginFailTime = startTime.toIso8601String();
-  //     loginFail = loginResponse.body.toString();
-  //     return;
-  //   }
+    box.put('data', updatedItems);
+    emit(updatedItems);
+  }
 
-  //   final loginData = jsonDecode(loginResponse.body);
-  //   final token = loginData['SessionId'];
-  //   loginFailTime = "";
-  //   loginFail = "";
-  //   if (token == null) {
-  //     debugPrint("❌ Token not found in login response");
-  //     await LocalStorageManger.setString('isDownloaded', 'false');
-  //     return;
-  //   }
-
-  //   failedRecords.clear();
-  //   successRecords.clear();
-  //   // 3️⃣ Post each record to SAP
-  //   for (var item in items) {
-  //     final startTime = DateTime.now();
-  //     try {
-  //       await postToSAP(
-  //         host: host,
-  //         port: port,
-  //         token: token,
-  //         endpoint: 'InventoryGenExits',
-  //         body: item,
-  //       );
-  //       successRecords.add({
-  //         ...item,
-  //         'success': "Synced Successfully to SAP",
-  //         'timestamp': startTime.toIso8601String(),
-  //       });
-  //       print("✅ Synced: ${item['DocEntry'] ?? 'N/A'}");
-  //     } catch (e) {
-  //       print("🔥 Failed to sync record: $e");
-  //       print(e);
-  //       failedRecords.add({
-  //         ...item,
-  //         'error': e.toString(),
-  //         'timestamp': startTime.toIso8601String(),
-  //       });
-  //     }
-  //   }
-  //   print(
-  //       "🎯 Sync completed. Success: ${items.length - failedRecords.length}, Failed: ${failedRecords.length}");
-  // }
-    Future<void> post() async {
+  Future<void> post(GoodIssueFailedOfflineCubit failCubit) async {
     final items = getJsonData();
     if (items.isEmpty) {
       print("⚠️ No offline records to sync.");
@@ -202,6 +153,7 @@ class GoodsIssueOfflineCubit extends Cubit<List<dynamic>> {
 
     loginFailTime = "";
     loginFail = "";
+    var uuid = Uuid();
 
     // 3️⃣ Post each record to SAP
     for (var item in items) {
@@ -222,15 +174,121 @@ class GoodsIssueOfflineCubit extends Cubit<List<dynamic>> {
         print("✅ Synced: ${item['DocEntry'] ?? 'N/A'}");
       } catch (e) {
         print("🔥 Failed to sync record: $e");
+        print(item);
         failedRecords.add({
           ...item,
           'error': e.toString(),
           'timestamp': startTime.toIso8601String(),
+          'failId': uuid.v4(),
         });
       }
     }
+    // Clean up failed records
+    final cleanedFailedRecords = failedRecords.map((item) {
+      final newItem = Map<String, dynamic>.from(item);
+      newItem.remove('error');
+      // newItem.remove('timestamp');
+      return newItem;
+    }).toList();
+
+    // ✅ Add to failed box using the other cubit
+    failCubit.addData(cleanedFailedRecords);
 
     print(
         "🎯 Sync completed. Success: ${items.length - failedRecords.length}, Failed: ${failedRecords.length}");
   }
+  
+  //   Future<void> post() async {
+  //   final items = getJsonData();
+  //   if (items.isEmpty) {
+  //     print("⚠️ No offline records to sync.");
+  //     return;
+  //   }
+
+  //   // 1️⃣ Clear data before sync attempt
+  //   box.put('data', []);
+  //   emit([]);
+
+  //   failedRecords.clear();
+  //   successRecords.clear();
+
+  //   final host = await LocalStorageManger.getString('host');
+  //   final port = await LocalStorageManger.getString('port');
+
+  //   // ✅ Use saved token if available
+  //   String loginToken = await LocalStorageManger.getString('token');
+
+  //   if (loginToken.isEmpty) {
+  //     // 2️⃣ Load stored credentials
+  //     final username = await LocalStorageManger.getString('username');
+  //     final password = await LocalStorageManger.getString('password');
+  //     final company = await LocalStorageManger.getString('db');
+
+  //     if (username.isEmpty || password.isEmpty || company.isEmpty) {
+  //       debugPrint("❌ Missing username, password, or companyDB");
+  //       return;
+  //     }
+
+  //     print("🌐 Logging in to SAP...");
+  //     final loginResponse = await http.post(
+  //       Uri.parse('$host:$port/b1s/v1/Login'),
+  //       headers: {"Content-Type": "application/json"},
+  //       body: jsonEncode({
+  //         "CompanyDB": company,
+  //         "UserName": username,
+  //         "Password": password,
+  //       }),
+  //     );
+
+  //     if (loginResponse.statusCode != 200) {
+  //       debugPrint("❌ Login failed: ${loginResponse.body}");
+  //       final startTime = DateTime.now();
+  //       loginFailTime = startTime.toIso8601String();
+  //       loginFail = loginResponse.body.toString();
+  //       return;
+  //     }
+
+  //     final loginData = jsonDecode(loginResponse.body);
+  //     loginToken = loginData['SessionId'] ?? "";
+
+  //     if (loginToken.isEmpty) {
+  //       debugPrint("❌ Token not found in login response");
+  //       await LocalStorageManger.setString('isDownloaded', 'false');
+  //       return;
+  //     }
+  //   }
+
+  //   loginFailTime = "";
+  //   loginFail = "";
+
+  //   // 3️⃣ Post each record to SAP
+  //   for (var item in items) {
+  //     final startTime = DateTime.now();
+  //     try {
+  //       await postToSAP(
+  //         host: host,
+  //         port: port,
+  //         token: loginToken,
+  //         endpoint: 'InventoryGenExits',
+  //         body: item,
+  //       );
+  //       successRecords.add({
+  //         ...item,
+  //         'success': "Synced Successfully to SAP",
+  //         'timestamp': startTime.toIso8601String(),
+  //       });
+  //       print("✅ Synced: ${item['DocEntry'] ?? 'N/A'}");
+  //     } catch (e) {
+  //       print("🔥 Failed to sync record: $e");
+  //       failedRecords.add({
+  //         ...item,
+  //         'error': e.toString(),
+  //         'timestamp': startTime.toIso8601String(),
+  //       });
+  //     }
+  //   }
+
+  //   print(
+  //       "🎯 Sync completed. Success: ${items.length - failedRecords.length}, Failed: ${failedRecords.length}");
+  // }
 }

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 
@@ -36,10 +38,12 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
     box.put('data', []);
     emit([]);
   }
+
   void clearCachLog() {
     failedRecords = [];
     successRecords = [];
   }
+
   List<dynamic> getJsonData() {
     final items = box.get('data', defaultValue: []).cast<dynamic>();
     return items;
@@ -55,8 +59,7 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
     print("🟢 Hive Data: $items");
   }
 
-  // ✅ Post all offline data to SAP
-  // Future<void> post() async {
+  //      Future<void> post() async {
   //   final items = getJsonData();
   //   if (items.isEmpty) {
   //     print("⚠️ No offline records to sync.");
@@ -67,49 +70,58 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
   //   box.put('data', []);
   //   emit([]);
 
-  //   // 2️⃣ Load stored credentials
-  //   final username = await LocalStorageManger.getString('username');
-  //   final password = await LocalStorageManger.getString('password');
-  //   final host = await LocalStorageManger.getString('host');
-  //   final port = await LocalStorageManger.getString('port');
-  //   final company = await LocalStorageManger.getString('db');
-
-  //   if (username.isEmpty || password.isEmpty || company.isEmpty) {
-  //     debugPrint("❌ Missing username, password, or companyDB");
-  //     return;
-  //   }
-
-  //   print("🌐 Logging in to SAP...");
-  //   final loginResponse = await http.post(
-  //     Uri.parse('$host:$port/b1s/v1/Login'),
-  //     headers: {"Content-Type": "application/json"},
-  //     body: jsonEncode({
-  //       "CompanyDB": company,
-  //       "UserName": username,
-  //       "Password": password,
-  //     }),
-  //   );
-
-  //   if (loginResponse.statusCode != 200) {
-  //     debugPrint("❌ Login failed: ${loginResponse.body}");
-  //     final startTime = DateTime.now();
-  //     loginFailTime = startTime.toIso8601String();
-  //     loginFail = loginResponse.body.toString();
-  //     return;
-  //   }
-
-  //   final loginData = jsonDecode(loginResponse.body);
-  //   final token = loginData['SessionId'];
-  //   loginFailTime = "";
-  //   loginFail = "";
-  //   if (token == null) {
-  //     debugPrint("❌ Token not found in login response");
-  //     await LocalStorageManger.setString('isDownloaded', 'false');
-  //     return;
-  //   }
-
   //   failedRecords.clear();
   //   successRecords.clear();
+
+  //   final host = await LocalStorageManger.getString('host');
+  //   final port = await LocalStorageManger.getString('port');
+
+  //   // ✅ Use saved token if available
+  //   String loginToken = await LocalStorageManger.getString('token');
+
+  //   if (loginToken.isEmpty) {
+  //     // 2️⃣ Load stored credentials
+  //     final username = await LocalStorageManger.getString('username');
+  //     final password = await LocalStorageManger.getString('password');
+  //     final company = await LocalStorageManger.getString('db');
+
+  //     if (username.isEmpty || password.isEmpty || company.isEmpty) {
+  //       debugPrint("❌ Missing username, password, or companyDB");
+  //       return;
+  //     }
+
+  //     print("🌐 Logging in to SAP...");
+  //     final loginResponse = await http.post(
+  //       Uri.parse('$host:$port/b1s/v1/Login'),
+  //       headers: {"Content-Type": "application/json"},
+  //       body: jsonEncode({
+  //         "CompanyDB": company,
+  //         "UserName": username,
+  //         "Password": password,
+  //       }),
+  //     );
+
+  //     if (loginResponse.statusCode != 200) {
+  //       debugPrint("❌ Login failed: ${loginResponse.body}");
+  //       final startTime = DateTime.now();
+  //       loginFailTime = startTime.toIso8601String();
+  //       loginFail = loginResponse.body.toString();
+  //       return;
+  //     }
+
+  //     final loginData = jsonDecode(loginResponse.body);
+  //     loginToken = loginData['SessionId'] ?? "";
+
+  //     if (loginToken.isEmpty) {
+  //       debugPrint("❌ Token not found in login response");
+  //       await LocalStorageManger.setString('isDownloaded', 'false');
+  //       return;
+  //     }
+  //   }
+
+  //   loginFailTime = "";
+  //   loginFail = "";
+
   //   // 3️⃣ Post each record to SAP
   //   for (var item in items) {
   //     final startTime = DateTime.now();
@@ -117,7 +129,7 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
   //       await postToSAP(
   //         host: host,
   //         port: port,
-  //         token: token,
+  //         token: loginToken,
   //         endpoint: 'InventoryPostings',
   //         body: item,
   //       );
@@ -129,7 +141,6 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
   //       print("✅ Synced: ${item['DocEntry'] ?? 'N/A'}");
   //     } catch (e) {
   //       print("🔥 Failed to sync record: $e");
-  //       print(e);
   //       failedRecords.add({
   //         ...item,
   //         'error': e.toString(),
@@ -137,10 +148,46 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
   //       });
   //     }
   //   }
+
   //   print(
   //       "🎯 Sync completed. Success: ${items.length - failedRecords.length}, Failed: ${failedRecords.length}");
   // }
-       Future<void> post() async {
+
+// 🔹 Remove record by failId
+  void removeByFailId(dynamic failId) {
+    final List<dynamic> items =
+        box.get('data', defaultValue: []).cast<dynamic>();
+
+    final updatedItems = items.where((item) {
+      if (item is Map && item.containsKey('SaveId')) {
+        return item['SaveId'] != failId;
+      }
+      return true; // keep items without failId field
+    }).toList();
+
+    box.put('data', updatedItems);
+    emit(updatedItems);
+  }
+
+  // 🔹 Update record by failId
+  void updateBySaveId(dynamic failId, Map<String, dynamic> newData) {
+    final List<dynamic> items =
+        box.get('data', defaultValue: []).cast<dynamic>();
+
+    final updatedItems = items.map((item) {
+      if (item is Map &&
+          item.containsKey('SaveId') &&
+          item['SaveId'] == failId) {
+        return {...item, ...newData}; // merge old data with new data
+      }
+      return item;
+    }).toList();
+
+    box.put('data', updatedItems);
+    emit(updatedItems);
+  }
+
+  Future<void> post(CycleCountFailedOfflineCubit failCubit) async {
     final items = getJsonData();
     if (items.isEmpty) {
       print("⚠️ No offline records to sync.");
@@ -202,6 +249,7 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
 
     loginFailTime = "";
     loginFail = "";
+    var uuid = Uuid();
 
     // 3️⃣ Post each record to SAP
     for (var item in items) {
@@ -222,13 +270,25 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
         print("✅ Synced: ${item['DocEntry'] ?? 'N/A'}");
       } catch (e) {
         print("🔥 Failed to sync record: $e");
+        print(item);
         failedRecords.add({
           ...item,
           'error': e.toString(),
           'timestamp': startTime.toIso8601String(),
+          'failId': uuid.v4(),
         });
       }
     }
+    // Clean up failed records
+    final cleanedFailedRecords = failedRecords.map((item) {
+      final newItem = Map<String, dynamic>.from(item);
+      newItem.remove('error');
+      // newItem.remove('timestamp');
+      return newItem;
+    }).toList();
+
+    // ✅ Add to failed box using the other cubit
+    failCubit.addData(cleanedFailedRecords);
 
     print(
         "🎯 Sync completed. Success: ${items.length - failedRecords.length}, Failed: ${failedRecords.length}");

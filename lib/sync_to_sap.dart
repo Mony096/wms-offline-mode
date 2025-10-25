@@ -10,10 +10,13 @@ import 'package:wms_mobile/feature/counting/bin_count/presentation/sync_log.dart
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/sync_log.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/review_cycle_count_offline_save.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_log_cycle_count.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/good_receipt_failed_offline_cubit.dart';
@@ -46,12 +49,16 @@ import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/deliver
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/sync_log.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/good_issue_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/good_issue/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/outbounce/good_issue/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/sync_log.dart';
 import 'package:wms_mobile/helper/helper.dart';
 import 'package:wms_mobile/utilies/dialog/dialog.dart';
@@ -323,7 +330,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<DeliveryOfflineCubit>().getJsonData().length,
             getLog: (context) => context.read<DeliveryOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<DeliveryOfflineCubit>().post( context.read<DeliveryFailedOfflineCubit>(),);
+              await context.read<DeliveryOfflineCubit>().post(
+                    context.read<DeliveryFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
               goTo(context, ReviewDeiveryOfflineSave()).then((e) async => {
@@ -356,13 +365,15 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           SyncItem(
             name: 'Return To Supplier',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<PurchaseReturnFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<PurchaseReturnOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<PurchaseReturnOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<PurchaseReturnOfflineCubit>().post();
+              await context.read<PurchaseReturnOfflineCubit>().post(
+                    context.read<PurchaseReturnFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
               goTo(context, ReviewPurchaseReturnOfflineSave()).then((e) async =>
@@ -381,7 +392,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogPurchaseReturnScreen());
             },
             onFailedSync: (context) {
-              goTo(context, SyncLogScreen()).then((e) async => {
+              goTo(context, SyncFailLogPurchaseReturnScreen()).then((e) async =>
+                  {
                     setState(() {
                       isLoading = true;
                       isExpanded = true;
@@ -396,13 +408,15 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           SyncItem(
             name: 'Goods Issue',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<GoodIssueFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<GoodsIssueOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<GoodsIssueOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<GoodsIssueOfflineCubit>().post();
+              await context.read<GoodsIssueOfflineCubit>().post(
+                    context.read<GoodIssueFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
               goTo(context, ReviewGoodsIssueOfflineSave()).then((e) async => {
@@ -420,7 +434,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogGoodsIssueScreen());
             },
             onFailedSync: (context) {
-              goTo(context, SyncLogScreen()).then((e) async => {
+              goTo(context, SyncFailLogGoodIssueScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
                       isExpanded = true;
@@ -442,13 +456,15 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           SyncItem(
             name: 'Quick Count',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<QuickCountFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<QuickCountOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<QuickCountOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<QuickCountOfflineCubit>().post();
+              await context.read<QuickCountOfflineCubit>().post(
+                    context.read<QuickCountFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
               goTo(context, ReviewQuickCountOfflineSave()).then((e) async => {
@@ -466,7 +482,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogQuickCountScreen());
             },
             onFailedSync: (context) {
-              goTo(context, SyncLogScreen()).then((e) async => {
+              goTo(context, SyncFailLogQuickCountScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
                       isExpanded = true;
@@ -481,13 +497,15 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           SyncItem(
             name: 'Cycle Count',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<CycleCountFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<CycleCountOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<CycleCountOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<CycleCountOfflineCubit>().post();
+              await context.read<CycleCountOfflineCubit>().post(
+                    context.read<CycleCountFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
               goTo(context, ReviewCycleCountOfflineSave()).then((e) async => {

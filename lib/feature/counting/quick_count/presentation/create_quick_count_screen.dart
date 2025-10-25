@@ -2,10 +2,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/duplicateItem_GPO_Screen.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
@@ -36,8 +39,16 @@ import '../../../../constant/style.dart';
 import 'cubit/quick_count_cubit.dart';
 
 class CreateQuickCountScreen extends StatefulWidget {
-  CreateQuickCountScreen({super.key, required this.isQuickCount});
-  bool isQuickCount;
+  const CreateQuickCountScreen(
+      {super.key,
+      required this.isQuickCount,
+      this.isEdit,
+      this.isEditFaildCC,
+      this.isEditFaildQC});
+  final bool isQuickCount;
+  final dynamic isEdit;
+  final dynamic isEditFaildQC;
+  final dynamic isEditFaildCC;
   @override
   State<CreateQuickCountScreen> createState() => _CreateQuickCountScreenState();
 }
@@ -61,13 +72,12 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   final docEntry = TextEditingController();
   final refLineNo = TextEditingController();
   final inWhsQty = TextEditingController();
-
+  final saveIdQC = TextEditingController();
+  final saveIdCC = TextEditingController();
   //
   final isBatch = TextEditingController();
   final isSerial = TextEditingController();
 
-  late QuickCountCubit _bloc;
-  late ItemCubit _blocItem;
   final barCode = TextEditingController();
   final DioClient dio = DioClient();
   List<dynamic> itemCodeFilter = [];
@@ -76,7 +86,6 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   List<dynamic> items = [];
   List<dynamic> binLists = [];
   bool loading = false;
-  late BinCubit _blocBin;
   bool isClickScanItem = false;
   bool isClickScanBin = false;
   final FocusNode _itemCode = FocusNode();
@@ -86,31 +95,170 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
 
   @override
   void initState() {
-    init();
-    _bloc = context.read<QuickCountCubit>();
-    _blocItem = context.read<ItemCubit>();
-    _blocBin = context.read<BinCubit>();
-
-    //
-    // IscanDataPlugin.methodChannel.setMethodCallHandler((MethodCall call) async {
-    //   try {
-    //     IscanDataPlugin.methodChannel
-    //         .setMethodCallHandler((MethodCall call) async {
-    //       if (call.method == "onScanResults") {
-    //         if (loading) return;
-
-    //         setState(() {
-    //           if (call.arguments['data'] == "decode error") return;
-    //           barCode.text = call.arguments['data'];
-    //           onCompleteTextEditItem();
-    //         });
-    //       }
-    //     });
-    //   } catch (e) {
-    //     print("Error setting method call handler: $e");
-    //   }
-    // });
     super.initState();
+    init();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fromEdit();
+    });
+  }
+
+  void fromEdit() async {
+    try {
+      if (widget.isEdit == null) return;
+      print(widget.isEdit);
+      // ✅ Populate text fields safely
+      warehouse.text = getDataFromDynamic(
+          widget.isEdit['InventoryPostingLines'].length > 0
+              ? widget.isEdit['InventoryPostingLines'][0]["WarehouseCode"]
+              : null);
+      ref.text = getDataFromDynamic(widget.isEdit['Reference2']);
+      saveIdQC.text = getDataFromDynamic(widget.isEdit['SaveId']);
+      saveIdCC.text = getDataFromDynamic(widget.isEdit['SaveId']);
+      // if (mounted) MaterialDialog.loading(context);
+
+      final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+      final List<Map<String, dynamic>> rawItems = [];
+      final List<dynamic> lines =
+          (widget.isEdit['InventoryPostingLines'] as List?) ?? [];
+
+      for (var element in lines) {
+        final itemList = context.read<ItemOfflineCubit>().state;
+        final binList = context.read<BinOfflineCubit>().state;
+        final itemCode = getDataFromDynamic(element["ItemCode"]);
+        final uomCode = getDataFromDynamic(element["UoMCode"]).toString();
+        //// find stock item;
+        // 🧠 Load Bin and ItemFindStock data from Hive via Cubit
+        final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
+
+        final itemStockList = itemStockCubit.getJsonData();
+
+        ///find Stick if no Bin
+        final filteredBin =
+            binList.where((b) => b['Warehouse'] == warehouse.text).toList();
+        dynamic whsQty;
+        if (filteredBin.isEmpty) {
+          // 🧩 Step 2: Find item in offline stock list
+          final matchedItemStock = itemStockList.firstWhere(
+            (item) =>
+                item['ItemCode'] == element['ItemCode'] &&
+                item['WhsCode'] == warehouse.text,
+            orElse: () => {},
+          );
+
+          // 🧩 Step 3: Update stock quantity (offline)
+          if (matchedItemStock.isNotEmpty) {
+            final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
+            setState(() {
+              whsQty = onHandQty.toString();
+            });
+          } else {
+            setState(() {
+              whsQty = "0";
+            });
+          }
+        } else {
+          // 🧠 Get offline data
+          final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
+          final stockData = itemStockCubit.getJsonData();
+
+          // 🔍 Find matching item in offline stock
+          final matched = stockData.firstWhere(
+            (e) =>
+                e['ItemCode'].toString().trim() == element["ItemCode"] &&
+                e['WhsCode'].toString().trim() == warehouse.text &&
+                e['BinID'].toString().trim() == element["BinEntry"],
+            orElse: () => {},
+          );
+
+          if (matched.isNotEmpty) {
+            final onHandQty = matched['OnHandQty'] ?? 0;
+            setState(() {
+              whsQty = onHandQty.toString();
+            });
+          } else {
+            // ❌ Not found in offline data
+            setState(() {
+              whsQty = "0";
+            });
+            MaterialDialog.warning(
+              context,
+              title: "Not Found",
+              body: "No offline stock found for this item in the selected bin.",
+            );
+          }
+        }
+        // ✅ Find matching barcode record
+        final matchedBarcode = barcodeList.firstWhere(
+          (b) => b['ItemCode'] == itemCode && b['UomCode'] == uomCode,
+          orElse: () => {},
+        );
+        final matchedItem = itemList.firstWhere(
+            (e) => e['ItemCode'] == element['ItemCode'],
+            orElse: () => null);
+
+        if (matchedItem == null) {
+          MaterialDialog.success(context,
+              title: 'Oops.', body: "Item not found");
+          return;
+        }
+        final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+        final uomGroup = uomGroupCubit.state.firstWhere(
+          (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+          orElse: () => {},
+        );
+        final itemMapped = {
+          ...matchedItem,
+          "BaseUoM": uomGroup['BaseUoM'],
+          "UoMGroupDefinitionCollection":
+              uomGroup['UoMGroupDefinitionCollection']
+        };
+        final binID = element["BinEntry"] ?? -1;
+
+        final binCodeFind = binList.firstWhere(
+          (u) => u['AbsEntry'] == int.tryParse(getDataFromDynamic(binID)),
+          orElse: () => {},
+        );
+        rawItems.add({
+          "ItemCode": element['ItemCode'],
+          "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
+          "Quantity": element['CountedQuantity'],
+          "WarehouseCode": warehouse.text,
+          "UoMEntry": getDataFromDynamic(element['UoMEntry']),
+          "UoMCode": element['UoMCode'],
+          "UoMGroupDefinitionCollection":
+              itemMapped['UoMGroupDefinitionCollection'],
+          "BaseUoM": itemMapped['BaseUoM'],
+          "BinId": binId.text,
+          "BinCode": binCodeFind["BinCode"],
+          "BaseLine": element['BaseLine'],
+          "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
+          "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
+          "Serials": element["SerialNumbers"] ?? [],
+          "Batches": element["BatchNumbers"] ?? [],
+          "InWhsQty": whsQty,
+          if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+        });
+
+        itemCodeFilter.add(element['ItemCode']);
+      }
+      // ✅ Update items
+      items = rawItems;
+      // print(items);
+
+      // Debug
+      // debugPrint("✅ Processed ${items.length} item(s)");
+      // debugPrint("🧾 rawItems: $items");
+
+      // ✅ Close loading indicator
+      if (mounted) MaterialDialog.close(context);
+
+      // ✅ Refresh UI
+      if (mounted) setState(() {});
+    } catch (e, stackTrace) {
+      if (mounted) MaterialDialog.close(context);
+      debugPrint("❌ fromFailed error: $e\n$stackTrace");
+    }
   }
 
   void init() async {
@@ -500,6 +648,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
 
   void onPostToSAP() async {
     try {
+      var uuid = Uuid();
       MaterialDialog.loading(context);
       final filteredItems = items.where((item) {
         final qty = int.tryParse(item["Quantity"].toString()) ?? 0;
@@ -507,6 +656,11 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
       }).toList();
       Map<String, dynamic> data = {
         // "BranchID": 1,
+        "SaveId": widget.isEdit != null
+            ? widget.isQuickCount
+                ? saveIdQC.text
+                : saveIdCC.text
+            : uuid.v4(),
         "Reference2": ref.text,
         "InventoryPostingLines": filteredItems.asMap().entries.map((entry) {
           int index = entry.key;
@@ -532,6 +686,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
             "ItemCode": item['ItemCode'],
             "ItemDescription": item['ItemDescription'],
             "UoMCode": item['UoMCode'],
+            // "UoMEntry": item["UoMEntry"],
             "BinEntry": item["BinId"],
             "Price": 1,
             "Variance": double.parse(item["Quantity"]).toInt() -
@@ -562,18 +717,57 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
           };
         }).toList(),
       };
+      // if (widget.isQuickCount) {
+      //   context.read<QuickCountOfflineCubit>().addData(data);
+      // }
+      // {
+      //   context.read<CycleCountOfflineCubit>().addData(data);
+      // }
       if (widget.isQuickCount) {
-        context.read<QuickCountOfflineCubit>().addData(data);
+        // context.read<QuickGoodReceiptOfflineCubit>().addData(data);
+        if (widget.isEdit != null && widget.isEditFaildQC == true) {
+          context
+              .read<QuickCountFailedOfflineCubit>()
+              .removeByFailId(saveIdQC.text);
+          context.read<QuickCountOfflineCubit>().addData(data);
+        } else if (widget.isEdit != null) {
+          context
+              .read<QuickCountOfflineCubit>()
+              .updateBySaveId(saveIdQC.text, data);
+        } else {
+          context.read<QuickCountOfflineCubit>().addData(data);
+        }
+      } else {
+        if (widget.isEdit != null && widget.isEditFaildCC == true) {
+          context
+              .read<CycleCountFailedOfflineCubit>()
+              .removeByFailId(saveIdCC.text);
+          context.read<CycleCountOfflineCubit>().addData(data);
+        } else if (widget.isEdit != null) {
+          context
+              .read<CycleCountOfflineCubit>()
+              .updateBySaveId(saveIdCC.text, data);
+        } else {
+          context.read<CycleCountOfflineCubit>().addData(data);
+        }
       }
-      {
-        context.read<CycleCountOfflineCubit>().addData(data);
-      }
+
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: widget.isQuickCount ? "Saved Quick Count" : "Saved Cycle Count",
+          body: widget.isQuickCount
+              ? widget.isEdit != null && widget.isEditFaildQC == true
+                  ? "Edited Faild Quick Count"
+                  : widget.isEdit != null
+                      ? "Edited Quick Count"
+                      : "Saved Quick Count"
+              : widget.isEdit != null && widget.isEditFaildCC == true
+                  ? "Edited Faild Cycle Count"
+                  : widget.isEdit != null
+                      ? "Edited Cycle Count"
+                      : "Saved Cycle Count",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -1276,7 +1470,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Post',
+                  'Save',
                   style: TextStyle(color: Colors.white),
                 ),
               ),

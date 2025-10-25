@@ -11,8 +11,10 @@ import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_cubit.dar
 import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/grt_cubit.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
@@ -48,8 +50,10 @@ import 'package:wms_mobile/feature/lookup/product_lookup/presentation/cubit/prod
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/good_issue_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
@@ -118,7 +122,10 @@ void main() async {
   await Hive.openBox("failed_good_recept");
   await Hive.openBox("failed_put_away");
   await Hive.openBox("failed_delivery");
-
+  await Hive.openBox("failed_purchase_return");
+  await Hive.openBox("failed_good_issue");
+  await Hive.openBox("failed_cycle_count");
+  await Hive.openBox("failed_quick_count");
   // (Optional) Only print directory AFTER Hive init
   // final dir = await getApplicationDocumentsDirectory();
   // print("📁 App directory: $dir");
@@ -212,7 +219,11 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => ReturnReceiptFailedOfflineCubit()),
         BlocProvider(create: (_) => GoodReceiptFailedOfflineCubit()),
         BlocProvider(create: (_) => PutAwayFailedOfflineCubit()),
-        BlocProvider(create: (_) => DeliveryFailedOfflineCubit())
+        BlocProvider(create: (_) => DeliveryFailedOfflineCubit()),
+        BlocProvider(create: (_) => PurchaseReturnFailedOfflineCubit()),
+        BlocProvider(create: (_) => GoodIssueFailedOfflineCubit()),
+        BlocProvider(create: (_) => QuickCountFailedOfflineCubit()),
+        BlocProvider(create: (_) => CycleCountFailedOfflineCubit())
       ],
       child: const MainScreen(),
     );

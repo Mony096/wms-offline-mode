@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/create_quick_count_screen.dart';
-import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_failed_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/create_good_receipt_screen.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_recipt_po_failed_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 
-class ReviewQuickCountOfflineSave extends StatelessWidget {
-  const ReviewQuickCountOfflineSave({super.key});
+class SyncFailLogQuickCountScreen extends StatelessWidget {
+  const SyncFailLogQuickCountScreen({super.key});
   Future<void> _clearAllData(BuildContext context) async {
     // 1️⃣ Clear all Cubits
     final confirm = await showDialog<bool>(
@@ -37,7 +40,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<QuickCountOfflineCubit>().clearData();
+    context.read<QuickCountFailedOfflineCubit>().clearData();
   }
 
   Future<void> _removeById(BuildContext context, dynamic id) async {
@@ -73,7 +76,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<QuickCountOfflineCubit>().removeByFailId(id);
+    context.read<QuickCountFailedOfflineCubit>().removeByFailId(id);
   }
 
   @override
@@ -113,7 +116,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
         ],
         elevation: 3,
       ),
-      body: BlocBuilder<QuickCountOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<QuickCountFailedOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
@@ -394,10 +397,11 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                                                   context,
                                                   CreateQuickCountScreen(
                                                       isEdit: record,
+                                                      isEditFaildQC: true,
                                                       isQuickCount: true));
                                             },
                                             child: Ink(
-                                              width: 78,
+                                              width: 117,
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                       horizontal: 8,
@@ -416,7 +420,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                                                   ),
                                                   SizedBox(width: 6),
                                                   Text(
-                                                    "Edit",
+                                                    "Resync Data",
                                                     style: TextStyle(
                                                       color: Colors.white,
                                                       fontWeight:
@@ -441,21 +445,21 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                     ),
 
                     // 🔹 Index Badge
-                    Positioned(
+                     Positioned(
                       top: 8,
                       right: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(8),
+                          // color: const Color.fromARGB(255, 195, 194, 194),
+                          borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
                           "No. ${index + 1}",
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 130, 126, 126),
+                            // fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
                         ),

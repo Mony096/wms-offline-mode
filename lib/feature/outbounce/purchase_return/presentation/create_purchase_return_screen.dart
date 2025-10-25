@@ -2,12 +2,19 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
+import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/duplicateItem_GPO_Screen.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/duplicateItem_PRT_Screen.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '../../purchase_return_request/presentation/purchase_return_request_page.dart';
 import '/feature/batch/good_receip_batch_screen.dart';
@@ -31,8 +38,13 @@ import '../../../../constant/style.dart';
 import 'cubit/purchase_return_cubit.dart';
 
 class CreatePurchaseReturnScreen extends StatefulWidget {
-  const CreatePurchaseReturnScreen({super.key});
-
+  const CreatePurchaseReturnScreen({
+    super.key,
+    this.isEdit,
+    this.isEditFaild,
+  });
+  final dynamic isEdit;
+  final dynamic isEditFaild;
   @override
   State<CreatePurchaseReturnScreen> createState() =>
       _CreatePurchaseReturnScreenState();
@@ -67,15 +79,13 @@ class _CreatePurchaseReturnScreenState
   final isBatch = TextEditingController();
   final isSerial = TextEditingController();
   List<dynamic> isBin = [{}];
-  late PurchaseReturnCubit _bloc;
-  late ItemCubit _blocItem;
+  final saveId = TextEditingController();
 
   int isEdit = -1;
   bool isSerialOrBatch = false;
   List<dynamic> items = [];
   bool loading = false;
   bool isReview = false;
-  late BinCubit _blocBin;
   bool isClickScanItem = false;
   bool isClickScanBin = false;
   final FocusNode _itemCode = FocusNode();
@@ -83,25 +93,143 @@ class _CreatePurchaseReturnScreenState
   final FocusNode _bin = FocusNode();
   @override
   void initState() {
-    init();
-    _bloc = context.read<PurchaseReturnCubit>();
-    _blocItem = context.read<ItemCubit>();
-    _blocBin = context.read<BinCubit>();
-
-    //
-    // IscanDataPlugin.methodChannel.setMethodCallHandler((MethodCall call) async {
-    //   if (call.method == "onScanResults") {
-    //     if (loading) return;
-
-    //     setState(() {
-    //       if (call.arguments['data'] == "decode error") return;
-    //       //
-    //       barCode.text = call.arguments['data'];
-    //       onCompleteTextEditItem();
-    //     });
-    //   }
-    // });
     super.initState();
+    init();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fromEdit();
+    });
+  }
+
+  void fromEdit() async {
+    try {
+      if (widget.isEdit == null) return;
+      print(widget.isEdit);
+      // ✅ Populate text fields safely
+      poText.text = getDataFromDynamic(widget.isEdit['DocumentLines'].length > 0
+          ? widget.isEdit['DocumentLines'][0]["BaseEntry"]
+          : null);
+
+      cardCode.text = getDataFromDynamic(widget.isEdit['CardCode']);
+      cardName.text = getDataFromDynamic(widget.isEdit['CardName']);
+      warehouse.text = getDataFromDynamic(widget.isEdit['WarehouseCode']);
+      saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
+      if (mounted) MaterialDialog.loading(context);
+
+      final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+      final saleOrder = context.read<PurchaseReturnRequestOfflineCubit>().state;
+
+      final List<Map<String, dynamic>> rawItems = [];
+      final List<dynamic> lines =
+          (widget.isEdit['DocumentLines'] as List?) ?? [];
+
+      final refDocEntry =
+          getDataFromDynamic(widget.isEdit["DocumentLines"]?[0]?["BaseEntry"]);
+      docEntry.text = refDocEntry;
+      final matchedSaleOrde = saleOrder.firstWhere(
+        (rcr) => rcr['DocEntry'].toString() == refDocEntry,
+        orElse: () => {},
+      );
+      if (matchedSaleOrde.isEmpty) {
+        if (mounted) MaterialDialog.close(context);
+
+        MaterialDialog.warning(
+          context,
+          title: 'Error',
+          body: "Sale order Not Found!",
+        );
+        return;
+      }
+      for (var element in lines) {
+        final itemList = context.read<ItemOfflineCubit>().state;
+        final binList = context.read<BinOfflineCubit>().state;
+
+        final itemCode = getDataFromDynamic(element["ItemCode"]);
+        final uomEntry =
+            int.tryParse(getDataFromDynamic(element["UoMEntry"]).toString()) ??
+                0;
+
+        // ✅ Find matching barcode record
+        final matchedBarcode = barcodeList.firstWhere(
+          (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+          orElse: () => {},
+        );
+
+        final matchedPOLine = (matchedSaleOrde.isNotEmpty &&
+                matchedSaleOrde["DocumentLines"] != null)
+            ? (matchedSaleOrde["DocumentLines"] as List).firstWhere(
+                (b) => b['ItemCode'] == itemCode && b['UoMEntry'] == uomEntry,
+                orElse: () => {},
+              )
+            : {};
+
+        final matchedItem = itemList.firstWhere(
+            (e) => e['ItemCode'] == element['ItemCode'],
+            orElse: () => null);
+
+        if (matchedItem == null) {
+          MaterialDialog.success(context,
+              title: 'Oops.', body: "Item not found");
+          return;
+        }
+        final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+        final uomGroup = uomGroupCubit.state.firstWhere(
+          (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+          orElse: () => {},
+        );
+        final itemMapped = {
+          ...matchedItem,
+          "BaseUoM": uomGroup['BaseUoM'],
+          "UoMGroupDefinitionCollection":
+              uomGroup['UoMGroupDefinitionCollection']
+        };
+        final binID = element["DocumentLinesBinAllocations"].length > 0
+            ? element["DocumentLinesBinAllocations"][0]["BinAbsEntry"]
+            : -1;
+        final binCodeFind = binList.firstWhere(
+          (u) => u['AbsEntry'] == int.tryParse(getDataFromDynamic(binID)),
+          orElse: () => {},
+        );
+
+        rawItems.add({
+          "ItemCode": element['ItemCode'],
+          "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
+          "Quantity": element['Quantity'],
+          "TotalQuantity": matchedPOLine["RemainingOpenQuantity"],
+          "WarehouseCode": warehouse.text,
+          "UoMEntry": getDataFromDynamic(element['UoMEntry']),
+          "UoMCode": element['UoMCode'],
+          "UoMGroupDefinitionCollection":
+              itemMapped['UoMGroupDefinitionCollection'],
+          "BaseUoM": itemMapped['BaseUoM'],
+          "BinId": binID,
+          "DocEntry": refDocEntry,
+          "BinCode": binCodeFind["BinCode"],
+          "BaseLine": element['BaseLine'],
+          "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
+          "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
+          "Serials": element["SerialNumbers"] ?? [],
+          "Batches": element["BatchNumbers"] ?? [],
+          if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+        });
+
+        itemCodeFilter.add(element['ItemCode']);
+      }
+      // ✅ Update items
+      items = rawItems;
+
+      // Debug
+      // debugPrint("✅ Processed ${items.length} item(s)");
+      // debugPrint("🧾 rawItems: $items");
+
+      // ✅ Close loading indicator
+      if (mounted) MaterialDialog.close(context);
+
+      // ✅ Refresh UI
+      if (mounted) setState(() {});
+    } catch (e, stackTrace) {
+      if (mounted) MaterialDialog.close(context);
+      debugPrint("❌ fromFailed error: $e\n$stackTrace");
+    }
   }
 
   void init() async {
@@ -298,6 +426,7 @@ class _CreatePurchaseReturnScreenState
 
   void onPostToSAP() async {
     try {
+      var uuid = Uuid();
       MaterialDialog.loading(context);
       // if (poText.text == '') {
       //   throw Exception(
@@ -309,6 +438,11 @@ class _CreatePurchaseReturnScreenState
       }).toList();
       Map<String, dynamic> data = {
         // "BPL_IDAssignedToInvoice": 1,
+        "SaveId": widget.isEdit != null && widget.isEditFaild == true
+            ? saveId.text
+            : widget.isEdit != null
+                ? saveId.text
+                : uuid.v4(),
         "CardCode": cardCode.text,
         "CardName": cardName.text,
         "WarehouseCode": warehouse.text,
@@ -384,13 +518,28 @@ class _CreatePurchaseReturnScreenState
           };
         }).toList(),
       };
-      context.read<PurchaseReturnOfflineCubit>().addData(data);
+      if (widget.isEdit != null && widget.isEditFaild == true) {
+        context
+            .read<PurchaseReturnFailedOfflineCubit>()
+            .removeByFailId(saveId.text);
+        context.read<PurchaseReturnOfflineCubit>().addData(data);
+      } else if (widget.isEdit != null) {
+        context
+            .read<PurchaseReturnOfflineCubit>()
+            .updateBySaveId(saveId.text, data);
+      } else {
+        context.read<PurchaseReturnOfflineCubit>().addData(data);
+      }
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Saved Return To Supplier",
+          body: widget.isEdit != null && widget.isEditFaild == true
+              ? "Edited Faild Return to Supplier"
+              : widget.isEdit != null
+                  ? "Edited Return to Supplier"
+                  : "Saved Return to Supplier",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -1061,7 +1210,7 @@ class _CreatePurchaseReturnScreenState
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Post',
+                  'Save',
                   style: TextStyle(color: Colors.white, fontSize: 12.5),
                 ),
               ),
@@ -1134,7 +1283,7 @@ class ContentHeader extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       child: Row(
-        children: [
+        children: const [
           Expanded(
             flex: 3,
             child: Text(

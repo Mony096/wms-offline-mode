@@ -3,12 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/counting/quick_count/presentation/create_quick_count_screen.dart';
-import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/create_good_receipt_screen.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_failed_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 
-class ReviewQuickCountOfflineSave extends StatelessWidget {
-  const ReviewQuickCountOfflineSave({super.key});
+class SyncFailLogCycleScreen extends StatelessWidget {
+  const SyncFailLogCycleScreen({super.key});
   Future<void> _clearAllData(BuildContext context) async {
     // 1️⃣ Clear all Cubits
     final confirm = await showDialog<bool>(
@@ -37,7 +38,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<QuickCountOfflineCubit>().clearData();
+    context.read<QuickGoodReceiptFailedOfflineCubit>().clearData();
   }
 
   Future<void> _removeById(BuildContext context, dynamic id) async {
@@ -73,7 +74,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<QuickCountOfflineCubit>().removeByFailId(id);
+    context.read<QuickGoodReceiptFailedOfflineCubit>().removeByFailId(id);
   }
 
   @override
@@ -84,7 +85,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
         backgroundColor: PRIMARY_COLOR,
         centerTitle: true,
         title: const Text(
-          "Data Saved",
+          "Failed Cycle Counting",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -113,12 +114,12 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
         ],
         elevation: 3,
       ),
-      body: BlocBuilder<QuickCountOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<QuickGoodReceiptFailedOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
               child: Text(
-                "No saved records.",
+                "No faild records.",
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             );
@@ -129,7 +130,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemBuilder: (context, index) {
               final record = records[index];
-              final lines = record['InventoryPostingLines'] ?? [];
+              final lines = record['DocumentLines'] ?? [];
               final timestamp = record["timestamp"];
 
               String formattedTime = '';
@@ -188,14 +189,20 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildRow(
-                                      "Warehouse",
-                                      record['InventoryPostingLines'][0]
-                                              ["WarehouseCode"] ??
-                                          ''),
+                                  Text(
+                                    "Timestamp: $formattedTime",
+                                    style: const TextStyle(
+                                        fontSize: 13, color: Colors.redAccent),
+                                  ),
                                   const SizedBox(height: 5),
-                                  _buildRow("Reference",
-                                      record['Reference2'] ?? 'N/A'),
+                                  _buildRow("Supplier Code",
+                                      record['CardCode'] ?? 'N/A'),
+                                  const SizedBox(height: 5),
+                                  _buildRow("Supplier Name",
+                                      record['CardName'] ?? 'N/A'),
+                                  const SizedBox(height: 5),
+                                  _buildRow("Warehouse",
+                                      record['WarehouseCode'] ?? ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),
@@ -215,12 +222,20 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                                         context.read<BinOfflineCubit>();
 
                                     // Try to extract BinAbsEntry safely
+                                    final binAllocations =
+                                        line['DocumentLinesBinAllocations'];
+                                    final binAbsEntry = (binAllocations !=
+                                                null &&
+                                            binAllocations.isNotEmpty &&
+                                            binAllocations[0]?['BinAbsEntry'] !=
+                                                null)
+                                        ? binAllocations[0]['BinAbsEntry']
+                                        : null;
 
                                     final bin = binCubit.state.firstWhere(
                                       (u) =>
                                           u['AbsEntry'] ==
-                                          int.tryParse((line["BinEntry"] ?? -1)
-                                              .toString()),
+                                          int.tryParse(binAbsEntry.toString()),
                                       orElse: () =>
                                           {}, // return empty map if not found
                                     );
@@ -247,7 +262,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                                                 ),
                                               ),
                                               Text(
-                                                "Qty: ${line['CountedQuantity'] ?? '0'}",
+                                                "Qty: ${line['Quantity'] ?? '0'}",
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Colors.black87,
@@ -322,116 +337,128 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                                           ),
                                           const Divider(
                                               height: 8, color: Colors.black12),
+                                          SizedBox(
+                                            height: 10,
+                                          ),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
+                                            children: [
+                                              Align(
+                                                alignment: Alignment.topRight,
+                                                child: Material(
+                                                  color: Colors
+                                                      .transparent, // keep background transparent outside the button
+                                                  child: InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                    onTap: () {
+                                                      _removeById(context,
+                                                          record['SaveId']);
+                                                    },
+                                                    child: Ink(
+                                                      width: 100,
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 8),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.redAccent,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(5),
+                                                      ),
+                                                      child: Row(
+                                                        children: const [
+                                                          Icon(
+                                                            Icons.remove,
+                                                            size: 22,
+                                                            color: Colors.white,
+                                                          ),
+                                                          SizedBox(width: 6),
+                                                          Text(
+                                                            "Remove",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(
+                                                width: 10,
+                                              ),
+                                              Align(
+                                                alignment: Alignment.topRight,
+                                                child: Material(
+                                                  color: Colors
+                                                      .transparent, // keep background transparent outside the button
+                                                  child: InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                    onTap: () {
+                                                      goTo(
+                                                          context,
+                                                          CreateGoodReceiptPOScreen(
+                                                              isEdit: record,
+                                                              isEditFaildQGR:
+                                                                  true,
+                                                              quickReceipt:
+                                                                  true));
+                                                    },
+                                                    child: Ink(
+                                                      width: 117,
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 8),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(5),
+                                                      ),
+                                                      child: Row(
+                                                        children: const [
+                                                          Icon(
+                                                            Icons.edit,
+                                                            size: 22,
+                                                            color: Colors.white,
+                                                          ),
+                                                          SizedBox(width: 6),
+                                                          Text(
+                                                            "Resync Data",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ],
                                       ),
                                     );
                                   }).toList(),
-                                  SizedBox(
-                                    height: 6,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Align(
-                                        alignment: Alignment.topRight,
-                                        child: Material(
-                                          color: Colors
-                                              .transparent, // keep background transparent outside the button
-                                          child: InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(5),
-                                            onTap: () {
-                                              _removeById(
-                                                  context, record['SaveId']);
-                                            },
-                                            child: Ink(
-                                              width: 100,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.redAccent,
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                              ),
-                                              child: Row(
-                                                children: const [
-                                                  Icon(
-                                                    Icons.remove,
-                                                    size: 22,
-                                                    color: Colors.white,
-                                                  ),
-                                                  SizedBox(width: 6),
-                                                  Text(
-                                                    "Remove",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 10,
-                                      ),
-                                      Align(
-                                        alignment: Alignment.topRight,
-                                        child: Material(
-                                          color: Colors
-                                              .transparent, // keep background transparent outside the button
-                                          child: InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(5),
-                                            onTap: () {
-                                              goTo(
-                                                  context,
-                                                  CreateQuickCountScreen(
-                                                      isEdit: record,
-                                                      isQuickCount: true));
-                                            },
-                                            child: Ink(
-                                              width: 78,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green,
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                              ),
-                                              child: Row(
-                                                children: const [
-                                                  Icon(
-                                                    Icons.edit,
-                                                    size: 22,
-                                                    color: Colors.white,
-                                                  ),
-                                                  SizedBox(width: 6),
-                                                  Text(
-                                                    "Edit",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
                                 ],
                               ),
                             ),
@@ -448,14 +475,14 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(8),
+                          // color: const Color.fromARGB(255, 195, 194, 194),
+                          borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
                           "No. ${index + 1}",
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 130, 126, 126),
+                            // fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
                         ),
@@ -475,7 +502,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 140,
+          width: 110,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
