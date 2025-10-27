@@ -87,7 +87,7 @@ class SyncFailLogQuickCountScreen extends StatelessWidget {
         backgroundColor: PRIMARY_COLOR,
         centerTitle: true,
         title: const Text(
-          "Data Saved",
+          "Failed Quick Count",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -191,6 +191,12 @@ class SyncFailLogQuickCountScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                     Text(
+                                    "Timestamp: $formattedTime",
+                                    style: const TextStyle(
+                                        fontSize: 13, color: Colors.redAccent),
+                                  ),
+                                  const SizedBox(height: 5),
                                   _buildRow(
                                       "Warehouse",
                                       record['InventoryPostingLines'][0]

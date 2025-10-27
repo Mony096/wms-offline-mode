@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/create_quick_count_screen.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/create_good_receipt_screen.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/quick_good_receipt_offline_cubit.dart';
@@ -38,7 +40,7 @@ class SyncFailLogCycleScreen extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<QuickGoodReceiptFailedOfflineCubit>().clearData();
+    context.read<CycleCountFailedOfflineCubit>().clearData();
   }
 
   Future<void> _removeById(BuildContext context, dynamic id) async {
@@ -74,7 +76,7 @@ class SyncFailLogCycleScreen extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<QuickGoodReceiptFailedOfflineCubit>().removeByFailId(id);
+    context.read<CycleCountFailedOfflineCubit>().removeByFailId(id);
   }
 
   @override
@@ -85,7 +87,7 @@ class SyncFailLogCycleScreen extends StatelessWidget {
         backgroundColor: PRIMARY_COLOR,
         centerTitle: true,
         title: const Text(
-          "Failed Cycle Counting",
+          "Failed Cycle Count",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -114,12 +116,12 @@ class SyncFailLogCycleScreen extends StatelessWidget {
         ],
         elevation: 3,
       ),
-      body: BlocBuilder<QuickGoodReceiptFailedOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<CycleCountFailedOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
               child: Text(
-                "No faild records.",
+                "No saved records.",
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             );
@@ -130,7 +132,7 @@ class SyncFailLogCycleScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemBuilder: (context, index) {
               final record = records[index];
-              final lines = record['DocumentLines'] ?? [];
+              final lines = record['InventoryPostingLines'] ?? [];
               final timestamp = record["timestamp"];
 
               String formattedTime = '';
@@ -189,20 +191,20 @@ class SyncFailLogCycleScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
+                                     Text(
                                     "Timestamp: $formattedTime",
                                     style: const TextStyle(
                                         fontSize: 13, color: Colors.redAccent),
                                   ),
                                   const SizedBox(height: 5),
-                                  _buildRow("Supplier Code",
-                                      record['CardCode'] ?? 'N/A'),
+                                  _buildRow(
+                                      "Warehouse",
+                                      record['InventoryPostingLines'][0]
+                                              ["WarehouseCode"] ??
+                                          ''),
                                   const SizedBox(height: 5),
-                                  _buildRow("Supplier Name",
-                                      record['CardName'] ?? 'N/A'),
-                                  const SizedBox(height: 5),
-                                  _buildRow("Warehouse",
-                                      record['WarehouseCode'] ?? ''),
+                                  _buildRow("Reference",
+                                      record['Reference2'] ?? 'N/A'),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),
@@ -222,20 +224,12 @@ class SyncFailLogCycleScreen extends StatelessWidget {
                                         context.read<BinOfflineCubit>();
 
                                     // Try to extract BinAbsEntry safely
-                                    final binAllocations =
-                                        line['DocumentLinesBinAllocations'];
-                                    final binAbsEntry = (binAllocations !=
-                                                null &&
-                                            binAllocations.isNotEmpty &&
-                                            binAllocations[0]?['BinAbsEntry'] !=
-                                                null)
-                                        ? binAllocations[0]['BinAbsEntry']
-                                        : null;
 
                                     final bin = binCubit.state.firstWhere(
                                       (u) =>
                                           u['AbsEntry'] ==
-                                          int.tryParse(binAbsEntry.toString()),
+                                          int.tryParse((line["BinEntry"] ?? -1)
+                                              .toString()),
                                       orElse: () =>
                                           {}, // return empty map if not found
                                     );
@@ -262,7 +256,7 @@ class SyncFailLogCycleScreen extends StatelessWidget {
                                                 ),
                                               ),
                                               Text(
-                                                "Qty: ${line['Quantity'] ?? '0'}",
+                                                "Qty: ${line['CountedQuantity'] ?? '0'}",
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Colors.black87,
@@ -337,128 +331,117 @@ class SyncFailLogCycleScreen extends StatelessWidget {
                                           ),
                                           const Divider(
                                               height: 8, color: Colors.black12),
-                                          SizedBox(
-                                            height: 10,
-                                          ),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.end,
-                                            children: [
-                                              Align(
-                                                alignment: Alignment.topRight,
-                                                child: Material(
-                                                  color: Colors
-                                                      .transparent, // keep background transparent outside the button
-                                                  child: InkWell(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            5),
-                                                    onTap: () {
-                                                      _removeById(context,
-                                                          record['SaveId']);
-                                                    },
-                                                    child: Ink(
-                                                      width: 100,
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 8),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.redAccent,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(5),
-                                                      ),
-                                                      child: Row(
-                                                        children: const [
-                                                          Icon(
-                                                            Icons.remove,
-                                                            size: 22,
-                                                            color: Colors.white,
-                                                          ),
-                                                          SizedBox(width: 6),
-                                                          Text(
-                                                            "Remove",
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              fontSize: 12,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                width: 10,
-                                              ),
-                                              Align(
-                                                alignment: Alignment.topRight,
-                                                child: Material(
-                                                  color: Colors
-                                                      .transparent, // keep background transparent outside the button
-                                                  child: InkWell(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            5),
-                                                    onTap: () {
-                                                      goTo(
-                                                          context,
-                                                          CreateGoodReceiptPOScreen(
-                                                              isEdit: record,
-                                                              isEditFaildQGR:
-                                                                  true,
-                                                              quickReceipt:
-                                                                  true));
-                                                    },
-                                                    child: Ink(
-                                                      width: 117,
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 8),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.green,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(5),
-                                                      ),
-                                                      child: Row(
-                                                        children: const [
-                                                          Icon(
-                                                            Icons.edit,
-                                                            size: 22,
-                                                            color: Colors.white,
-                                                          ),
-                                                          SizedBox(width: 6),
-                                                          Text(
-                                                            "Resync Data",
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              fontSize: 12,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
                                         ],
                                       ),
                                     );
                                   }).toList(),
+                                  SizedBox(
+                                    height: 6,
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Align(
+                                        alignment: Alignment.topRight,
+                                        child: Material(
+                                          color: Colors
+                                              .transparent, // keep background transparent outside the button
+                                          child: InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                            onTap: () {
+                                              _removeById(
+                                                  context, record['SaveId']);
+                                            },
+                                            child: Ink(
+                                              width: 100,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.redAccent,
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                              ),
+                                              child: Row(
+                                                children: const [
+                                                  Icon(
+                                                    Icons.remove,
+                                                    size: 22,
+                                                    color: Colors.white,
+                                                  ),
+                                                  SizedBox(width: 6),
+                                                  Text(
+                                                    "Remove",
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        width: 10,
+                                      ),
+                                      Align(
+                                        alignment: Alignment.topRight,
+                                        child: Material(
+                                          color: Colors
+                                              .transparent, // keep background transparent outside the button
+                                          child: InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                            onTap: () {
+                                              goTo(
+                                                  context,
+                                                  CreateQuickCountScreen(
+                                                      isEdit: record,
+                                                      isEditFaildCC: true,
+                                                      isQuickCount: false));
+                                            },
+                                            child: Ink(
+                                              width: 117,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.green,
+                                                borderRadius:
+                                                    BorderRadius.circular(5),
+                                              ),
+                                              child: Row(
+                                                children: const [
+                                                  Icon(
+                                                    Icons.edit,
+                                                    size: 22,
+                                                    color: Colors.white,
+                                                  ),
+                                                  SizedBox(width: 6),
+                                                  Text(
+                                                    "Resync Data",
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
@@ -502,7 +485,7 @@ class SyncFailLogCycleScreen extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 110,
+          width: 140,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

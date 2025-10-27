@@ -254,6 +254,8 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
     // 3️⃣ Post each record to SAP
     for (var item in items) {
       final startTime = DateTime.now();
+      var id = item["SaveId"];
+      item.remove("SaveId"); // ✅ Correct way to remove key from map
       try {
         await postToSAP(
           host: host,
@@ -264,6 +266,7 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
         );
         successRecords.add({
           ...item,
+          "SaveId": id,
           'success': "Synced Successfully to SAP",
           'timestamp': startTime.toIso8601String(),
         });
@@ -273,6 +276,7 @@ class CycleCountOfflineCubit extends Cubit<List<dynamic>> {
         print(item);
         failedRecords.add({
           ...item,
+          "SaveId": id,
           'error': e.toString(),
           'timestamp': startTime.toIso8601String(),
           'failId': uuid.v4(),

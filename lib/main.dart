@@ -5,11 +5,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/business_partner/presentation/cubit/business_partner_cubit.dart';
 import 'package:wms_mobile/feature/business_partner/presentation/cubit/bussinessPartner_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/binlocation_count_cubit.dart';
 import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_cubit.dart';
 import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_cubit.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
@@ -126,6 +128,9 @@ void main() async {
   await Hive.openBox("failed_good_issue");
   await Hive.openBox("failed_cycle_count");
   await Hive.openBox("failed_quick_count");
+  await Hive.openBox("failed_physical_count");
+  await Hive.openBox("failed_bin_count");
+
   // (Optional) Only print directory AFTER Hive init
   // final dir = await getApplicationDocumentsDirectory();
   // print("📁 App directory: $dir");
@@ -223,7 +228,9 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => PurchaseReturnFailedOfflineCubit()),
         BlocProvider(create: (_) => GoodIssueFailedOfflineCubit()),
         BlocProvider(create: (_) => QuickCountFailedOfflineCubit()),
-        BlocProvider(create: (_) => CycleCountFailedOfflineCubit())
+        BlocProvider(create: (_) => CycleCountFailedOfflineCubit()),
+        BlocProvider(create: (_) => PhysicalCountFailedOfflineCubit()),
+           BlocProvider(create: (_) => BinCountFailedOfflineCubit()),
       ],
       child: const MainScreen(),
     );

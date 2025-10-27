@@ -4,11 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:wms_mobile/constant/style.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/sync_log.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/review_offline_save.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
@@ -17,6 +21,7 @@ import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick
 import 'package:wms_mobile/feature/counting/quick_count/presentation/review_cycle_count_offline_save.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_faild_log.dart';
+import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_faild_log_cycle.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/sync_log_cycle_count.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/good_receipt_failed_offline_cubit.dart';
@@ -124,7 +129,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -139,7 +144,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -167,7 +172,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewQuickOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -182,7 +187,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogQuickScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -209,7 +214,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                   {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -225,7 +230,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                   {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -255,7 +260,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
                       isLoading = false;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                   });
             },
@@ -266,7 +271,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogGoodReceiptScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -291,7 +296,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewPutAwayOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -306,7 +311,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogPutAwayScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -338,7 +343,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewDeiveryOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -353,7 +358,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogDeliveryScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -380,7 +385,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                   {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -396,7 +401,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                   {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -422,7 +427,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewGoodsIssueOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -437,7 +442,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogGoodIssueScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -470,7 +475,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewQuickCountOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -485,7 +490,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncFailLogQuickCountScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -511,7 +516,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, ReviewCycleCountOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -523,10 +528,10 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogCycleCountScreen());
             },
             onFailedSync: (context) {
-              goTo(context, SyncLogScreen()).then((e) async => {
+              goTo(context, SyncFailLogCycleScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -538,20 +543,22 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           SyncItem(
             name: 'Physical Count',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<PhysicalCountFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<PhysicalCountOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<PhysicalCountOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<PhysicalCountOfflineCubit>().post();
+              await context.read<PhysicalCountOfflineCubit>().post(
+                    context.read<PhysicalCountFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
               goTo(context, ReviewPhysicalCountOfflineSave()).then((e) async =>
                   {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -563,10 +570,11 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogPhysicalCountScreen());
             },
             onFailedSync: (context) {
-              goTo(context, SyncLogScreen()).then((e) async => {
+              goTo(context, SyncFailLogPhysicalCountScreen()).then((e) async =>
+                  {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -578,18 +586,20 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
           SyncItem(
             name: 'Bin Count',
             getFaild: (context) =>
-                context.read<GoodReciptPoFailedOfflineCubit>().getFailed(),
+                context.read<BinCountFailedOfflineCubit>().getFailed(),
             getCount: (context) =>
                 context.read<BinCountOfflineCubit>().getJsonData().length,
             getLog: (context) => context.read<BinCountOfflineCubit>().getLog(),
             onSync: (context) async {
-              await context.read<BinCountOfflineCubit>().post();
+              await context.read<BinCountOfflineCubit>().post(
+                    context.read<BinCountFailedOfflineCubit>(),
+                  );
             },
             onGotoReview: (context) {
               goTo(context, ReviewBinCountOfflineSave()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -601,10 +611,10 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
               goTo(context, SyncLogBinCountScreen());
             },
             onFailedSync: (context) {
-              goTo(context, SyncLogScreen()).then((e) async => {
+              goTo(context, SyncFailLogBinCountScreen()).then((e) async => {
                     setState(() {
                       isLoading = true;
-                      isExpanded = true;
+                      isExpanded = false;
                     }),
                     await Future.delayed(const Duration(milliseconds: 1000)),
                     setState(() {
@@ -703,6 +713,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
       await Future.delayed(const Duration(milliseconds: 500));
       setState(() {
         isLoading = false;
+        isExpanded = false;
       });
       MaterialDialog.success(
         context,
@@ -1408,6 +1419,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                                 const Duration(milliseconds: 500));
                             setState(() {
                               isLoading = false;
+                              isExpanded = false;
                             });
                             Navigator.pop(context); // close loading
 

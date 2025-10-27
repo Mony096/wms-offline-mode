@@ -3,26 +3,25 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/outbounce/delivery/presentation/create_delivery_screen.dart';
-import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/create_bin_count_screen.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_failed_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/create_physical_count_screen.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_failed_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/create_return_receipt_screen.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 
-class ReviewDeiveryOfflineSave extends StatelessWidget {
-  const ReviewDeiveryOfflineSave({super.key});
+class SyncFailLogBinCountScreen extends StatelessWidget {
+  const SyncFailLogBinCountScreen({super.key});
   Future<void> _clearAllData(BuildContext context) async {
     // 1️⃣ Clear all Cubits
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text(
-          "Clear Failed Data?",
-          style: TextStyle(fontSize: 19),
-        ),
+        title: const Text("Clear Failed Data?"),
         content: const Text(
-          "This will remove all offline data. Are you sure?",
-          style: TextStyle(fontSize: 14),
-        ),
+            "This will remove all offline failed data. Are you sure?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -42,7 +41,7 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<DeliveryOfflineCubit>().clearData();
+    context.read<BinCountFailedOfflineCubit>().clearData();
   }
 
   Future<void> _removeById(BuildContext context, dynamic id) async {
@@ -56,7 +55,7 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
           style: TextStyle(fontSize: 19),
         ),
         content: const Text(
-          "This will remove this offline data. Are you sure?",
+          "This will remove this offline failed data. Are you sure?",
           style: TextStyle(fontSize: 14),
         ),
         actions: [
@@ -78,7 +77,7 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
-    context.read<DeliveryOfflineCubit>().removeByFailId(id);
+    context.read<BinCountFailedOfflineCubit>().removeByFailId(id);
   }
 
   @override
@@ -89,7 +88,7 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
         backgroundColor: PRIMARY_COLOR,
         centerTitle: true,
         title: const Text(
-          "Data Saved",
+          "Failed Bin Count",
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -118,12 +117,12 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
         ],
         elevation: 3,
       ),
-      body: BlocBuilder<DeliveryOfflineCubit, List<dynamic>>(
+      body: BlocBuilder<BinCountFailedOfflineCubit, List<dynamic>>(
         builder: (context, records) {
           if (records.isEmpty) {
             return const Center(
               child: Text(
-                "No saved records.",
+                "No faild records.",
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
             );
@@ -134,7 +133,7 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemBuilder: (context, index) {
               final record = records[index];
-              final lines = record['DocumentLines'] ?? [];
+              final lines = record['InventoryCountingLines'] ?? [];
               final timestamp = record["timestamp"];
 
               String formattedTime = '';
@@ -193,14 +192,17 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildRow("Customer Code",
-                                      record['CardCode'] ?? 'N/A'),
+                                  Text(
+                                    "Timestamp: $formattedTime",
+                                    style: const TextStyle(
+                                        fontSize: 13, color: Colors.redAccent),
+                                  ),
                                   const SizedBox(height: 5),
-                                  _buildRow("Customer Name",
-                                      record['CardName'] ?? 'N/A'),
-                                  const SizedBox(height: 5),
-                                  _buildRow("Warehouse",
-                                      record['WarehouseCode'] ?? ''),
+                                  _buildRow(
+                                      "Warehouse",
+                                      record['InventoryCountingLines'][0]
+                                              ["WarehouseCode"] ??
+                                          ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),
@@ -220,20 +222,21 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
                                         context.read<BinOfflineCubit>();
 
                                     // Try to extract BinAbsEntry safely
-                                    final binAllocations =
-                                        line['DocumentLinesBinAllocations'];
-                                    final binAbsEntry = (binAllocations !=
-                                                null &&
-                                            binAllocations.isNotEmpty &&
-                                            binAllocations[0]?['BinAbsEntry'] !=
-                                                null)
-                                        ? binAllocations[0]['BinAbsEntry']
-                                        : null;
+                                    // final binAllocations =
+                                    //     line['DocumentLinesBinAllocations'];
+                                    // final binAbsEntry = (binAllocations !=
+                                    //             null &&
+                                    //         binAllocations.isNotEmpty &&
+                                    //         binAllocations[0]?['BinAbsEntry'] !=
+                                    //             null)
+                                    //     ? binAllocations[0]['BinAbsEntry']
+                                    //     : null;
 
                                     final bin = binCubit.state.firstWhere(
                                       (u) =>
                                           u['AbsEntry'] ==
-                                          int.tryParse(binAbsEntry.toString()),
+                                          int.tryParse(
+                                              line["BinEntry"].toString()),
                                       orElse: () =>
                                           {}, // return empty map if not found
                                     );
@@ -260,7 +263,7 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
                                                 ),
                                               ),
                                               Text(
-                                                "Qty: ${line['Quantity'] ?? '0'}",
+                                                "Qty: ${line['CountedQuantity'] ?? '0'}",
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Colors.black87,
@@ -335,116 +338,126 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
                                           ),
                                           const Divider(
                                               height: 8, color: Colors.black12),
+                                          SizedBox(
+                                            height: 10,
+                                          ),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.end,
+                                            children: [
+                                              Align(
+                                                alignment: Alignment.topRight,
+                                                child: Material(
+                                                  color: Colors
+                                                      .transparent, // keep background transparent outside the button
+                                                  child: InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                    onTap: () {
+                                                      _removeById(context,
+                                                          record['SaveId']);
+                                                    },
+                                                    child: Ink(
+                                                      width: 100,
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 8),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.redAccent,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(5),
+                                                      ),
+                                                      child: Row(
+                                                        children: const [
+                                                          Icon(
+                                                            Icons.remove,
+                                                            size: 22,
+                                                            color: Colors.white,
+                                                          ),
+                                                          SizedBox(width: 6),
+                                                          Text(
+                                                            "Remove",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              SizedBox(
+                                                width: 10,
+                                              ),
+                                              Align(
+                                                alignment: Alignment.topRight,
+                                                child: Material(
+                                                  color: Colors
+                                                      .transparent, // keep background transparent outside the button
+                                                  child: InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            5),
+                                                    onTap: () {
+                                                      goTo(
+                                                          context,
+                                                          CreateBinCountScreen(
+                                                            isEdit: record,
+                                                            isEditFaild: true,
+                                                          ));
+                                                    },
+                                                    child: Ink(
+                                                      width: 117,
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 8),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.green,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(5),
+                                                      ),
+                                                      child: Row(
+                                                        children: const [
+                                                          Icon(
+                                                            Icons.edit,
+                                                            size: 22,
+                                                            color: Colors.white,
+                                                          ),
+                                                          SizedBox(width: 6),
+                                                          Text(
+                                                            "Resync Data",
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ],
                                       ),
                                     );
                                   }).toList(),
-                                  SizedBox(
-                                    height: 6,
-                                  ),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      Align(
-                                        alignment: Alignment.topRight,
-                                        child: Material(
-                                          color: Colors
-                                              .transparent, // keep background transparent outside the button
-                                          child: InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(5),
-                                            onTap: () {
-                                              _removeById(
-                                                  context, record['SaveId']);
-                                            },
-                                            child: Ink(
-                                              width: 100,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.redAccent,
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                              ),
-                                              child: Row(
-                                                children: const [
-                                                  Icon(
-                                                    Icons.remove,
-                                                    size: 22,
-                                                    color: Colors.white,
-                                                  ),
-                                                  SizedBox(width: 6),
-                                                  Text(
-                                                    "Remove",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      SizedBox(
-                                        width: 10,
-                                      ),
-                                      Align(
-                                        alignment: Alignment.topRight,
-                                        child: Material(
-                                          color: Colors
-                                              .transparent, // keep background transparent outside the button
-                                          child: InkWell(
-                                            borderRadius:
-                                                BorderRadius.circular(5),
-                                            onTap: () {
-                                              goTo(
-                                                  context,
-                                                  CreateDeliveryScreen(
-                                                    isEdit: record,
-                                                  ));
-                                            },
-                                            child: Ink(
-                                              width: 78,
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.green,
-                                                borderRadius:
-                                                    BorderRadius.circular(5),
-                                              ),
-                                              child: Row(
-                                                children: const [
-                                                  Icon(
-                                                    Icons.edit,
-                                                    size: 22,
-                                                    color: Colors.white,
-                                                  ),
-                                                  SizedBox(width: 6),
-                                                  Text(
-                                                    "Edit",
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 12,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
                                 ],
                               ),
                             ),
@@ -461,14 +474,14 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(8),
+                          // color: const Color.fromARGB(255, 195, 194, 194),
+                          borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
                           "No. ${index + 1}",
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 130, 126, 126),
+                            // fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
                         ),
@@ -488,7 +501,7 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
     return Row(
       children: [
         SizedBox(
-          width: 140,
+          width: 110,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [

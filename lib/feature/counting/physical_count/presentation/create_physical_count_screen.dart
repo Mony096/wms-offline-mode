@@ -2,12 +2,19 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/cos/presentation/screen/cos_page.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_cubit.dart';
+import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/duplicateItem_DLR_Screen.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '/feature/bin_location/domain/entity/bin_entity.dart';
 import '/feature/bin_location/presentation/screen/bin_page.dart';
@@ -25,8 +32,13 @@ import '/utilies/dialog/dialog.dart';
 import '../../../../constant/style.dart';
 
 class CreatePhysicalCountScreen extends StatefulWidget {
-  const CreatePhysicalCountScreen({super.key});
-
+  const CreatePhysicalCountScreen({
+    super.key,
+    this.isEdit,
+    this.isEditFaild,
+  });
+  final dynamic isEdit;
+  final dynamic isEditFaild;
   @override
   State<CreatePhysicalCountScreen> createState() =>
       _CreatePhysicalCountScreenState();
@@ -51,8 +63,6 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   final refLineNo = TextEditingController();
   final cosDocEntry = TextEditingController();
   final cos = TextEditingController();
-  late PhysicalCountCubit _bloc;
-  late ItemCubit _blocItem;
   int isEdit = -1;
   bool isSerialOrBatch = false;
   List<dynamic> isSerialOrBatchs = [{}];
@@ -60,7 +70,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   final DioClient dio = DioClient();
   bool loading = false;
   final barCode = TextEditingController();
-
+  final saveId = TextEditingController();
   bool isClickScanItem = false;
   bool isClickScanBin = false;
   final FocusNode _itemCode = FocusNode();
@@ -68,23 +78,138 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   final FocusNode _bin = FocusNode();
   @override
   void initState() {
-    _bloc = context.read<PhysicalCountCubit>();
-    _blocItem = context.read<ItemCubit>();
-
-    //
-    // IscanDataPlugin.methodChannel.setMethodCallHandler((MethodCall call) async {
-    //   if (call.method == "onScanResults") {
-    //     if (loading) return;
-
-    //     setState(() {
-    //       if (call.arguments['data'] == "decode error") return;
-    //       //
-    //       itemCode.text = call.arguments['data'];
-    //       onCompleteTextEditItem();
-    //     });
-    //   }
-    // });
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fromEdit();
+    });
+  }
+
+  void fromEdit() async {
+    try {
+      if (widget.isEdit == null) return;
+      print(widget.isEdit);
+      // ✅ Populate text fields safely
+      cosDocEntry.text = getDataFromDynamic(widget.isEdit['DocumentEntry']);
+      cos.text = getDataFromDynamic(widget.isEdit['DocumentNumber']);
+      warehouse.text = getDataFromDynamic(
+          widget.isEdit['InventoryCountingLines'][0]["WarehouseCode"]);
+      saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
+      if (mounted) MaterialDialog.loading(context);
+
+      final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+      // final coss = context.read<COSOfflineCubit>().state;
+
+      final List<Map<String, dynamic>> rawItems = [];
+      final List<dynamic> lines =
+          (widget.isEdit['InventoryCountingLines'] as List?) ?? [];
+
+      // final refDocEntry = getDataFromDynamic(widget.isEdit["DocumentNumber"]);
+      // docEntry.text = refDocEntry;
+      // final matchedCos = coss.firstWhere(
+      //   (cs) => cs['DocumentNumber'] == refDocEntry,
+      //   orElse: () => {},
+      // );
+      // if (matchedCos.isEmpty) {
+      //   if (mounted) MaterialDialog.close(context);
+
+      //   MaterialDialog.warning(
+      //     context,
+      //     title: 'Error',
+      //     body: "Counting Sheet Not Found!",
+      //   );
+      //   return;
+      // }
+
+      for (var element in lines) {
+        final itemList = context.read<ItemOfflineCubit>().state;
+        final binList = context.read<BinOfflineCubit>().state;
+
+        final itemCode = getDataFromDynamic(element["ItemCode"]);
+
+        // ✅ Find matching barcode record
+        final matchedBarcode = barcodeList.firstWhere(
+          (b) =>
+              b['ItemCode'] == itemCode &&
+              b['UoMCode'] == getDataFromDynamic(element["UoMCode"]),
+          orElse: () => {},
+        );
+
+        // final matchedPOLine =
+        //     (matchedCos.isNotEmpty && matchedCos["InventoryCountingLines"] != null)
+        //         ? (matchedCos["InventoryCountingLines"] as List).firstWhere(
+        //             (b) =>
+        //                 b['ItemCode'] == itemCode && b['UoMCode'] == getDataFromDynamic(element["UoMCode"]),
+        //             orElse: () => {},
+        //           )
+        //         : {};
+
+        final matchedItem = itemList.firstWhere(
+            (e) => e['ItemCode'] == element['ItemCode'],
+            orElse: () => null);
+
+        if (matchedItem == null) {
+          MaterialDialog.success(context,
+              title: 'Oops.', body: "Item not found");
+          return;
+        }
+        final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+        final uomGroup = uomGroupCubit.state.firstWhere(
+          (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+          orElse: () => {},
+        );
+        final itemMapped = {
+          ...matchedItem,
+          "BaseUoM": uomGroup['BaseUoM'],
+          "UoMGroupDefinitionCollection":
+              uomGroup['UoMGroupDefinitionCollection']
+        };
+        final binCodeFind = binList.firstWhere(
+          (u) =>
+              u['AbsEntry'] ==
+              int.tryParse(getDataFromDynamic(element["BinEntry"])),
+          orElse: () => {},
+        );
+
+        rawItems.add({
+          "ItemCode": element['ItemCode'],
+          "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
+          "Quantity": element['CountedQuantity'],
+          // "TotalQuantity": matchedPOLine["Quantity"],
+          "WarehouseCode": warehouse.text,
+          "UoMEntry": getDataFromDynamic(element['UoMEntry']),
+          "UoMCode": element['UoMCode'],
+          "UoMGroupDefinitionCollection":
+              itemMapped['UoMGroupDefinitionCollection'],
+          "BaseUoM": itemMapped['BaseUoM'],
+          "BinEntry": element["BinEntry"] ?? -1,
+          "BinCode": binCodeFind["BinCode"],
+          "BaseLine": element['BaseLine'],
+          "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
+          "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
+          "Serials": element["SerialNumbers"] ?? [],
+          "Batches": element["BatchNumbers"] ?? [],
+          "InventoryCountingLineUoMs": isSerialOrBatchs,
+          if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+        });
+
+        // itemCodeFilter.add(element['ItemCode']);
+      }
+      // ✅ Update items
+      items = rawItems;
+
+      // Debug
+      // debugPrint("✅ Processed ${items.length} item(s)");
+      // debugPrint("🧾 rawItems: $items");
+
+      // ✅ Close loading indicator
+      if (mounted) MaterialDialog.close(context);
+
+      // ✅ Refresh UI
+      if (mounted) setState(() {});
+    } catch (e, stackTrace) {
+      if (mounted) MaterialDialog.close(context);
+      debugPrint("❌ fromFailed error: $e\n$stackTrace");
+    }
   }
 
   void onSelectItem() async {
@@ -130,6 +255,13 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
     }
   }
 
+  void onChangeWhs() async {
+    goTo(context, WarehousePage()).then((value) {
+      if (value == null) return;
+      warehouse.text = getDataFromDynamic(value);
+    });
+  }
+
   void onAddItem({bool force = false}) {
     try {
       List<dynamic> data = [...items];
@@ -149,7 +281,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
         "UoMGroupDefinitionCollection":
             jsonDecode(uoMGroupDefinitionCollection.text) ?? [],
         "BaseUoM": baseUoM.text,
-        "BinId": binId.text,
+        "BinEntry": binId.text,
         "BinCode": binCode.text,
         "InventoryCountingLineUoMs": isSerialOrBatchs,
         "Serials":
@@ -216,7 +348,8 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   }
 
   void onChangeBin() async {
-    goTo(context, BinPage(warehouse: warehouse.text)).then((value) {
+    goTo(context, BinPage(warehouse: warehouse.text, itemCode: itemCode.text))
+        .then((value) {
       if (value == null) return;
 
       binId.text = getDataFromDynamic((value as BinEntity).id);
@@ -226,9 +359,16 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
 
   void onPostToSAP() async {
     try {
+      var uuid = Uuid();
+
       MaterialDialog.loading(context);
       Map<String, dynamic> data = {
         // "BranchID": 1,
+        "SaveId": widget.isEdit != null && widget.isEditFaild == true
+            ? saveId.text
+            : widget.isEdit != null
+                ? saveId.text
+                : uuid.v4(),
         "DocumentNumber": cos.text,
         "InventoryCountingLines": items.map((item) {
           List<dynamic> inventoryCountingLineUoMs = [
@@ -246,7 +386,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
             "ItemCode": item['ItemCode'],
             "ItemDescription": item['ItemDescription'],
             "UoMCode": item['UoMCode'],
-            "BinEntry": item["BinId"],
+            "BinEntry": item["BinEntry"],
             "CountedQuantity": item["Quantity"],
             "WarehouseCode": warehouse.text,
             "InventoryCountingSerialNumbers": item['Serials'] ?? [],
@@ -255,13 +395,29 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
           };
         }).toList(),
       };
-      context.read<PhysicalCountOfflineCubit>().addData(data);
+      // context.read<PhysicalCountOfflineCubit>().addData(data);
+      if (widget.isEdit != null && widget.isEditFaild == true) {
+        context
+            .read<PhysicalCountFailedOfflineCubit>()
+            .removeByFailId(saveId.text);
+        context.read<PhysicalCountOfflineCubit>().addData(data);
+      } else if (widget.isEdit != null) {
+        context
+            .read<PhysicalCountOfflineCubit>()
+            .updateBySaveId(saveId.text, data);
+      } else {
+        context.read<PhysicalCountOfflineCubit>().addData(data);
+      }
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Saved Physical Count",
+          body: widget.isEdit != null && widget.isEditFaild == true
+              ? "Edited Faild Physical Count"
+              : widget.isEdit != null
+                  ? "Edited Physical Count"
+                  : "Saved Physical Count",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -496,6 +652,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                       placeholder: 'Warehouse',
                       controller: warehouse,
                       readOnly: true,
+                      onPressed: onChangeWhs,
                     ),
                     // Divider(thickness: 1, color: Colors.grey.shade400),
                   ],
@@ -753,7 +910,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Post',
+                  'Save',
                   style: TextStyle(color: Colors.white),
                 ),
               ),

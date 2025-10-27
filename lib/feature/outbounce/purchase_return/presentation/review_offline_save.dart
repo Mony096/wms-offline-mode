@@ -22,7 +22,7 @@ class ReviewPurchaseReturnOfflineSave extends StatelessWidget {
           style: TextStyle(fontSize: 19),
         ),
         content: const Text(
-          "This will remove all offline failed data. Are you sure?",
+          "This will remove all offline data. Are you sure?",
           style: TextStyle(fontSize: 14),
         ),
         actions: [
@@ -58,7 +58,7 @@ class ReviewPurchaseReturnOfflineSave extends StatelessWidget {
           style: TextStyle(fontSize: 19),
         ),
         content: const Text(
-          "This will remove this offline failed data. Are you sure?",
+          "This will remove this offline data. Are you sure?",
           style: TextStyle(fontSize: 14),
         ),
         actions: [

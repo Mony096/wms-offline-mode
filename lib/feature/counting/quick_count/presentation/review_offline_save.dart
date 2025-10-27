@@ -17,7 +17,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: const Text("Clear Failed Data?"),
         content: const Text(
-            "This will remove all offline failed data. Are you sure?"),
+            "This will remove all offline data. Are you sure?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -51,7 +51,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
           style: TextStyle(fontSize: 19),
         ),
         content: const Text(
-          "This will remove this offline failed data. Are you sure?",
+          "This will remove this offline data. Are you sure?",
           style: TextStyle(fontSize: 14),
         ),
         actions: [
@@ -441,21 +441,21 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                     ),
 
                     // 🔹 Index Badge
-                    Positioned(
+                   Positioned(
                       top: 8,
                       right: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(8),
+                          // color: const Color.fromARGB(255, 195, 194, 194),
+                          borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
                           "No. ${index + 1}",
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 130, 126, 126),
+                            // fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
                         ),

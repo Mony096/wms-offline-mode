@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
+import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/cos/presentation/screen/cos_page.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
@@ -31,8 +33,13 @@ import '../../../../constant/style.dart';
 import 'cubit/binlocation_count_cubit.dart';
 
 class CreateBinCountScreen extends StatefulWidget {
-  const CreateBinCountScreen({super.key});
-
+  const CreateBinCountScreen({
+    super.key,
+    this.isEdit,
+    this.isEditFaild,
+  });
+  final dynamic isEdit;
+  final dynamic isEditFaild;
   @override
   State<CreateBinCountScreen> createState() => _CreateBinCountScreenState();
 }
@@ -59,14 +66,13 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
   final cos = TextEditingController();
   final isBatch = TextEditingController();
   final isSerial = TextEditingController();
-  late BinlocationCountCubit _bloc;
-  late ItemCubit _blocItem;
   final barCode = TextEditingController();
   final DioClient dio = DioClient();
   List<dynamic> itemCodeFilter = [];
   int isEdit = -1;
   bool isSerialOrBatch = false;
   List<dynamic> isSerialOrBatchs = [{}];
+  final saveId = TextEditingController();
 
   List<dynamic> items = [];
   bool loading = false;
@@ -79,27 +85,139 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
   final FocusNode _bin = FocusNode();
   @override
   void initState() {
-    _bloc = context.read<BinlocationCountCubit>();
-    _blocItem = context.read<ItemCubit>();
-    init();
-    //
-    try {
-      // IscanDataPlugin.methodChannel
-      //     .setMethodCallHandler((MethodCall call) async {
-      //   if (call.method == "onScanResults") {
-      //     if (loading) return;
-
-      //     setState(() {
-      //       if (call.arguments['data'] == "decode error") return;
-      //       barCode.text = call.arguments['data'];
-      //       onCompleteTextEditItem();
-      //     });
-      //   }
-      // });
-    } catch (e) {
-      print("Error setting method call handler: $e");
-    }
     super.initState();
+    init();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      fromEdit();
+    });
+  }
+
+  void fromEdit() async {
+    try {
+      if (widget.isEdit == null) return;
+      print(widget.isEdit);
+      // ✅ Populate text fields safely
+      cosDocEntry.text = getDataFromDynamic(widget.isEdit['DocumentEntry']);
+      cos.text = getDataFromDynamic(widget.isEdit['DocumentNumber']);
+      warehouse.text = getDataFromDynamic(
+          widget.isEdit['InventoryCountingLines'][0]["WarehouseCode"]);
+      saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
+      if (mounted) MaterialDialog.loading(context);
+
+      final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
+      // final coss = context.read<COSOfflineCubit>().state;
+
+      final List<Map<String, dynamic>> rawItems = [];
+      final List<dynamic> lines =
+          (widget.isEdit['InventoryCountingLines'] as List?) ?? [];
+
+      // final refDocEntry = getDataFromDynamic(widget.isEdit["DocumentNumber"]);
+      // docEntry.text = refDocEntry;
+      // final matchedCos = coss.firstWhere(
+      //   (cs) => cs['DocumentNumber'] == refDocEntry,
+      //   orElse: () => {},
+      // );
+      // if (matchedCos.isEmpty) {
+      //   if (mounted) MaterialDialog.close(context);
+
+      //   MaterialDialog.warning(
+      //     context,
+      //     title: 'Error',
+      //     body: "Counting Sheet Not Found!",
+      //   );
+      //   return;
+      // }
+
+      for (var element in lines) {
+        final itemList = context.read<ItemOfflineCubit>().state;
+        final binList = context.read<BinOfflineCubit>().state;
+
+        final itemCode = getDataFromDynamic(element["ItemCode"]);
+
+        // ✅ Find matching barcode record
+        final matchedBarcode = barcodeList.firstWhere(
+          (b) =>
+              b['ItemCode'] == itemCode &&
+              b['UoMCode'] == getDataFromDynamic(element["UoMCode"]),
+          orElse: () => {},
+        );
+
+        // final matchedPOLine =
+        //     (matchedCos.isNotEmpty && matchedCos["InventoryCountingLines"] != null)
+        //         ? (matchedCos["InventoryCountingLines"] as List).firstWhere(
+        //             (b) =>
+        //                 b['ItemCode'] == itemCode && b['UoMCode'] == getDataFromDynamic(element["UoMCode"]),
+        //             orElse: () => {},
+        //           )
+        //         : {};
+
+        final matchedItem = itemList.firstWhere(
+            (e) => e['ItemCode'] == element['ItemCode'],
+            orElse: () => null);
+
+        if (matchedItem == null) {
+          MaterialDialog.success(context,
+              title: 'Oops.', body: "Item not found");
+          return;
+        }
+        final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
+        final uomGroup = uomGroupCubit.state.firstWhere(
+          (u) => u['AbsEntry'] == matchedItem['UoMGroupEntry'],
+          orElse: () => {},
+        );
+        final itemMapped = {
+          ...matchedItem,
+          "BaseUoM": uomGroup['BaseUoM'],
+          "UoMGroupDefinitionCollection":
+              uomGroup['UoMGroupDefinitionCollection']
+        };
+        final binCodeFind = binList.firstWhere(
+          (u) =>
+              u['AbsEntry'] ==
+              int.tryParse(getDataFromDynamic(element["BinEntry"])),
+          orElse: () => {},
+        );
+
+        rawItems.add({
+          "ItemCode": element['ItemCode'],
+          "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
+          "Quantity": element['CountedQuantity'],
+          // "TotalQuantity": matchedPOLine["Quantity"],
+          "WarehouseCode": warehouse.text,
+          "UoMEntry": getDataFromDynamic(element['UoMEntry']),
+          "UoMCode": element['UoMCode'],
+          "UoMGroupDefinitionCollection":
+              itemMapped['UoMGroupDefinitionCollection'],
+          "BaseUoM": itemMapped['BaseUoM'],
+          "BinEntry": element["BinEntry"] ?? -1,
+          "BinCode": binCodeFind["BinCode"],
+          "BaseLine": element['BaseLine'],
+          "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
+          "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
+          "Serials": element["SerialNumbers"] ?? [],
+          "Batches": element["BatchNumbers"] ?? [],
+          "InventoryCountingLineUoMs": isSerialOrBatchs,
+          if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+        });
+
+        // itemCodeFilter.add(element['ItemCode']);
+      }
+      // ✅ Update items
+      items = rawItems;
+
+      // Debug
+      // debugPrint("✅ Processed ${items.length} item(s)");
+      // debugPrint("🧾 rawItems: $items");
+
+      // ✅ Close loading indicator
+      if (mounted) MaterialDialog.close(context);
+
+      // ✅ Refresh UI
+      if (mounted) setState(() {});
+    } catch (e, stackTrace) {
+      if (mounted) MaterialDialog.close(context);
+      debugPrint("❌ fromFailed error: $e\n$stackTrace");
+    }
   }
 
   void init() async {
@@ -256,10 +374,17 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
   }
 
   void onPostToSAP() async {
+    var uuid = Uuid();
+
     try {
       MaterialDialog.loading(context);
       Map<String, dynamic> data = {
         // "BranchID": 1,
+        "SaveId": widget.isEdit != null && widget.isEditFaild == true
+            ? saveId.text
+            : widget.isEdit != null
+                ? saveId.text
+                : uuid.v4(),
         "DocumentNumber": cos.text,
         "InventoryCountingLines": items.map((item) {
           List<dynamic> inventoryCountingLineUoMs = [
@@ -287,13 +412,25 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
         }).toList(),
       };
 
-      context.read<BinCountOfflineCubit>().addData(data);
+      // context.read<BinCountOfflineCubit>().addData(data);
+      if (widget.isEdit != null && widget.isEditFaild == true) {
+        context.read<BinCountFailedOfflineCubit>().removeByFailId(saveId.text);
+        context.read<BinCountOfflineCubit>().addData(data);
+      } else if (widget.isEdit != null) {
+        context.read<BinCountOfflineCubit>().updateBySaveId(saveId.text, data);
+      } else {
+        context.read<BinCountOfflineCubit>().addData(data);
+      }
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
           title: 'Successfully',
-          body: "Saved Bin Count",
+          body: widget.isEdit != null && widget.isEditFaild == true
+              ? "Edited Faild Bin Count"
+              : widget.isEdit != null
+                  ? "Edited Bin Count"
+                  : "Saved Bin Count",
           onOk: () => Navigator.of(context).pop(),
         );
       }
@@ -945,7 +1082,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Post',
+                  'Save',
                   style: TextStyle(color: Colors.white),
                 ),
               ),

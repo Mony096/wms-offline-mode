@@ -107,6 +107,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
     try {
       if (widget.isEdit == null) return;
       print(widget.isEdit);
+      print(1213);
       // ✅ Populate text fields safely
       warehouse.text = getDataFromDynamic(
           widget.isEdit['InventoryPostingLines'].length > 0
@@ -115,7 +116,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
       ref.text = getDataFromDynamic(widget.isEdit['Reference2']);
       saveIdQC.text = getDataFromDynamic(widget.isEdit['SaveId']);
       saveIdCC.text = getDataFromDynamic(widget.isEdit['SaveId']);
-      // if (mounted) MaterialDialog.loading(context);
+      if (mounted) MaterialDialog.loading(context);
 
       final barcodeList = context.read<ItemBarcodeOfflineCubit>().state;
       final List<Map<String, dynamic>> rawItems = [];
@@ -229,7 +230,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
           "UoMGroupDefinitionCollection":
               itemMapped['UoMGroupDefinitionCollection'],
           "BaseUoM": itemMapped['BaseUoM'],
-          "BinId": binId.text,
+          "BinEntry": binId.text,
           "BinCode": binCodeFind["BinCode"],
           "BaseLine": element['BaseLine'],
           "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
@@ -264,7 +265,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   void init() async {
     final whs = await LocalStorageManger.getString('warehouse');
     warehouse.text = whs;
-    if (!widget.isQuickCount) {
+    if (!widget.isQuickCount && widget.isEdit == null) {
       if (mounted) MaterialDialog.loading(context);
 
       List<Map<String, dynamic>> rawItems = [];
@@ -293,8 +294,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                 e['UoMEntry'] == itemResponse["InventoryUoMEntry"],
             orElse: () => {},
           );
-          print(element['UoMEntry']);
-          print(barCodeObj);
+          // print(element['UoMEntry']);
+          // print(barCodeObj);
           rawItems.add({
             "ItemCode": element['ItemCode'],
             "ItemDescription": itemResponse['ItemName'],
@@ -433,6 +434,14 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   }
 
   void onAddItem({bool force = false}) {
+    final binList = context.read<BinOfflineCubit>().state;
+    final filteredBin =
+        binList.where((b) => b['Warehouse'] == warehouse.text).toList();
+    if (filteredBin.isNotEmpty && binId.text.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Error', body: "Opps, Bin Location is required");
+      return;
+    }
     try {
       List<dynamic> data = [...items];
 
@@ -451,7 +460,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         "UoMGroupDefinitionCollection":
             jsonDecode(uoMGroupDefinitionCollection.text) ?? [],
         "BaseUoM": baseUoM.text,
-        "BinId": binId.text,
+        "BinEntry": binId.text,
         "BinCode": binCode.text,
         "InWhsQty": inWhsQty.text,
         "BarCode": barCode.text,
@@ -500,7 +509,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         uom.text = getDataFromDynamic(item['UoMCode']);
         uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
         binCode.text = getDataFromDynamic(item['BinCode']);
-        binId.text = getDataFromDynamic(item['BinId']);
+        binId.text = getDataFromDynamic(item['BinEntry']);
         baseUoM.text = getDataFromDynamic(item['BaseUoM']);
         docEntry.text = getDataFromDynamic(item['DocEntry']);
         refLineNo.text = getDataFromDynamic(item['BaseLine']);
@@ -687,7 +696,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
             "ItemDescription": item['ItemDescription'],
             "UoMCode": item['UoMCode'],
             // "UoMEntry": item["UoMEntry"],
-            "BinEntry": item["BinId"],
+            "BinEntry": item["BinEntry"],
             "Price": 1,
             "Variance": double.parse(item["Quantity"]).toInt() -
                 double.parse(item["InWhsQty"]).toInt(),
