@@ -6,6 +6,7 @@ import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_c
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/create_return_receipt_screen.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/return_receipt_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 
 class ReviewReturnReceiptOfflineSave extends StatelessWidget {
@@ -41,12 +42,28 @@ class ReviewReturnReceiptOfflineSave extends StatelessWidget {
       ),
     );
 
-    // User canceled
+    // rollback stock
     if (confirm != true) return;
+    final jsonData = context.read<ReturnReceiptOfflineCubit>().getJsonData();
+
+    for (var element in jsonData.toList()) {
+      final refDocEntry =
+          int.tryParse((element["DocumentLines"]?[0]?["BaseEntry"]).toString());
+      for (var ele in element["DocumentLines"].toList()) {
+        context.read<ReturnReceiptRequestOfflineCubit>().increaseQuantityByLine(
+            docEntry: refDocEntry ?? -1,
+            lineId: int.tryParse(ele["BaseLine"].toString()) ?? -1,
+            quantity: double.tryParse(ele["Quantity"].toString()) ?? 0.0,
+            context: context);
+      }
+    }
+    //Clear all data
     context.read<ReturnReceiptOfflineCubit>().clearData();
+    // context.read<ReturnReceiptOfflineCubit>().clearData();
   }
 
-  Future<void> _removeById(BuildContext context, dynamic id) async {
+  Future<void> _removeById(
+      BuildContext context, dynamic id, dynamic data) async {
     // 1️⃣ Clear all Cubits
     final confirm = await showDialog<bool>(
       context: context,
@@ -77,9 +94,19 @@ class ReviewReturnReceiptOfflineSave extends StatelessWidget {
       ),
     );
 
-    // User canceled
-    if (confirm != true) return;
+    ///remove data    if (confirm != true) return;
     context.read<ReturnReceiptOfflineCubit>().removeByFailId(id);
+
+    /// incress stock data when remove offline
+    for (var element in data["DocumentLines"].toList()) {
+      final refDocEntry =
+          int.tryParse((data["DocumentLines"]?[0]?["BaseEntry"]).toString());
+      context.read<ReturnReceiptRequestOfflineCubit>().increaseQuantityByLine(
+          docEntry: int.tryParse(refDocEntry.toString()) ?? -1,
+          lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+          quantity: double.tryParse(element["Quantity"].toString()) ?? 0.0,
+          context: context);
+    }
   }
 
   @override
@@ -355,8 +382,8 @@ class ReviewReturnReceiptOfflineSave extends StatelessWidget {
                                             borderRadius:
                                                 BorderRadius.circular(5),
                                             onTap: () {
-                                              _removeById(
-                                                  context, record['SaveId']);
+                                              _removeById(context,
+                                                  record['SaveId'], record);
                                             },
                                             child: Ink(
                                               width: 100,

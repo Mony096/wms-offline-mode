@@ -713,8 +713,10 @@ class _CreatePurchaseReturnScreenState
       // }
       // Initialize the list of items
       List<Map<String, dynamic>> rawItems = [];
-
-      for (var element in value['DocumentLines']) {
+      final openLines = value['DocumentLines']
+          .where((line) => line['LineStatus'] == 'bost_Open')
+          .toList();
+      for (var element in openLines) {
         final itemResponse =
             findFullItemInformation(context, element['ItemCode']);
         if (itemResponse == null) return;

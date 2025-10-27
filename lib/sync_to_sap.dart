@@ -50,6 +50,7 @@ import 'package:wms_mobile/feature/inbound/return_receipt/presentation/cubit/ret
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/inbound/return_receipt/presentation/sync_log.dart';
+import 'package:wms_mobile/feature/inbound/return_receipt_request/presentation/cubit/return_receipt_request_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/review_offline_save.dart';
@@ -208,8 +209,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<ReturnReceiptOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<ReturnReceiptOfflineCubit>().post(
-                    context.read<ReturnReceiptFailedOfflineCubit>(),
-                  );
+                  context.read<ReturnReceiptFailedOfflineCubit>(),
+                  context.read<ReturnReceiptRequestOfflineCubit>(),
+                  context);
             },
             onGotoReview: (context) {
               goTo(context, ReviewReturnReceiptOfflineSave()).then((e) async =>

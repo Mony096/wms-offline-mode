@@ -524,7 +524,6 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
         barCode.text = getDataFromDynamic(item['BarCode']);
         docEntry.text = getDataFromDynamic(item["DocEntry"]);
-        originalQty.text = getDataFromDynamic(item["OriginalQty"]);
         setState(() {
           isEdit = index;
 

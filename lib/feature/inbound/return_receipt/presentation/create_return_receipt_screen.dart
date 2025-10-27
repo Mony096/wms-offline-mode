@@ -72,6 +72,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
   final barCode = TextEditingController();
   final totalQuantity = TextEditingController();
   final saveId = TextEditingController();
+  final originalQty = TextEditingController();
 
   //
   final isBatch = TextEditingController();
@@ -191,7 +192,14 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
           "ItemCode": element['ItemCode'],
           "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
           "Quantity": element['Quantity'],
-          "TotalQuantity": matchedPOLine["Quantity"],
+          // "TotalQuantity": matchedPOLine["Quantity"],
+          "TotalQuantity": widget.isEditFaild == true
+              ? double.tryParse(
+                  matchedPOLine["RemainingOpenQuantity"].toString())
+              : (double.tryParse(
+                          matchedPOLine["RemainingOpenQuantity"].toString()) ??
+                      0.0) +
+                  (double.tryParse(element["Quantity"].toString()) ?? 0.0),
           "WarehouseCode": warehouse.text,
           "UoMEntry": getDataFromDynamic(element['UoMEntry']),
           "UoMCode": element['UoMCode'],
@@ -206,6 +214,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
           "Serials": element["SerialNumbers"] ?? [],
           "Batches": element["BatchNumbers"] ?? [],
           if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+          "OriginalQty": element['Quantity'],
         });
 
         itemCodeFilter.add(element['ItemCode']);
@@ -309,6 +318,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
             serialsInput.text == "" ? [] : jsonDecode(serialsInput.text) ?? [],
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
+        "OriginalQty": originalQty.text
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -377,7 +387,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
         barCode.text = getDataFromDynamic(item['BarCode']);
-
+        originalQty.text = getDataFromDynamic(item['OriginalQty']);
         setState(() {
           isEdit = index;
 
@@ -508,6 +518,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
             "UoMCode": item['UoMCode'],
             "UoMEntry": item['UoMEntry'],
             "Quantity": item['Quantity'],
+            "OriginalQty": item["OriginalQty"],
             "WarehouseCode": warehouse.text,
             "BaseEntry": docEntry.text,
             "BaseType": 234000031,
@@ -525,12 +536,48 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
             .read<ReturnReceiptFailedOfflineCubit>()
             .removeByFailId(saveId.text);
         context.read<ReturnReceiptOfflineCubit>().addData(data);
+        final refDocEntry =
+            int.tryParse((data["DocumentLines"]?[0]?["BaseEntry"]).toString());
+        for (var element in data["DocumentLines"].toList()) {
+          context
+              .read<ReturnReceiptRequestOfflineCubit>()
+              .decreaseQuantityByLine(
+                  docEntry: refDocEntry ?? -1,
+                  lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+                  quantity:
+                      double.tryParse(element["Quantity"].toString()) ?? 0.0,
+                  context: context);
+        }
       } else if (widget.isEdit != null) {
         context
             .read<ReturnReceiptOfflineCubit>()
             .updateBySaveId(saveId.text, data);
+        final refDocEntry =
+            int.tryParse((data["DocumentLines"]?[0]?["BaseEntry"]).toString());
+        for (var element in data["DocumentLines"].toList()) {
+          final updateQty =
+              (double.tryParse(element["Quantity"].toString()) ?? 0.0) -
+                  (double.tryParse(element["OriginalQty"].toString()) ?? 0.0);
+          context
+              .read<ReturnReceiptRequestOfflineCubit>()
+              .decreaseQuantityByLine(
+                  docEntry: refDocEntry,
+                  lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+                  quantity: updateQty,
+                  context: context);
+        }
       } else {
         context.read<ReturnReceiptOfflineCubit>().addData(data);
+        for (var element in data["DocumentLines"].toList()) {
+          context
+              .read<ReturnReceiptRequestOfflineCubit>()
+              .decreaseQuantityByLine(
+                  docEntry: int.tryParse(docEntry.text.toString()) ?? -1,
+                  lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+                  quantity:
+                      double.tryParse(element["Quantity"].toString()) ?? 0.0,
+                  context: context);
+        }
       }
       // final response = await _bloc.post(data);
       if (mounted) {
@@ -698,7 +745,10 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
       docEntry.text = getDataFromDynamic(value['DocEntry']);
       if (mounted) MaterialDialog.loading(context);
       items = [];
-      for (var element in value['DocumentLines']) {
+      final openLines = value['DocumentLines']
+          .where((line) => line['LineStatus'] == 'bost_Open')
+          .toList();
+      for (var element in openLines) {
         final itemResponse =
             findFullItemInformation(context, element['ItemCode']);
         if (itemResponse == null) return;

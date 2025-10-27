@@ -694,8 +694,10 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       if (mounted) MaterialDialog.loading(context);
 
       List<Map<String, dynamic>> rawItems = [];
-
-      for (var element in value['DocumentLines']) {
+      final openLines = value['DocumentLines']
+          .where((line) => line['LineStatus'] == 'bost_Open')
+          .toList();
+      for (var element in openLines) {
         final itemResponse =
             findFullItemInformation(context, element['ItemCode']);
         if (itemResponse == null) return;
