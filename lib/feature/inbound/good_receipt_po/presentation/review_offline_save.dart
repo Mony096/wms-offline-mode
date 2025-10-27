@@ -5,6 +5,7 @@ import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/create_good_receipt_screen.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_receipt_po_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 
 class ReviewOfflineSave extends StatelessWidget {
@@ -16,8 +17,7 @@ class ReviewOfflineSave extends StatelessWidget {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text("Clear Failed Data?"),
-        content: const Text(
-            "This will remove all offline data. Are you sure?"),
+        content: const Text("This will remove all offline data. Are you sure?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -35,12 +35,27 @@ class ReviewOfflineSave extends StatelessWidget {
       ),
     );
 
-    // User canceled
+    // rollback stock
     if (confirm != true) return;
+    final jsonData = context.read<GoodReceiptPoOfflineCubit>().getJsonData();
+
+    for (var element in jsonData.toList()) {
+      final refDocEntry = int.tryParse(
+          (element["DocumentReferences"]?[0]?["RefDocEntr"]).toString());
+      for (var ele in element["DocumentLines"].toList()) {
+        context.read<PurchaseOrderOfflineCubit>().increaseQuantityByLine(
+            docEntry: refDocEntry ?? -1,
+            lineId: int.tryParse(ele["BaseLine"].toString()) ?? -1,
+            quantity: double.tryParse(ele["Quantity"].toString()) ?? 0.0,
+            context: context);
+      }
+    }
+    //Clear all data
     context.read<GoodReceiptPoOfflineCubit>().clearData();
   }
 
-  Future<void> _removeById(BuildContext context, dynamic id) async {
+  Future<void> _removeById(
+      BuildContext context, dynamic id, dynamic data) async {
     // 1️⃣ Clear all Cubits
     final confirm = await showDialog<bool>(
       context: context,
@@ -73,7 +88,20 @@ class ReviewOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
+
+    ///remove data
     context.read<GoodReceiptPoOfflineCubit>().removeByFailId(id);
+
+    /// incress stock data when remove offline
+    for (var element in data["DocumentLines"].toList()) {
+      final refDocEntry = int.tryParse(
+          (data["DocumentReferences"]?[0]?["RefDocEntr"]).toString());
+      context.read<PurchaseOrderOfflineCubit>().increaseQuantityByLine(
+          docEntry: int.tryParse(refDocEntry.toString()) ?? -1,
+          lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+          quantity: double.tryParse(element["Quantity"].toString()) ?? 0.0,
+          context: context);
+    }
   }
 
   @override
@@ -349,8 +377,8 @@ class ReviewOfflineSave extends StatelessWidget {
                                             borderRadius:
                                                 BorderRadius.circular(5),
                                             onTap: () {
-                                              _removeById(
-                                                  context, record['SaveId']);
+                                              _removeById(context,
+                                                  record['SaveId'], record);
                                             },
                                             child: Ink(
                                               width: 100,

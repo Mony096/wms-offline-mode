@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/cubit/good_recipt_po_failed_offline_cubit.dart';
+import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 import 'package:uuid/uuid.dart';
@@ -90,7 +90,8 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
     emit(updatedItems);
   }
 
-  Future<void> post(GoodReciptPoFailedOfflineCubit failCubit) async {
+  Future<void> post(GoodReciptPoFailedOfflineCubit failCubit,
+      PurchaseOrderOfflineCubit po, BuildContext context) async {
     final items = getJsonData();
     if (items.isEmpty) {
       print("⚠️ No offline records to sync.");
@@ -157,6 +158,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
     // 3️⃣ Post each record to SAP
     for (var item in items) {
       final startTime = DateTime.now();
+
       try {
         await postToSAP(
           host: host,
@@ -190,6 +192,17 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
       return newItem;
     }).toList();
 
+    for (var element in cleanedFailedRecords) {
+      final refDocEntry = int.tryParse(
+          (element["DocumentReferences"]?[0]?["RefDocEntr"]).toString());
+      for (var ele in element["DocumentLines"].toList()) {
+        po.increaseQuantityByLine(
+            docEntry: refDocEntry ?? -1,
+            lineId: int.tryParse(ele["BaseLine"].toString()) ?? -1,
+            quantity: double.tryParse(ele["Quantity"].toString()) ?? 0.0,
+            context: context);
+      }
+    }
     // ✅ Add to failed box using the other cubit
     failCubit.addData(cleanedFailedRecords);
 

@@ -80,8 +80,12 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
   final serialsInput = TextEditingController();
   final batchesInput = TextEditingController();
   final barCode = TextEditingController();
+  final baseLine = TextEditingController();
+  final docEntry = TextEditingController();
+
   final saveIdGRPO = TextEditingController();
   final saveIdQGR = TextEditingController();
+  final originalQty = TextEditingController();
 
   List<dynamic> isBin = [{}];
   //
@@ -200,12 +204,17 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           (u) => u['AbsEntry'] == int.tryParse(getDataFromDynamic(binID)),
           orElse: () => {},
         );
-
         rawItems.add({
           "ItemCode": element['ItemCode'],
           "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
           "Quantity": element['Quantity'],
-          "TotalQuantity": matchedPOLine["Quantity"],
+          "TotalQuantity": widget.isEditFaildGRPO == true
+              ? double.tryParse(
+                  matchedPOLine["RemainingOpenQuantity"].toString())
+              : (double.tryParse(
+                          matchedPOLine["RemainingOpenQuantity"].toString()) ??
+                      0.0) +
+                  (double.tryParse(element["Quantity"].toString()) ?? 0.0),
           "WarehouseCode": warehouse.text,
           "UoMEntry": getDataFromDynamic(element['UoMEntry']),
           "UoMCode": element['UoMCode'],
@@ -215,10 +224,12 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           "BinId": binID,
           "BinCode": binCodeFind["BinCode"],
           "BaseLine": element['BaseLine'],
+          "DocEntry": refDocEntry,
           "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
           "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
           "Serials": element["SerialNumbers"] ?? [],
           "Batches": element["BatchNumbers"] ?? [],
+          "OriginalQty": element['Quantity'],
           if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
         });
 
@@ -299,6 +310,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
             "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
             "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
             "BarCode": element['BarCode'],
+            "BaseLine": element['LineNum'],
           });
 
           itemCodeFilter.add(element['ItemCode']);
@@ -350,6 +362,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           "UoMCode": item["UoMCode"],
           "UoMGroupDefinitionCollection": item["UoMGroupDefinitionCollection"],
           "BaseUoM": item["BaseUoM"],
+          "BaseLine": item['BaseLine'],
           "BinId": item["BinId"],
           "ManageSerialNumbers": item["ManageSerialNumbers"],
           "ManageBatchNumbers": item["ManageBatchNumbers"],
@@ -434,6 +447,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         "TotalQuantity": totalQuantity.text,
         "BinId": binId.text,
         "BinCode": binCode.text,
+        "BaseLine": baseLine.text,
         "ManageSerialNumbers": isSerial.text,
         "ManageBatchNumbers": isBatch.text,
         "Serials":
@@ -441,6 +455,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
         "BarCode": barCode.text,
+        "DocEntry": docEntry.text,
+        "OriginalQty": originalQty.text
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -499,13 +515,16 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         uoMGroupDefinitionCollection.text = jsonEncode(
           item['UoMGroupDefinitionCollection'],
         );
+        baseLine.text = getDataFromDynamic(item['BaseLine']);
+        originalQty.text = getDataFromDynamic(item['OriginalQty']);
         totalQuantity.text = getDataFromDynamic(item['TotalQuantity']);
         isSerial.text = getDataFromDynamic(item['ManageSerialNumbers']);
         isBatch.text = getDataFromDynamic(item['ManageBatchNumbers']);
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
         barCode.text = getDataFromDynamic(item['BarCode']);
-
+        docEntry.text = getDataFromDynamic(item["DocEntry"]);
+        originalQty.text = getDataFromDynamic(item["OriginalQty"]);
         setState(() {
           isEdit = index;
 
@@ -560,12 +579,10 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
   }
 
   void onPostToSAP() async {
-    // print(widget.po);
-    // return;
-
     try {
       if (cardCode.text == '') {
-        MaterialDialog.warning(context, title: 'Error', body: "Opp, Supplier Code is required");
+        MaterialDialog.warning(context,
+            title: 'Error', body: "Opp, Supplier Code is required");
         return;
       }
       var uuid = Uuid();
@@ -574,12 +591,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         final qty = int.tryParse(item["Quantity"].toString()) ?? 0;
         return qty != 0;
       }).toList();
-
-      // print(items);
-      // print(widget.isEdit != null);
-      // return;
       Map<String, dynamic> data = {
-        // "BPL_IDAssignedToInvoice": 1,
         "SaveId": widget.isEdit != null
             ? widget.quickReceipt
                 ? saveIdQGR.text
@@ -621,7 +633,6 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           if (item['Quantity'] is double) {
             qty = item['Quantity'].toString();
           } else {
-            // Handle other types if necessary, e.g., if it's already a string
             qty = item['Quantity'];
           }
           List<dynamic> binAllocations = [
@@ -669,11 +680,14 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
             "ItemDescription": item['ItemDescription'],
             "UoMCode": item['UoMCode'],
             "UoMEntry": item['UoMEntry'],
+            "OriginalQty": item["OriginalQty"],
             "Quantity": item['Quantity'],
             "WarehouseCode": warehouse.text,
-            "BaseType": baseType,
-            "BaseEntry": baseEntry,
-            "BaseLine": baseLine,
+            "BaseType": !widget.quickReceipt ? 22 : -1,
+            "BaseEntry": widget.isEdit != null && !widget.quickReceipt
+                ? item["DocEntry"]
+                : baseEntry,
+            "BaseLine": item["BaseLine"],
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
             "DocumentLinesBinAllocations":
@@ -693,7 +707,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           }
         ];
       }
-      if (widget.isEdit != null && widget.isEditFaildGRPO == true) {
+      if (widget.isEdit != null) {
         data['DocumentReferences'] = widget.isEdit["DocumentReferences"];
       }
       // print(data);
@@ -723,12 +737,44 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
               .read<GoodReciptPoFailedOfflineCubit>()
               .removeByFailId(saveIdGRPO.text);
           context.read<GoodReceiptPoOfflineCubit>().addData(data);
+          final refDocEntry = int.tryParse(
+              (data["DocumentReferences"]?[0]?["RefDocEntr"]).toString());
+          for (var element in data["DocumentLines"].toList()) {
+            context.read<PurchaseOrderOfflineCubit>().decreaseQuantityByLine(
+                docEntry: refDocEntry ?? -1,
+                lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+                quantity:
+                    double.tryParse(element["Quantity"].toString()) ?? 0.0,
+                context: context);
+          }
         } else if (widget.isEdit != null) {
           context
               .read<GoodReceiptPoOfflineCubit>()
               .updateBySaveId(saveIdGRPO.text, data);
+          final refDocEntry = int.tryParse(
+              (data["DocumentReferences"]?[0]?["RefDocEntr"]).toString());
+          for (var element in data["DocumentLines"].toList()) {
+            final updateQty =
+                (double.tryParse(element["Quantity"].toString()) ?? 0.0) -
+                    (double.tryParse(element["OriginalQty"].toString()) ?? 0.0);
+            context.read<PurchaseOrderOfflineCubit>().decreaseQuantityByLine(
+                docEntry: refDocEntry,
+                lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+                quantity: updateQty,
+                context: context);
+          }
         } else {
+          //Add new save
           context.read<GoodReceiptPoOfflineCubit>().addData(data);
+          // cut stock data by DocEntry and lineId Document
+          for (var element in data["DocumentLines"].toList()) {
+            context.read<PurchaseOrderOfflineCubit>().decreaseQuantityByLine(
+                docEntry: int.tryParse(widget.po["DocEntry"].toString()) ?? -1,
+                lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+                quantity:
+                    double.tryParse(element["Quantity"].toString()) ?? 0.0,
+                context: context);
+          }
         }
       }
 

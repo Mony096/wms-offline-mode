@@ -39,6 +39,7 @@ import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_fai
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_faild_log_quick.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_log.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt_po/presentation/sync_log_quick.dart';
+import 'package:wms_mobile/feature/inbound/purchase_order/presentation/cubit/purchase_order_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/cubit/put_away_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/put_away/presentation/review_offline_save.dart';
@@ -122,8 +123,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<GoodReceiptPoOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<GoodReceiptPoOfflineCubit>().post(
-                    context.read<GoodReciptPoFailedOfflineCubit>(),
-                  );
+                  context.read<GoodReciptPoFailedOfflineCubit>(),
+                  context.read<PurchaseOrderOfflineCubit>(),
+                  context);
             },
             onGotoReview: (context) {
               goTo(context, ReviewOfflineSave()).then((e) async => {
