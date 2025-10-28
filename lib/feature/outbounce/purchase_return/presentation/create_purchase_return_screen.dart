@@ -80,6 +80,7 @@ class _CreatePurchaseReturnScreenState
   final isSerial = TextEditingController();
   List<dynamic> isBin = [{}];
   final saveId = TextEditingController();
+  final originalQty = TextEditingController();
 
   int isEdit = -1;
   bool isSerialOrBatch = false;
@@ -194,7 +195,13 @@ class _CreatePurchaseReturnScreenState
           "ItemCode": element['ItemCode'],
           "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
           "Quantity": element['Quantity'],
-          "TotalQuantity": matchedPOLine["RemainingOpenQuantity"],
+          "TotalQuantity": widget.isEditFaild == true
+              ? double.tryParse(
+                  matchedPOLine["RemainingOpenQuantity"].toString())
+              : (double.tryParse(
+                          matchedPOLine["RemainingOpenQuantity"].toString()) ??
+                      0.0) +
+                  (double.tryParse(element["Quantity"].toString()) ?? 0.0),
           "WarehouseCode": warehouse.text,
           "UoMEntry": getDataFromDynamic(element['UoMEntry']),
           "UoMCode": element['UoMCode'],
@@ -210,6 +217,7 @@ class _CreatePurchaseReturnScreenState
           "Serials": element["SerialNumbers"] ?? [],
           "Batches": element["BatchNumbers"] ?? [],
           if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+          "OriginalQty": element['Quantity'],
         });
 
         itemCodeFilter.add(element['ItemCode']);
@@ -314,6 +322,7 @@ class _CreatePurchaseReturnScreenState
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
         "BarCode": barCode.text,
+        "OriginalQty": originalQty.text
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -378,7 +387,7 @@ class _CreatePurchaseReturnScreenState
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
         barCode.text = getDataFromDynamic(item['BarCode']);
-
+        originalQty.text = getDataFromDynamic(item['OriginalQty']);
         setState(() {
           isEdit = index;
 
@@ -507,6 +516,7 @@ class _CreatePurchaseReturnScreenState
             "UoMCode": item['UoMCode'],
             "UoMEntry": item['UoMEntry'],
             "Quantity": item['Quantity'],
+            "OriginalQty": item["OriginalQty"],
             "WarehouseCode": warehouse.text,
             "BaseType": 234000032,
             "BaseEntry": docEntry.text,
@@ -523,12 +533,48 @@ class _CreatePurchaseReturnScreenState
             .read<PurchaseReturnFailedOfflineCubit>()
             .removeByFailId(saveId.text);
         context.read<PurchaseReturnOfflineCubit>().addData(data);
+        final refDocEntry =
+            int.tryParse((data["DocumentLines"]?[0]?["BaseEntry"]).toString());
+        for (var element in data["DocumentLines"].toList()) {
+          context
+              .read<PurchaseReturnRequestOfflineCubit>()
+              .decreaseQuantityByLine(
+                  docEntry: refDocEntry ?? -1,
+                  lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+                  quantity:
+                      double.tryParse(element["Quantity"].toString()) ?? 0.0,
+                  context: context);
+        }
       } else if (widget.isEdit != null) {
         context
             .read<PurchaseReturnOfflineCubit>()
             .updateBySaveId(saveId.text, data);
+        final refDocEntry =
+            int.tryParse((data["DocumentLines"]?[0]?["BaseEntry"]).toString());
+        for (var element in data["DocumentLines"].toList()) {
+          final updateQty =
+              (double.tryParse(element["Quantity"].toString()) ?? 0.0) -
+                  (double.tryParse(element["OriginalQty"].toString()) ?? 0.0);
+          context
+              .read<PurchaseReturnRequestOfflineCubit>()
+              .decreaseQuantityByLine(
+                  docEntry: refDocEntry,
+                  lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+                  quantity: updateQty,
+                  context: context);
+        }
       } else {
         context.read<PurchaseReturnOfflineCubit>().addData(data);
+        for (var element in data["DocumentLines"].toList()) {
+          context
+              .read<PurchaseReturnRequestOfflineCubit>()
+              .decreaseQuantityByLine(
+                  docEntry: int.tryParse(docEntry.text.toString()) ?? -1,
+                  lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+                  quantity:
+                      double.tryParse(element["Quantity"].toString()) ?? 0.0,
+                  context: context);
+        }
       }
       if (mounted) {
         Navigator.of(context).pop();
@@ -713,8 +759,15 @@ class _CreatePurchaseReturnScreenState
       // }
       // Initialize the list of items
       List<Map<String, dynamic>> rawItems = [];
+      // final openLines = value['DocumentLines']
+      //     .where((line) => line['LineStatus'] == 'bost_Open')
+      //     .toList();
       final openLines = value['DocumentLines']
-          .where((line) => line['LineStatus'] == 'bost_Open')
+          .where((line) =>
+              line['LineStatus'] == 'bost_Open' &&
+              (double.tryParse(line['RemainingOpenQuantity'].toString()) ??
+                      0.0) >
+                  0.0)
           .toList();
       for (var element in openLines) {
         final itemResponse =
@@ -745,13 +798,10 @@ class _CreatePurchaseReturnScreenState
         });
         itemCodeFilter.add(element['ItemCode']);
       }
-
       // Combine items with the same ItemCode and UoMCode
       items = combineItems(rawItems);
-
       // Close loading indicator
       if (mounted) MaterialDialog.close(context);
-
       // Update state with combined items
       if (mounted) {
         setState(() {

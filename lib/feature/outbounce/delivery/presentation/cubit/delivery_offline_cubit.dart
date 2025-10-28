@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_failed_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 
@@ -38,10 +39,12 @@ class DeliveryOfflineCubit extends Cubit<List<dynamic>> {
     box.put('data', []);
     emit([]);
   }
+
   void clearCachLog() {
     failedRecords = [];
     successRecords = [];
   }
+
   List<dynamic> getJsonData() {
     final items = box.get('data', defaultValue: []).cast<dynamic>();
     return items;
@@ -57,7 +60,7 @@ class DeliveryOfflineCubit extends Cubit<List<dynamic>> {
     print("🟢 Hive Data: $items");
   }
 
- // 🔹 Remove record by failId
+  // 🔹 Remove record by failId
   void removeByFailId(dynamic failId) {
     final List<dynamic> items =
         box.get('data', defaultValue: []).cast<dynamic>();
@@ -91,7 +94,8 @@ class DeliveryOfflineCubit extends Cubit<List<dynamic>> {
     emit(updatedItems);
   }
 
-  Future<void> post(DeliveryFailedOfflineCubit failCubit) async {
+  Future<void> post(DeliveryFailedOfflineCubit failCubit,
+      SaleOrderOfflineCubit so, BuildContext context) async {
     final items = getJsonData();
     if (items.isEmpty) {
       print("⚠️ No offline records to sync.");
@@ -190,7 +194,18 @@ class DeliveryOfflineCubit extends Cubit<List<dynamic>> {
       // newItem.remove('timestamp');
       return newItem;
     }).toList();
-
+    //rolback stock
+    for (var element in cleanedFailedRecords) {
+      final refDocEntry =
+          int.tryParse((element["DocumentLines"]?[0]?["BaseEntry"]).toString());
+      for (var ele in element["DocumentLines"].toList()) {
+        so.increaseQuantityByLine(
+            docEntry: refDocEntry ?? -1,
+            lineId: int.tryParse(ele["BaseLine"].toString()) ?? -1,
+            quantity: double.tryParse(ele["Quantity"].toString()) ?? 0.0,
+            context: context);
+      }
+    }
     // ✅ Add to failed box using the other cubit
     failCubit.addData(cleanedFailedRecords);
 

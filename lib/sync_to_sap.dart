@@ -67,6 +67,8 @@ import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/review_offline_save.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/sync_faild_log.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/sync_log.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 import 'package:wms_mobile/utilies/dialog/dialog.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
@@ -340,8 +342,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             getLog: (context) => context.read<DeliveryOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<DeliveryOfflineCubit>().post(
-                    context.read<DeliveryFailedOfflineCubit>(),
-                  );
+                  context.read<DeliveryFailedOfflineCubit>(),
+                  context.read<SaleOrderOfflineCubit>(),
+                  context);
             },
             onGotoReview: (context) {
               goTo(context, ReviewDeiveryOfflineSave()).then((e) async => {
@@ -381,8 +384,9 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<PurchaseReturnOfflineCubit>().getLog(),
             onSync: (context) async {
               await context.read<PurchaseReturnOfflineCubit>().post(
-                    context.read<PurchaseReturnFailedOfflineCubit>(),
-                  );
+                  context.read<PurchaseReturnFailedOfflineCubit>(),
+                  context.read<PurchaseReturnRequestOfflineCubit>(),
+                  context);
             },
             onGotoReview: (context) {
               goTo(context, ReviewPurchaseReturnOfflineSave()).then((e) async =>
@@ -772,27 +776,84 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
       isLoading = true;
     });
     // 1️⃣ Clear all Cubits
+    final jsonData = context.read<GoodReceiptPoOfflineCubit>().getJsonData();
+    for (var element in jsonData.toList()) {
+      final refDocEntry = int.tryParse(
+          (element["DocumentReferences"]?[0]?["RefDocEntr"]).toString());
+      for (var ele in element["DocumentLines"].toList()) {
+        context.read<PurchaseOrderOfflineCubit>().increaseQuantityByLine(
+            docEntry: refDocEntry ?? -1,
+            lineId: int.tryParse(ele["BaseLine"].toString()) ?? -1,
+            quantity: double.tryParse(ele["Quantity"].toString()) ?? 0.0,
+            context: context);
+      }
+    }
     context.read<GoodReceiptPoOfflineCubit>().clearData();
     context.read<GoodReceiptPoOfflineCubit>().clearCachLog();
 
+    ///////////////
     context.read<QuickGoodReceiptOfflineCubit>().clearData();
     context.read<QuickGoodReceiptOfflineCubit>().clearCachLog();
 
+    final jsonDataRRT = context.read<ReturnReceiptOfflineCubit>().getJsonData();
+    for (var element in jsonDataRRT.toList()) {
+      final refDocEntry =
+          int.tryParse((element["DocumentLines"]?[0]?["BaseEntry"]).toString());
+      for (var ele in element["DocumentLines"].toList()) {
+        context.read<ReturnReceiptRequestOfflineCubit>().increaseQuantityByLine(
+            docEntry: refDocEntry ?? -1,
+            lineId: int.tryParse(ele["BaseLine"].toString()) ?? -1,
+            quantity: double.tryParse(ele["Quantity"].toString()) ?? 0.0,
+            context: context);
+      }
+    }
     context.read<ReturnReceiptOfflineCubit>().clearData();
     context.read<ReturnReceiptOfflineCubit>().clearCachLog();
 
+    //////////////
     context.read<GoodsReceiptOfflineCubit>().clearData();
     context.read<GoodsReceiptOfflineCubit>().clearCachLog();
 
     context.read<PutAwayOfflineCubit>().clearData();
     context.read<PutAwayOfflineCubit>().clearCachLog();
 
+    final jsonDataSO = context.read<DeliveryOfflineCubit>().getJsonData();
+    for (var element in jsonDataSO.toList()) {
+      final refDocEntry =
+          int.tryParse((element["DocumentLines"]?[0]?["BaseEntry"]).toString());
+      for (var ele in element["DocumentLines"].toList()) {
+        context.read<SaleOrderOfflineCubit>().increaseQuantityByLine(
+            docEntry: refDocEntry ?? -1,
+            lineId: int.tryParse(ele["BaseLine"].toString()) ?? -1,
+            quantity: double.tryParse(ele["Quantity"].toString()) ?? 0.0,
+            context: context);
+      }
+    }
     context.read<DeliveryOfflineCubit>().clearData();
     context.read<DeliveryOfflineCubit>().clearCachLog();
 
+    ///////////
+    ///
+    final jsonDataPR = context.read<PurchaseReturnOfflineCubit>().getJsonData();
+    for (var element in jsonDataPR.toList()) {
+      final refDocEntry =
+          int.tryParse((element["DocumentLines"]?[0]?["BaseEntry"]).toString());
+      for (var ele in element["DocumentLines"].toList()) {
+        context
+            .read<PurchaseReturnRequestOfflineCubit>()
+            .increaseQuantityByLine(
+                docEntry: refDocEntry ?? -1,
+                lineId: int.tryParse(ele["BaseLine"].toString()) ?? -1,
+                quantity: double.tryParse(ele["Quantity"].toString()) ?? 0.0,
+                context: context);
+      }
+    }
     context.read<PurchaseReturnOfflineCubit>().clearData();
     context.read<PurchaseReturnOfflineCubit>().clearCachLog();
 
+    /////////////////
+    ///
+    ///
     context.read<GoodsIssueOfflineCubit>().clearData();
     context.read<GoodsIssueOfflineCubit>().clearCachLog();
 

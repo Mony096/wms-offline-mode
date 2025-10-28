@@ -80,6 +80,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   final DioClient dio = DioClient();
   List<dynamic> itemCodeFilter = [];
   final barCode = TextEditingController();
+  final originalQty = TextEditingController();
 
   int isEdit = -1;
   bool isSerialOrBatch = false;
@@ -209,7 +210,14 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           "ItemCode": element['ItemCode'],
           "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
           "Quantity": element['Quantity'],
-          "TotalQuantity": matchedPOLine["RemainingOpenQuantity"],
+          // "TotalQuantity": matchedPOLine["Quantity"],
+          "TotalQuantity": widget.isEditFaild == true
+              ? double.tryParse(
+                  matchedPOLine["RemainingOpenQuantity"].toString())
+              : (double.tryParse(
+                          matchedPOLine["RemainingOpenQuantity"].toString()) ??
+                      0.0) +
+                  (double.tryParse(element["Quantity"].toString()) ?? 0.0),
           "WarehouseCode": warehouse.text,
           "UoMEntry": getDataFromDynamic(element['UoMEntry']),
           "UoMCode": element['UoMCode'],
@@ -217,7 +225,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
               itemMapped['UoMGroupDefinitionCollection'],
           "BaseUoM": itemMapped['BaseUoM'],
           "BinId": binID,
-          "DocEntry":refDocEntry,
+          "DocEntry": refDocEntry,
           "BinCode": binCodeFind["BinCode"],
           "BaseLine": element['BaseLine'],
           "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
@@ -225,6 +233,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
           "Serials": element["SerialNumbers"] ?? [],
           "Batches": element["BatchNumbers"] ?? [],
           if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
+          "OriginalQty": element['Quantity'],
         });
 
         itemCodeFilter.add(element['ItemCode']);
@@ -325,6 +334,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
         "BarCode": barCode.text,
+        "OriginalQty": originalQty.text
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -379,7 +389,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         binCode.text = getDataFromDynamic(item['BinCode']);
         binId.text = getDataFromDynamic(item['BinId']);
         baseUoM.text = getDataFromDynamic(item['BaseUoM']);
-        docEntry.text =getDataFromDynamic(item['DocEntry']);
+        docEntry.text = getDataFromDynamic(item['DocEntry']);
         refLineNo.text = getDataFromDynamic(item['BaseLine']);
         totalQty.text = getDataFromDynamic(item['TotalQuantity']);
         uoMGroupDefinitionCollection.text = jsonEncode(
@@ -390,6 +400,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
         barCode.text = getDataFromDynamic(item['BarCode']);
+        originalQty.text = getDataFromDynamic(item['OriginalQty']);
         setState(() {
           isEdit = index;
 
@@ -527,6 +538,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
             "UoMCode": item['UoMCode'],
             "UoMEntry": item['UoMEntry'],
             "Quantity": item['Quantity'],
+            "OriginalQty": item["OriginalQty"],
             "WarehouseCode": warehouse.text,
             "BaseType": 17, // sale order object
             "BaseEntry": item['DocEntry'],
@@ -541,10 +553,38 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
       if (widget.isEdit != null && widget.isEditFaild == true) {
         context.read<DeliveryFailedOfflineCubit>().removeByFailId(saveId.text);
         context.read<DeliveryOfflineCubit>().addData(data);
+        final refDocEntry =
+            int.tryParse((data["DocumentLines"]?[0]?["BaseEntry"]).toString());
+        for (var element in data["DocumentLines"].toList()) {
+          context.read<SaleOrderOfflineCubit>().decreaseQuantityByLine(
+              docEntry: refDocEntry ?? -1,
+              lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+              quantity: double.tryParse(element["Quantity"].toString()) ?? 0.0,
+              context: context);
+        }
       } else if (widget.isEdit != null) {
         context.read<DeliveryOfflineCubit>().updateBySaveId(saveId.text, data);
+        final refDocEntry =
+            int.tryParse((data["DocumentLines"]?[0]?["BaseEntry"]).toString());
+        for (var element in data["DocumentLines"].toList()) {
+          final updateQty =
+              (double.tryParse(element["Quantity"].toString()) ?? 0.0) -
+                  (double.tryParse(element["OriginalQty"].toString()) ?? 0.0);
+          context.read<SaleOrderOfflineCubit>().decreaseQuantityByLine(
+              docEntry: refDocEntry,
+              lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+              quantity: updateQty,
+              context: context);
+        }
       } else {
         context.read<DeliveryOfflineCubit>().addData(data);
+        for (var element in data["DocumentLines"].toList()) {
+          context.read<SaleOrderOfflineCubit>().decreaseQuantityByLine(
+              docEntry: int.tryParse(docEntry.text.toString()) ?? -1,
+              lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+              quantity: double.tryParse(element["Quantity"].toString()) ?? 0.0,
+              context: context);
+        }
       }
       if (mounted) {
         Navigator.of(context).pop();
@@ -695,7 +735,11 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
 
       List<Map<String, dynamic>> rawItems = [];
       final openLines = value['DocumentLines']
-          .where((line) => line['LineStatus'] == 'bost_Open')
+          .where((line) =>
+              line['LineStatus'] == 'bost_Open' &&
+              (double.tryParse(line['RemainingOpenQuantity'].toString()) ??
+                      0.0) >
+                  0.0)
           .toList();
       for (var element in openLines) {
         final itemResponse =

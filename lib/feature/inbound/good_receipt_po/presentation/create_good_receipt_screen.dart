@@ -266,10 +266,16 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         // Show loading indicator
         if (mounted) MaterialDialog.loading(context);
         List<Map<String, dynamic>> rawItems = [];
+        // final openLines = widget.po['DocumentLines']
+        //     .where((line) => line['LineStatus'] == 'bost_Open')
+        //     .toList();
         final openLines = widget.po['DocumentLines']
-            .where((line) => line['LineStatus'] == 'bost_Open')
+            .where((line) =>
+                line['LineStatus'] == 'bost_Open' &&
+                (double.tryParse(line['RemainingOpenQuantity'].toString()) ??
+                        0.0) >
+                    0.0)
             .toList();
-
         for (var element in openLines) {
           final itemList = context.read<ItemOfflineCubit>().state;
           final matchedItem = itemList.firstWhere(

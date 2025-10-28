@@ -5,6 +5,7 @@ import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/create_delivery_screen.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/sale_order/presentation/cubit/sale_order_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 
 class ReviewDeiveryOfflineSave extends StatelessWidget {
@@ -40,12 +41,27 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
       ),
     );
 
-    // User canceled
+    // reback stock
     if (confirm != true) return;
+    final jsonData = context.read<DeliveryOfflineCubit>().getJsonData();
+
+    for (var element in jsonData.toList()) {
+      final refDocEntry =
+          int.tryParse((element["DocumentLines"]?[0]?["BaseEntry"]).toString());
+      for (var ele in element["DocumentLines"].toList()) {
+        context.read<SaleOrderOfflineCubit>().increaseQuantityByLine(
+            docEntry: refDocEntry ?? -1,
+            lineId: int.tryParse(ele["BaseLine"].toString()) ?? -1,
+            quantity: double.tryParse(ele["Quantity"].toString()) ?? 0.0,
+            context: context);
+      }
+    }
+    //clear all
     context.read<DeliveryOfflineCubit>().clearData();
   }
 
-  Future<void> _removeById(BuildContext context, dynamic id) async {
+  Future<void> _removeById(
+      BuildContext context, dynamic id, dynamic data) async {
     // 1️⃣ Clear all Cubits
     final confirm = await showDialog<bool>(
       context: context,
@@ -79,6 +95,17 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
     // User canceled
     if (confirm != true) return;
     context.read<DeliveryOfflineCubit>().removeByFailId(id);
+
+    /// incress stock data when remove offline
+    for (var element in data["DocumentLines"].toList()) {
+      final refDocEntry =
+          int.tryParse((data["DocumentLines"]?[0]?["BaseEntry"]).toString());
+      context.read<SaleOrderOfflineCubit>().increaseQuantityByLine(
+          docEntry: int.tryParse(refDocEntry.toString()) ?? -1,
+          lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+          quantity: double.tryParse(element["Quantity"].toString()) ?? 0.0,
+          context: context);
+    }
   }
 
   @override
@@ -354,8 +381,8 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
                                             borderRadius:
                                                 BorderRadius.circular(5),
                                             onTap: () {
-                                              _removeById(
-                                                  context, record['SaveId']);
+                                              _removeById(context,
+                                                  record['SaveId'], record);
                                             },
                                             child: Ink(
                                               width: 100,
@@ -454,21 +481,21 @@ class ReviewDeiveryOfflineSave extends StatelessWidget {
                     ),
 
                     // 🔹 Index Badge
-                    Positioned(
+                  Positioned(
                       top: 8,
                       right: 8,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(8),
+                          // color: const Color.fromARGB(255, 195, 194, 194),
+                          borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
                           "No. ${index + 1}",
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 130, 126, 126),
+                            // fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
                         ),

@@ -7,6 +7,7 @@ import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/create_purchase_return_screen.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return/presentation/cubit/purchase_return_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 
 class ReviewPurchaseReturnOfflineSave extends StatelessWidget {
@@ -44,10 +45,26 @@ class ReviewPurchaseReturnOfflineSave extends StatelessWidget {
 
     // User canceled
     if (confirm != true) return;
+    final jsonData = context.read<PurchaseReturnOfflineCubit>().getJsonData();
+
+    for (var element in jsonData.toList()) {
+      final refDocEntry =
+          int.tryParse((element["DocumentLines"]?[0]?["BaseEntry"]).toString());
+      for (var ele in element["DocumentLines"].toList()) {
+        context
+            .read<PurchaseReturnRequestOfflineCubit>()
+            .increaseQuantityByLine(
+                docEntry: refDocEntry ?? -1,
+                lineId: int.tryParse(ele["BaseLine"].toString()) ?? -1,
+                quantity: double.tryParse(ele["Quantity"].toString()) ?? 0.0,
+                context: context);
+      }
+    }
     context.read<PurchaseReturnOfflineCubit>().clearData();
   }
 
-  Future<void> _removeById(BuildContext context, dynamic id) async {
+  Future<void> _removeById(
+      BuildContext context, dynamic id, dynamic data) async {
     // 1️⃣ Clear all Cubits
     final confirm = await showDialog<bool>(
       context: context,
@@ -81,6 +98,17 @@ class ReviewPurchaseReturnOfflineSave extends StatelessWidget {
     // User canceled
     if (confirm != true) return;
     context.read<PurchaseReturnOfflineCubit>().removeByFailId(id);
+
+    /// incress stock data when remove offline
+    for (var element in data["DocumentLines"].toList()) {
+      final refDocEntry =
+          int.tryParse((data["DocumentLines"]?[0]?["BaseEntry"]).toString());
+      context.read<PurchaseReturnRequestOfflineCubit>().increaseQuantityByLine(
+          docEntry: int.tryParse(refDocEntry.toString()) ?? -1,
+          lineId: int.tryParse(element["BaseLine"].toString()) ?? -1,
+          quantity: double.tryParse(element["Quantity"].toString()) ?? 0.0,
+          context: context);
+    }
   }
 
   @override
@@ -98,7 +126,7 @@ class ReviewPurchaseReturnOfflineSave extends StatelessWidget {
             fontSize: 17,
           ),
         ),
-          actions: [
+        actions: [
           // IconButton(
           //   icon: const Icon(Icons.refresh),
           //   tooltip: 'Reset Status',
@@ -355,8 +383,8 @@ class ReviewPurchaseReturnOfflineSave extends StatelessWidget {
                                             borderRadius:
                                                 BorderRadius.circular(5),
                                             onTap: () {
-                                              _removeById(
-                                                  context, record['SaveId']);
+                                              _removeById(context,
+                                                  record['SaveId'], records);
                                             },
                                             child: Ink(
                                               width: 100,
@@ -462,14 +490,14 @@ class ReviewPurchaseReturnOfflineSave extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.green,
-                          borderRadius: BorderRadius.circular(8),
+                          // color: const Color.fromARGB(255, 195, 194, 194),
+                          borderRadius: BorderRadius.circular(5),
                         ),
                         child: Text(
                           "No. ${index + 1}",
                           style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 130, 126, 126),
+                            // fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
                         ),
