@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
@@ -11,11 +12,13 @@ import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/ph
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/duplicateItem_DLR_Screen.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
+import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 import '/feature/bin_location/domain/entity/bin_entity.dart';
 import '/feature/bin_location/presentation/screen/bin_page.dart';
 import '../../../../core/error/failure.dart';
@@ -64,6 +67,8 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   final cosDocEntry = TextEditingController();
   final cos = TextEditingController();
   int isEdit = -1;
+  late PhysicalCountCubit _bloc;
+
   bool isSerialOrBatch = false;
   List<dynamic> isSerialOrBatchs = [{}];
   List<dynamic> items = [];
@@ -76,9 +81,14 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   final FocusNode _itemCode = FocusNode();
   final FocusNode _quantity = FocusNode();
   final FocusNode _bin = FocusNode();
+  final variance = TextEditingController();
+  final inWhsQty = TextEditingController();
+
   @override
   void initState() {
     super.initState();
+    _bloc = context.read<PhysicalCountCubit>();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       fromEdit();
     });
@@ -281,13 +291,15 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
         "UoMGroupDefinitionCollection":
             jsonDecode(uoMGroupDefinitionCollection.text) ?? [],
         "BaseUoM": baseUoM.text,
-        "BinEntry": binId.text,
+        "BinId": binId.text,
         "BinCode": binCode.text,
         "InventoryCountingLineUoMs": isSerialOrBatchs,
         "Serials":
             serialsInput.text == "" ? [] : jsonDecode(serialsInput.text) ?? [],
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
+        "InWhsQty": inWhsQty.text,
+        "Variance": variance.text,
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -329,9 +341,61 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
         baseUoM.text = getDataFromDynamic(item['BaseUoM']);
         docEntry.text = getDataFromDynamic(item['DocEntry']);
         refLineNo.text = getDataFromDynamic(item['BaseLine']);
+        variance.text = getDataFromDynamic(item["Variance"]);
         uoMGroupDefinitionCollection.text = jsonEncode(
           item['UoMGroupDefinitionCollection'],
         );
+        final binCubit = context.read<BinOfflineCubit>();
+        final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
+
+        final binList = binCubit.state;
+        final itemStockList = itemStockCubit.getJsonData();
+
+        // 🧩 Step 1: Filter bin by warehouse
+        final filteredBin =
+            binList.where((b) => b['Warehouse'] == warehouse.text).toList();
+        if (filteredBin.isEmpty) {
+          final matchedItemStock = itemStockList.firstWhere(
+            (i) =>
+                i['ItemCode'] == item['ItemCode'] &&
+                i['WhsCode'] == warehouse.text,
+            orElse: () => {},
+          );
+          print(matchedItemStock);
+          // 🧩 Step 3: Update stock quantity (offline)
+          if (matchedItemStock.isNotEmpty) {
+            final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
+            setState(() {
+              inWhsQty.text = onHandQty.toString();
+            });
+          } else {
+            setState(() {
+              inWhsQty.text = "0";
+            });
+          }
+        } else {
+          final matchedItemStock = itemStockList.firstWhere(
+            (i) =>
+                i['ItemCode'] == item['ItemCode'] &&
+                i['WhsCode'] == warehouse.text &&
+                i['BinID'] == int.tryParse(binId.text),
+            orElse: () => {},
+          );
+          print(item['ItemCode']);
+          print(warehouse.text);
+          print(binId.text);
+          // 🧩 Step 3: Update stock quantity (offline)
+          if (matchedItemStock.isNotEmpty) {
+            final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
+            setState(() {
+              inWhsQty.text = onHandQty.toString();
+            });
+          } else {
+            setState(() {
+              inWhsQty.text = "0";
+            });
+          }
+        }
         setState(() {
           isEdit = index;
           isSerialOrBatchs = item['InventoryCountingLineUoMs'];
@@ -354,6 +418,63 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
 
       binId.text = getDataFromDynamic((value as BinEntity).id);
       binCode.text = getDataFromDynamic(value.code);
+
+      if (value == null) return;
+      print("✅ onChangeBin started");
+
+      binId.text =
+          getDataFromDynamic((value as BinEntity).id).toString().trim();
+      binCode.text = getDataFromDynamic(value.code).toString().trim();
+
+      final item = itemCode.text.trim();
+      final whs = warehouse.text.trim();
+      final bin = binId.text.trim();
+
+      print("🧾 Item: $item");
+      print("🏭 Warehouse: $whs");
+      print("📦 BinID: $bin");
+
+      try {
+        if (item.isNotEmpty && whs.isNotEmpty && bin.isNotEmpty) {
+          // 🧠 Get offline data
+          final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
+          final stockData = itemStockCubit.getJsonData();
+
+          // 🔍 Find matching item in offline stock
+          final matched = stockData.firstWhere(
+            (e) =>
+                e['ItemCode'].toString().trim() == item &&
+                e['WhsCode'].toString().trim() == whs &&
+                e['BinID'].toString().trim() == bin,
+            orElse: () => {},
+          );
+
+          if (matched.isNotEmpty) {
+            final onHandQty = matched['OnHandQty'] ?? 0;
+            setState(() {
+              inWhsQty.text = onHandQty.toString();
+            });
+          } else {
+            // ❌ Not found in offline data
+            setState(() {
+              inWhsQty.text = "0";
+            });
+            MaterialDialog.warning(
+              context,
+              title: "Not Found",
+              body: "No offline stock found for this item in the selected bin.",
+            );
+          }
+        }
+
+        print("📦 In-warehouse quantity: ${inWhsQty.text}");
+      } catch (e, stack) {
+        print("❌ Error during offline lookup: $e");
+        print("📜 Stack trace: $stack");
+        setState(() {
+          inWhsQty.text = "0";
+        });
+      }
     });
   }
 
@@ -433,6 +554,108 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
     }
   }
 
+  void onPostOnlineToSAP() async {
+    final connected = await hasInternet();
+    if (!connected) {
+      MaterialDialog.warning(context,
+          title: "Error Connection",
+          body:
+              "No internet connection. Please connect to Wi-Fi or mobile data.");
+      return;
+    }
+
+    // 2️⃣ Load stored credentials
+    final username = await LocalStorageManger.getString('username');
+    final password = await LocalStorageManger.getString('password');
+    final host = await LocalStorageManger.getString('host');
+    final port = await LocalStorageManger.getString('port');
+    final company = await LocalStorageManger.getString('db');
+
+    if (username.isEmpty || password.isEmpty || company.isEmpty) {
+      MaterialDialog.close(context);
+      MaterialDialog.warning(context,
+          title: "Missing Credentials",
+          body: "Please check your SAP login configuration.");
+      return;
+    }
+    try {
+      MaterialDialog.loading(context);
+      print("🌐 Logging in to SAP...");
+      final loginResponse = await http.post(
+        Uri.parse('$host:$port/b1s/v1/Login'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "CompanyDB": company,
+          "UserName": username,
+          "Password": password,
+        }),
+      );
+
+      if (loginResponse.statusCode != 200) {
+        MaterialDialog.close(context);
+        debugPrint("❌ Login failed: ${loginResponse.body}");
+        MaterialDialog.warning(context,
+            title: "Login Failed",
+            body: "Cannot connect to SAP. Please check your credentials.");
+        return;
+      }
+
+      final loginData = jsonDecode(loginResponse.body);
+      final token = loginData['SessionId'];
+
+      // 4️⃣ Save token before starting sync
+      await LocalStorageManger.setString('SessionId', token);
+      Map<String, dynamic> data = {
+        // "BranchID": 1,
+
+        "DocumentNumber": cos.text,
+        "InventoryCountingLines": items.map((item) {
+          List<dynamic> inventoryCountingLineUoMs = [
+            {
+              "UoMCountedQuantity": item["Quantity"],
+              "CountedQuantity": item["Quantity"],
+              "UoMCode": item['UoMCode']
+            }
+          ];
+
+          if (isSerialOrBatchs.isEmpty) {
+            inventoryCountingLineUoMs = [];
+          }
+          return {
+            "ItemCode": item['ItemCode'],
+            "ItemDescription": item['ItemDescription'],
+            "UoMCode": item['UoMCode'],
+            "BinEntry": item["BinEntry"],
+            "CountedQuantity": item["Quantity"],
+            "WarehouseCode": warehouse.text,
+            "InventoryCountingSerialNumbers": item['Serials'] ?? [],
+            "InventoryCountingBatchNumbers": item['Batches'] ?? [],
+            "InventoryCountingLineUoMs": inventoryCountingLineUoMs
+          };
+        }).toList(),
+      };
+      final response = await _bloc.put(data, int.tryParse(cosDocEntry.text)!);
+      if (mounted) {
+        Navigator.of(context).pop();
+        MaterialDialog.success(
+          context,
+          title: 'Successfully',
+          body: "Physical Count - ${cos.text}.",
+          onOk: () => Navigator.of(context).pop(),
+        );
+      }
+      clear();
+      setState(() {
+        items = [];
+      });
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        MaterialDialog.warning(context, title: 'Error', body: e.toString());
+      }
+    }
+  }
+
   void clear() {
     itemCode.text = '';
     itemName.text = '';
@@ -444,6 +667,8 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
     docEntry.text = '';
     refLineNo.text = '';
     isEdit = -1;
+    inWhsQty.clear();
+    variance.clear();
   }
 
   void onSetItemTemp(dynamic value) {
@@ -572,6 +797,14 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
         }
       }
     }
+  }
+
+  void onCompleteQuantiyInput() {
+    FocusScope.of(context).requestFocus(FocusNode());
+    variance.text = (double.parse(quantity.text.isEmpty ? "0" : quantity.text) -
+            double.parse(inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+        .toString();
+    // onNavigateSerialOrBatch();
   }
 
   // Generic function to request focus on a specific node
@@ -803,7 +1036,36 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                   const SizedBox(width: 12),
                 ],
               ),
-
+              const SizedBox(height: 7),
+              InputCol(
+                label: 'Input Qty',
+                placeholder: 'Quantity',
+                controller: quantity,
+                focusNode: _quantity,
+                onFieldSubmitted: (value) {
+                  _handleScanSubmitted(value, _quantity);
+                },
+                onChanged: (value) {
+                  variance.text = (double.parse(value.isEmpty ? "0" : value) -
+                          double.parse(
+                              inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+                      .toString();
+                },
+                readOnly: isSerialOrBatch ? true : false, // simpler
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                // onTap: isSerialOrBatch
+                //     ? () {
+                //         onNavigateSerialOrBatch(force: true);
+                //       }
+                //     : null,
+                onEditingComplete: onCompleteQuantiyInput,
+                // onPressed: isSerialOrBatch
+                //     ? () {
+                //         onNavigateSerialOrBatch(force: true);
+                //       }
+                //     : null, // remove if icon not needed
+              ),
               const SizedBox(height: 7),
 
               // ====== Input Qty & UoM ======
@@ -811,42 +1073,39 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                 children: [
                   Expanded(
                     child: InputCol(
-                      label: 'Input Qty',
-                      placeholder: 'Quantity',
-                      controller: quantity,
-                      focusNode: _quantity,
-                      onFieldSubmitted: (value) {
-                        _handleScanSubmitted(value, _quantity);
-                      },
-                      readOnly: isSerialOrBatch ? true : false, // simpler
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      label: 'Variance',
+                      placeholder: 'Variance',
+                      controller: variance,
+                      readOnly: true, // simpler
+
                       // onTap: isSerialOrBatch
                       //     ? () {
                       //         onNavigateSerialOrBatch(force: true);
                       //       }
                       //     : null,
-                      // onEditingComplete: onCompleteQuantiyInput,
-                      // onPressed: isSerialOrBatch
-                      //     ? () {
-                      //         onNavigateSerialOrBatch(force: true);
-                      //       }
-                      //     : null, // remove if icon not needed
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: InputCol(
-                      label: 'Input UoM',
-                      placeholder: 'UoM',
-                      controller: uom,
+                      label: 'In Whs Qty',
+                      placeholder: 'In Whs Qty',
+                      controller: inWhsQty,
                       readOnly: true,
-                      onPressed: onChangeUoM,
+                      // onPressed: onChangeUoM,
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 7),
 
+              InputCol(
+                label: 'Input UoM',
+                placeholder: 'UoM',
+                controller: uom,
+                readOnly: true,
+                onPressed: onChangeUoM,
+              ),
               const SizedBox(height: 20),
               Container(
                 margin: EdgeInsets.fromLTRB(0, 0, 0, 20),
@@ -904,18 +1163,72 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
+            // Expanded(
+            //   child: Button(
+            //     variant: ButtonVariant.primary,
+            //     disabled: isEdit != -1,
+            //     onPressed: onPostToSAP,
+            //     child: Text(
+            //       'Save',
+            //       style: TextStyle(color: Colors.white),
+            //     ),
+            //   ),
+            // ),
+            // const SizedBox(width: 12),
+            // Expanded(
+            //   child: Button(
+            //     variant: ButtonVariant.outline,
+            //     onPressed: () {
+            //       if (items.length > 0) {
+            //         MaterialDialog.warning(
+            //           context,
+            //           title: 'Warning',
+            //           body:
+            //               'Are you sure leave? once you pressed ok the data will be ereas.',
+            //           confirmLabel: 'Ok',
+            //           cancelLabel: 'Cancel',
+            //           onConfirm: () {
+            //             Navigator.of(context).pop();
+            //           },
+            //           onCancel: () {},
+            //         );
+            //       } else {
+            //         Navigator.of(context).pop();
+            //       }
+            //     },
+            //     child: Text(
+            //       'Cancel',
+            //       style: TextStyle(
+            //         color: PRIMARY_COLOR,
+            //       ),
+            //     ),
+            //   ),
+            // )
             Expanded(
               child: Button(
                 variant: ButtonVariant.primary,
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Save',
-                  style: TextStyle(color: Colors.white),
+                  'Save ',
+                  style: TextStyle(color: Colors.white, fontSize: 12.5),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 5),
+
+            Expanded(
+              child: Button(
+                onPressed: onPostOnlineToSAP,
+                disabled: isEdit != -1,
+                bgColor: Colors.green.shade700,
+                child: Text(
+                  "Post",
+                  style: TextStyle(color: Colors.white, fontSize: 12.5),
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
             Expanded(
               child: Button(
                 variant: ButtonVariant.outline,
@@ -939,9 +1252,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                 },
                 child: Text(
                   'Cancel',
-                  style: TextStyle(
-                    color: PRIMARY_COLOR,
-                  ),
+                  style: TextStyle(color: PRIMARY_COLOR, fontSize: 12.5),
                 ),
               ),
             )

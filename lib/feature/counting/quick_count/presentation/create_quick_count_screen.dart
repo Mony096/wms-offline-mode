@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
@@ -71,14 +72,15 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   final batchesInput = TextEditingController();
   final docEntry = TextEditingController();
   final refLineNo = TextEditingController();
-  final inWhsQty = TextEditingController();
   final saveIdQC = TextEditingController();
   final saveIdCC = TextEditingController();
   //
   final isBatch = TextEditingController();
   final isSerial = TextEditingController();
-
   final barCode = TextEditingController();
+  final variance = TextEditingController();
+  final inWhsQty = TextEditingController();
+
   final DioClient dio = DioClient();
   List<dynamic> itemCodeFilter = [];
   int isEdit = -1;
@@ -92,12 +94,13 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   final FocusNode _quantity = FocusNode();
   final FocusNode _bin = FocusNode();
   final FocusNode _ref = FocusNode();
+  late QuickCountCubit _bloc;
 
   @override
   void initState() {
     super.initState();
     init();
-
+    _bloc = context.read<QuickCountCubit>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       fromEdit();
     });
@@ -463,6 +466,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         "BinEntry": binId.text,
         "BinCode": binCode.text,
         "InWhsQty": inWhsQty.text,
+        "Variance": variance.text,
         "BarCode": barCode.text,
         "ManageSerialNumbers": isSerial.text,
         "ManageBatchNumbers": isBatch.text,
@@ -521,6 +525,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
         inWhsQty.text = getDataFromDynamic(item["InWhsQty"]);
+        variance.text = getDataFromDynamic(item["Variance"]);
+
         barCode.text = getDataFromDynamic(item['BarCode']);
 
         final binCubit = context.read<BinOfflineCubit>();
@@ -792,6 +798,145 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
     }
   }
 
+  void onPostOnlineToSAP() async {
+    final connected = await hasInternet();
+    if (!connected) {
+      MaterialDialog.warning(context,
+          title: "Error Connection",
+          body:
+              "No internet connection. Please connect to Wi-Fi or mobile data.");
+      return;
+    }
+
+    // 2️⃣ Load stored credentials
+    final username = await LocalStorageManger.getString('username');
+    final password = await LocalStorageManger.getString('password');
+    final host = await LocalStorageManger.getString('host');
+    final port = await LocalStorageManger.getString('port');
+    final company = await LocalStorageManger.getString('db');
+
+    if (username.isEmpty || password.isEmpty || company.isEmpty) {
+      MaterialDialog.close(context);
+      MaterialDialog.warning(context,
+          title: "Missing Credentials",
+          body: "Please check your SAP login configuration.");
+      return;
+    }
+
+    try {
+      MaterialDialog.loading(context);
+      print("🌐 Logging in to SAP...");
+      final loginResponse = await http.post(
+        Uri.parse('$host:$port/b1s/v1/Login'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "CompanyDB": company,
+          "UserName": username,
+          "Password": password,
+        }),
+      );
+
+      if (loginResponse.statusCode != 200) {
+        MaterialDialog.close(context);
+        debugPrint("❌ Login failed: ${loginResponse.body}");
+        MaterialDialog.warning(context,
+            title: "Login Failed",
+            body: "Cannot connect to SAP. Please check your credentials.");
+        return;
+      }
+
+      final loginData = jsonDecode(loginResponse.body);
+      final token = loginData['SessionId'];
+
+      // 4️⃣ Save token before starting sync
+      await LocalStorageManger.setString('SessionId', token);
+      final filteredItems = items.where((item) {
+        final qty = int.tryParse(item["Quantity"].toString()) ?? 0;
+        return qty != 0;
+      }).toList();
+
+      Map<String, dynamic> data = {
+        // "BranchID": 1,
+        "Reference2": ref.text,
+        "InventoryPostingLines": filteredItems.asMap().entries.map((entry) {
+          int index = entry.key;
+          Map<String, dynamic> item = entry.value;
+          List<dynamic> inventoryPostingLineUoMs = [
+            // {
+            //   "LineNumber": index + 1,
+            //   "ChildNumber": 1,
+            //   "UoMCountedQuantity": item["Quantity"],
+            //   "CountedQuantity": item["Quantity"],
+            //   "UoMCode": item['UoMCode']
+            // }
+          ];
+
+          bool isBatch = item['ManageBatchNumbers'] == 'tYES';
+          bool isSerial = item['ManageSerialNumbers'] == 'tYES';
+
+          if (isBatch || isSerial) {
+            inventoryPostingLineUoMs = [];
+          }
+
+          return {
+            "ItemCode": item['ItemCode'],
+            "ItemDescription": item['ItemDescription'],
+            "UoMCode": item['UoMCode'],
+            // "UoMEntry": item["UoMEntry"],
+            "BinEntry": item["BinEntry"],
+            "Price": 1,
+            "Variance": double.parse(item["Quantity"]).toInt() -
+                double.parse(item["InWhsQty"]).toInt(),
+            "CountedQuantity": item["Quantity"],
+            "WarehouseCode": warehouse.text,
+            "InventoryPostingSerialNumbers":
+                (item['Serials'] as List<dynamic>).map((b) {
+              return {
+                "InternalSerialNumber": b["InternalSerialNumber"],
+                "Quantity": double.parse(item["Quantity"]).toInt() -
+                            double.parse(item["InWhsQty"]).toInt() <
+                        0
+                    ? -1
+                    : 1,
+              };
+            }).toList(),
+            "InventoryPostingBatchNumbers":
+                (item['Batches'] as List<dynamic>).map((b) {
+              return {
+                "BatchNumber": b["BatchNumber"],
+                "Quantity": double.parse(item["Quantity"]).toInt() -
+                    double.parse(item["InWhsQty"]).toInt(),
+                "ExpiryDate": b["ExpiryDate"]
+              };
+            }).toList(),
+            "InventoryPostingLineUoMs": inventoryPostingLineUoMs
+          };
+        }).toList(),
+      };
+      final response = await _bloc.post(data);
+      if (mounted) {
+        Navigator.of(context).pop();
+        MaterialDialog.success(
+          context,
+          title: 'Successfully',
+          body: widget.isQuickCount
+              ? "Quick Count - ${response['DocumentNumber']}."
+              : "Cycle Count - ${response['DocumentNumber']}.",
+          onOk: () => Navigator.of(context).pop(),
+        );
+      }
+      clear();
+      setState(() {
+        items = [];
+      });
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        MaterialDialog.warning(context, title: 'Error', body: e.toString());
+      }
+    }
+  }
+
   void clear() {
     itemCode.text = '';
     itemName.text = '';
@@ -801,11 +946,12 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
     uom.text = '';
     uomAbEntry.text = '';
     isBatch.text = '';
-    isSerial.text = '';
+    isSerial.text = ''; 
     docEntry.text = '';
     refLineNo.text = '';
     isEdit = -1;
-    inWhsQty.text = "0";
+    inWhsQty.clear();
+    variance.clear();
   }
 
   void onSetItemTemp(dynamic value) async {
@@ -1051,6 +1197,9 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
 
   void onCompleteQuantiyInput() {
     FocusScope.of(context).requestFocus(FocusNode());
+    variance.text = (double.parse(quantity.text.isEmpty ? "0" : quantity.text) -
+            double.parse(inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+        .toString();
     onNavigateSerialOrBatch();
   }
 
@@ -1361,39 +1510,54 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                 ],
               ),
               const SizedBox(height: 8),
+              InputCol(
+                label: 'Input Qty',
+                placeholder: 'Quantity',
+                controller: quantity,
+                // readOnly: isSerialOrBatch ? true : false, // simpler
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                // onTap: isSerialOrBatch
+                //     ? () {
+                //         onNavigateSerialOrBatch(force: true);
+                //       }
+                //     : null,
+                onChanged: (value) {
+                  variance.text = (double.parse(value.isEmpty ? "0" : value) -
+                          double.parse(
+                              inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+                      .toString();
+                },
+                onEditingComplete: onCompleteQuantiyInput,
+                onPressed: quantity.text.isNotEmpty &&
+                        (isBatch.text == "tYES" || isSerial.text == "tYES")
+                    ? double.parse(inWhsQty.text.isEmpty ? "0" : inWhsQty.text)
+                                .toInt() !=
+                            double.parse(
+                                    quantity.text.isEmpty ? "0" : quantity.text)
+                                .toInt()
+                        ? () {
+                            onNavigateSerialOrBatch(force: true);
+                          }
+                        : null
+                    : null,
+              ),
+              const SizedBox(height: 8),
               // ====== Input Qty & UoM ======
               Row(
                 children: [
                   Expanded(
                     child: InputCol(
-                      label: 'Input Qty',
-                      placeholder: 'Quantity',
-                      controller: quantity,
-                      // readOnly: isSerialOrBatch ? true : false, // simpler
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      label: 'Variance',
+                      placeholder: 'Variance',
+                      controller: variance,
+                      readOnly: true, // simpler
+
                       // onTap: isSerialOrBatch
                       //     ? () {
                       //         onNavigateSerialOrBatch(force: true);
                       //       }
                       //     : null,
-                      onEditingComplete: onCompleteQuantiyInput,
-                      onPressed: quantity.text.isNotEmpty &&
-                              (isBatch.text == "tYES" ||
-                                  isSerial.text == "tYES")
-                          ? double.parse(inWhsQty.text.isEmpty
-                                          ? "0"
-                                          : inWhsQty.text)
-                                      .toInt() !=
-                                  double.parse(quantity.text.isEmpty
-                                          ? "0"
-                                          : quantity.text)
-                                      .toInt()
-                              ? () {
-                                  onNavigateSerialOrBatch(force: true);
-                                }
-                              : null
-                          : null,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -1473,18 +1637,72 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
+            // Expanded(
+            //   child: Button(
+            //     variant: ButtonVariant.primary,
+            //     disabled: isEdit != -1,
+            //     onPressed: onPostToSAP,
+            //     child: Text(
+            //       'Save',
+            //       style: TextStyle(color: Colors.white),
+            //     ),
+            //   ),
+            // ),
+            // const SizedBox(width: 12),
+            // Expanded(
+            //   child: Button(
+            //     variant: ButtonVariant.outline,
+            //     onPressed: () {
+            //       if (items.length > 0) {
+            //         MaterialDialog.warning(
+            //           context,
+            //           title: 'Warning',
+            //           body:
+            //               'Are you sure leave? once you pressed ok the data will be ereas.',
+            //           confirmLabel: 'Ok',
+            //           cancelLabel: 'Cancel',
+            //           onConfirm: () {
+            //             Navigator.of(context).pop();
+            //           },
+            //           onCancel: () {},
+            //         );
+            //       } else {
+            //         Navigator.of(context).pop();
+            //       }
+            //     },
+            //     child: Text(
+            //       'Cancel',
+            //       style: TextStyle(
+            //         color: PRIMARY_COLOR,
+            //       ),
+            //     ),
+            //   ),
+            // )
             Expanded(
               child: Button(
                 variant: ButtonVariant.primary,
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Save',
-                  style: TextStyle(color: Colors.white),
+                  'Save ',
+                  style: TextStyle(color: Colors.white, fontSize: 12.5),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 5),
+
+            Expanded(
+              child: Button(
+                onPressed: onPostOnlineToSAP,
+                disabled: isEdit != -1,
+                bgColor: Colors.green.shade700,
+                child: Text(
+                  "Post",
+                  style: TextStyle(color: Colors.white, fontSize: 12.5),
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
             Expanded(
               child: Button(
                 variant: ButtonVariant.outline,
@@ -1508,9 +1726,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                 },
                 child: Text(
                   'Cancel',
-                  style: TextStyle(
-                    color: PRIMARY_COLOR,
-                  ),
+                  style: TextStyle(color: PRIMARY_COLOR, fontSize: 12.5),
                 ),
               ),
             )

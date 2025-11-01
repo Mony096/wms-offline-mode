@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/component/form/input_col.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
@@ -9,6 +10,7 @@ import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_cou
 import 'package:wms_mobile/feature/counting/bin_count/presentation/cubit/bin_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/cos/presentation/screen/cos_page.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
@@ -83,10 +85,16 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
   final FocusNode _itemCode = FocusNode();
   final FocusNode _quantity = FocusNode();
   final FocusNode _bin = FocusNode();
+  final variance = TextEditingController();
+  final inWhsQty = TextEditingController();
+  late BinlocationCountCubit _bloc;
+
   @override
   void initState() {
     super.initState();
     init();
+    _bloc = context.read<BinlocationCountCubit>();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       fromEdit();
     });
@@ -232,7 +240,38 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
     });
     goTo(context, ItemPage(type: ItemType.inventory)).then((value) {
       if (value == null) return;
+      // 🧠 Load Bin and ItemFindStock data from Hive via Cubit
+      final binCubit = context.read<BinOfflineCubit>();
+      final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
 
+      final binList = binCubit.state;
+      final itemStockList = itemStockCubit.getJsonData();
+
+      // 🧩 Step 1: Filter bin by warehouse
+      final filteredBin =
+          binList.where((b) => b['Warehouse'] == warehouse.text).toList();
+      if (filteredBin.isNotEmpty) {
+        // 🧩 Step 2: Find item in offline stock list
+        final matchedItemStock = itemStockList.firstWhere(
+          (item) =>
+              item['ItemCode'] == value['ItemCode'] &&
+              item['WhsCode'] == warehouse.text &&
+              item['BinID'] == int.tryParse(binId.text),
+          orElse: () => {},
+        );
+        print(matchedItemStock);
+        // 🧩 Step 3: Update stock quantity (offline)
+        if (matchedItemStock.isNotEmpty) {
+          final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
+          setState(() {
+            inWhsQty.text = onHandQty.toString();
+          });
+        } else {
+          setState(() {
+            inWhsQty.text = "0";
+          });
+        }
+      }
       onSetItemTemp(value);
     });
   }
@@ -299,6 +338,8 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
             serialsInput.text == "" ? [] : jsonDecode(serialsInput.text) ?? [],
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
+        "InWhsQty": inWhsQty.text,
+        "Variance": variance.text,
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -343,6 +384,8 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
         uoMGroupDefinitionCollection.text = jsonEncode(
           item['UoMGroupDefinitionCollection'],
         );
+        inWhsQty.text = getDataFromDynamic(item["InWhsQty"]);
+        variance.text = getDataFromDynamic(item["Variance"]);
         setState(() {
           isEdit = index;
           isSerialOrBatchs = item['InventoryCountingLineUoMs'];
@@ -370,6 +413,60 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
 
       binId.text = getDataFromDynamic((value as BinEntity).id);
       binCode.text = getDataFromDynamic(value.code);
+      print("✅ onChangeBin started");
+
+      binId.text = getDataFromDynamic((value).id).toString().trim();
+      binCode.text = getDataFromDynamic(value.code).toString().trim();
+
+      final item = itemCode.text.trim();
+      final whs = warehouse.text.trim();
+      final bin = binId.text.trim();
+
+      print("🧾 Item: $item");
+      print("🏭 Warehouse: $whs");
+      print("📦 BinID: $bin");
+
+      try {
+        if (item.isNotEmpty && whs.isNotEmpty && bin.isNotEmpty) {
+          // 🧠 Get offline data
+          final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
+          final stockData = itemStockCubit.getJsonData();
+
+          // 🔍 Find matching item in offline stock
+          final matched = stockData.firstWhere(
+            (e) =>
+                e['ItemCode'].toString().trim() == item &&
+                e['WhsCode'].toString().trim() == whs &&
+                e['BinID'].toString().trim() == bin,
+            orElse: () => {},
+          );
+
+          if (matched.isNotEmpty) {
+            final onHandQty = matched['OnHandQty'] ?? 0;
+            setState(() {
+              inWhsQty.text = onHandQty.toString();
+            });
+          } else {
+            // ❌ Not found in offline data
+            setState(() {
+              inWhsQty.text = "0";
+            });
+            MaterialDialog.warning(
+              context,
+              title: "Not Found",
+              body: "No offline stock found for this item in the selected bin.",
+            );
+          }
+        }
+
+        print("📦 In-warehouse quantity: ${inWhsQty.text}");
+      } catch (e, stack) {
+        print("❌ Error during offline lookup: $e");
+        print("📜 Stack trace: $stack");
+        setState(() {
+          inWhsQty.text = "0";
+        });
+      }
     });
   }
 
@@ -447,6 +544,108 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
     }
   }
 
+  void onPostOnlineToSAP() async {
+    final connected = await hasInternet();
+    if (!connected) {
+      MaterialDialog.warning(context,
+          title: "Error Connection",
+          body:
+              "No internet connection. Please connect to Wi-Fi or mobile data.");
+      return;
+    }
+
+    // 2️⃣ Load stored credentials
+    final username = await LocalStorageManger.getString('username');
+    final password = await LocalStorageManger.getString('password');
+    final host = await LocalStorageManger.getString('host');
+    final port = await LocalStorageManger.getString('port');
+    final company = await LocalStorageManger.getString('db');
+
+    if (username.isEmpty || password.isEmpty || company.isEmpty) {
+      MaterialDialog.close(context);
+      MaterialDialog.warning(context,
+          title: "Missing Credentials",
+          body: "Please check your SAP login configuration.");
+      return;
+    }
+    try {
+      MaterialDialog.loading(context);
+      print("🌐 Logging in to SAP...");
+      final loginResponse = await http.post(
+        Uri.parse('$host:$port/b1s/v1/Login'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "CompanyDB": company,
+          "UserName": username,
+          "Password": password,
+        }),
+      );
+
+      if (loginResponse.statusCode != 200) {
+        MaterialDialog.close(context);
+        debugPrint("❌ Login failed: ${loginResponse.body}");
+        MaterialDialog.warning(context,
+            title: "Login Failed",
+            body: "Cannot connect to SAP. Please check your credentials.");
+        return;
+      }
+
+      final loginData = jsonDecode(loginResponse.body);
+      final token = loginData['SessionId'];
+
+      // 4️⃣ Save token before starting sync
+      await LocalStorageManger.setString('SessionId', token);
+      Map<String, dynamic> data = {
+        // "BranchID": 1,
+        "DocumentNumber": cos.text,
+        "InventoryCountingLines": items.map((item) {
+          List<dynamic> inventoryCountingLineUoMs = [
+            // {
+            //   "UoMCountedQuantity": item["Quantity"],
+            //   "CountedQuantity": item["Quantity"],
+            //   "UoMCode": item['UoMCode']
+            // }
+          ];
+
+          if (isSerialOrBatchs.isEmpty) {
+            inventoryCountingLineUoMs = [];
+          }
+          return {
+            "ItemCode": item['ItemCode'],
+            "ItemDescription": item['ItemDescription'],
+            "UoMCode": item['UoMCode'],
+            "BinEntry": item["BinId"],
+            "CountedQuantity": item["Quantity"],
+            "WarehouseCode": warehouse.text,
+            "InventoryCountingSerialNumbers": item['Serials'] ?? [],
+            "InventoryCountingBatchNumbers": item['Batches'] ?? [],
+            "InventoryCountingLineUoMs": inventoryCountingLineUoMs
+          };
+        }).toList(),
+      };
+
+      final response = await _bloc.post(data);
+      if (mounted) {
+        Navigator.of(context).pop();
+        MaterialDialog.success(
+          context,
+          title: 'Successfully',
+          body: "Physical Count - ${response["DocumentNumber"]}.",
+          onOk: () => Navigator.of(context).pop(),
+        );
+      }
+      clear();
+      setState(() {
+        items = [];
+      });
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        MaterialDialog.warning(context, title: 'Error', body: e.toString());
+      }
+    }
+  }
+
   void clear() {
     itemCode.text = '';
     itemName.text = '';
@@ -460,6 +659,8 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
     docEntry.text = '';
     refLineNo.text = '';
     isEdit = -1;
+    inWhsQty.clear();
+    variance.clear();
   }
 
   void onSetItemTemp(dynamic value) {
@@ -618,7 +819,10 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
 
   void onCompleteQuantiyInput() {
     FocusScope.of(context).requestFocus(FocusNode());
-    onNavigateSerialOrBatch();
+    variance.text = (double.parse(quantity.text.isEmpty ? "0" : quantity.text) -
+            double.parse(inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+        .toString();
+    // onNavigateSerialOrBatch();
   }
 
   void onNavigateSerialOrBatch({bool force = false}) {
@@ -977,43 +1181,62 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
                 ],
               ),
               const SizedBox(height: 7),
+              InputCol(
+                label: 'Input Qty',
+                placeholder: 'Quantity',
+                controller: quantity,
+                focusNode: _quantity,
+                onFieldSubmitted: (value) {
+                  _handleScanSubmitted(value, _quantity);
+                },
+                onChanged: (value) {
+                  variance.text = (double.parse(value.isEmpty ? "0" : value) -
+                          double.parse(
+                              inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+                      .toString();
+                },
+                // readOnly: isSerialOrBatch ? true : false, // simpler
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                // onTap: isSerialOrBatch
+                //     ? () {
+                //         onNavigateSerialOrBatch(force: true);
+                //       }
+                //     : null,
+                onEditingComplete: onCompleteQuantiyInput,
+                // onPressed: isSerialOrBatch
+                //     ? () {
+                //         onNavigateSerialOrBatch(force: true);
+                //       }
+                //     : null, // remove if icon not needed
+              ),
+              const SizedBox(height: 7),
 
               // ====== Input Qty & UoM ======
               Row(
                 children: [
                   Expanded(
                     child: InputCol(
-                      label: 'Input Qty',
-                      placeholder: 'Quantity',
-                      controller: quantity,
-                      focusNode: _quantity,
-                      onFieldSubmitted: (value) {
-                        _handleScanSubmitted(value, _quantity);
-                      },
-                      // readOnly: isSerialOrBatch ? true : false, // simpler
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
+                      label: 'Variance',
+                      placeholder: 'Variance',
+                      controller: variance,
+                      readOnly: true, // simpler
+
                       // onTap: isSerialOrBatch
                       //     ? () {
                       //         onNavigateSerialOrBatch(force: true);
                       //       }
                       //     : null,
-                      onEditingComplete: onCompleteQuantiyInput,
-                      // onPressed: isSerialOrBatch
-                      //     ? () {
-                      //         onNavigateSerialOrBatch(force: true);
-                      //       }
-                      //     : null, // remove if icon not needed
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: InputCol(
-                      label: 'Input UoM',
-                      placeholder: 'UoM',
-                      controller: uom,
+                      label: 'In Whs Qty',
+                      placeholder: 'In Whs Qty',
+                      controller: inWhsQty,
                       readOnly: true,
-                      onPressed: onChangeUoM,
+                      // onPressed: onChangeUoM,
                     ),
                   ),
                 ],
@@ -1076,18 +1299,72 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
         padding: const EdgeInsets.all(12),
         child: Row(
           children: [
+            // Expanded(
+            //   child: Button(
+            //     variant: ButtonVariant.primary,
+            //     disabled: isEdit != -1,
+            //     onPressed: onPostToSAP,
+            //     child: Text(
+            //       'Save',
+            //       style: TextStyle(color: Colors.white),
+            //     ),
+            //   ),
+            // ),
+            // const SizedBox(width: 12),
+            // Expanded(
+            //   child: Button(
+            //     variant: ButtonVariant.outline,
+            //     onPressed: () {
+            //       if (items.length > 0) {
+            //         MaterialDialog.warning(
+            //           context,
+            //           title: 'Warning',
+            //           body:
+            //               'Are you sure leave? once you pressed ok the data will be ereas.',
+            //           confirmLabel: 'Ok',
+            //           cancelLabel: 'Cancel',
+            //           onConfirm: () {
+            //             Navigator.of(context).pop();
+            //           },
+            //           onCancel: () {},
+            //         );
+            //       } else {
+            //         Navigator.of(context).pop();
+            //       }
+            //     },
+            //     child: Text(
+            //       'Cancel',
+            //       style: TextStyle(
+            //         color: PRIMARY_COLOR,
+            //       ),
+            //     ),
+            //   ),
+            // )
             Expanded(
               child: Button(
                 variant: ButtonVariant.primary,
                 disabled: isEdit != -1,
                 onPressed: onPostToSAP,
                 child: Text(
-                  'Save',
-                  style: TextStyle(color: Colors.white),
+                  'Save ',
+                  style: TextStyle(color: Colors.white, fontSize: 12.5),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 5),
+
+            Expanded(
+              child: Button(
+                disabled: isEdit != -1,
+                  onPressed: onPostOnlineToSAP,
+                bgColor: Colors.green.shade700,
+                child: Text(
+                  "Post",
+                  style: TextStyle(color: Colors.white, fontSize: 12.5),
+                ),
+              ),
+            ),
+            const SizedBox(width: 5),
             Expanded(
               child: Button(
                 variant: ButtonVariant.outline,
@@ -1111,9 +1388,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
                 },
                 child: Text(
                   'Cancel',
-                  style: TextStyle(
-                    color: PRIMARY_COLOR,
-                  ),
+                  style: TextStyle(color: PRIMARY_COLOR, fontSize: 12.5),
                 ),
               ),
             )
