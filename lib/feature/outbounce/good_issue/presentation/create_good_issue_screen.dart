@@ -385,6 +385,11 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
   }
 
   void onPostToSAP() async {
+    if (items.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Error', body: "Opps, Items is required");
+      return;
+    }
     try {
       var uuid = Uuid();
 

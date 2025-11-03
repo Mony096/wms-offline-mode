@@ -315,7 +315,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
       });
     } catch (err) {
       if (err is Exception) {
-        MaterialDialog.success(context, title: 'Warning', body: err.toString());
+        MaterialDialog.warning(context, title: 'Warning', body: err.toString());
       }
     }
   }
@@ -479,6 +479,11 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   }
 
   void onPostToSAP() async {
+    if (items.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Error', body: "Opps, Items is required");
+      return;
+    }
     try {
       var uuid = Uuid();
 
@@ -555,6 +560,11 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   }
 
   void onPostOnlineToSAP() async {
+    if (items.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Error', body: "Opps, Items is required");
+      return;
+    }
     final connected = await hasInternet();
     if (!connected) {
       MaterialDialog.warning(context,

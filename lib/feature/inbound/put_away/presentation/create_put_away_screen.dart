@@ -440,6 +440,11 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
   }
 
   void onPostToSAP() async {
+    if (items.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Error', body: "Opps, Items is required");
+      return;
+    }
     try {
       var uuid = Uuid();
 

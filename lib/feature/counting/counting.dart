@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:wms_mobile/feature/counting/bin_count/lists.dart';
 import 'package:wms_mobile/feature/counting/bin_count/presentation/create_bin_count_screen.dart';
+import 'package:wms_mobile/feature/counting/physical_count/lists.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/create_physical_count_screen.dart';
+import 'package:wms_mobile/feature/counting/quick_count/lists.dart';
+import 'package:wms_mobile/feature/counting/quick_count/lists_cycle.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/create_quick_count_screen.dart';
 import 'package:wms_mobile/utilies/dialog/dialog.dart';
 
@@ -24,10 +28,12 @@ class Counting extends StatefulWidget {
 
 class _CountingState extends State<Counting> {
   final routes = [
-    CreateQuickCountScreen(isQuickCount: true),
-    CreateQuickCountScreen(isQuickCount: false),
-    CreatePhysicalCountScreen(),
-    CreateBinCountScreen()
+    // CreateQuickCountScreen(isQuickCount: true),
+    QuickCountLists(),
+    CycleCountLists(),
+    PhysicalCountLists(),
+    BinCountLists(),
+    // CreateBinCountScreen()
   ];
 
   @override

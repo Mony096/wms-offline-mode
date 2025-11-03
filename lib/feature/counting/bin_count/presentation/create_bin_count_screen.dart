@@ -355,7 +355,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
       });
     } catch (err) {
       if (err is Exception) {
-        MaterialDialog.success(context, title: 'Warning', body: err.toString());
+        MaterialDialog.warning(context, title: 'Warning', body: err.toString());
       }
     }
   }
@@ -471,6 +471,11 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
   }
 
   void onPostToSAP() async {
+    if (items.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Error', body: "Opps, Items is required");
+      return;
+    }
     var uuid = Uuid();
 
     try {
@@ -545,6 +550,11 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
   }
 
   void onPostOnlineToSAP() async {
+    if (items.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Error', body: "Opps, Items is required");
+      return;
+    }
     final connected = await hasInternet();
     if (!connected) {
       MaterialDialog.warning(context,
@@ -1356,7 +1366,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
             Expanded(
               child: Button(
                 disabled: isEdit != -1,
-                  onPressed: onPostOnlineToSAP,
+                onPressed: onPostOnlineToSAP,
                 bgColor: Colors.green.shade700,
                 child: Text(
                   "Post",

@@ -233,7 +233,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
           "UoMGroupDefinitionCollection":
               itemMapped['UoMGroupDefinitionCollection'],
           "BaseUoM": itemMapped['BaseUoM'],
-          "BinEntry": binId.text,
+          "BinEntry": element["BinEntry"],
           "BinCode": binCodeFind["BinCode"],
           "BaseLine": element['BaseLine'],
           "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
@@ -490,14 +490,14 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
       });
     } catch (err) {
       if (err is Exception) {
-        MaterialDialog.success(context, title: 'Warning', body: err.toString());
+        MaterialDialog.warning(context, title: 'Warning', body: err.toString());
       }
     }
   }
 
   void onEdit(dynamic item, int index) async {
     // final index = items.indexWhere((e) => e['ItemCode'] == item['ItemCode']);
-
+    print(item);
     if (index < 0) return;
 
     MaterialDialog.warning(
@@ -662,6 +662,21 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   }
 
   void onPostToSAP() async {
+    if (!widget.isQuickCount) {
+      if (items.every(
+          (item) => (int.tryParse(item["Quantity"].toString()) ?? 0) == 0)) {
+        MaterialDialog.warning(context,
+            title: 'Error', body: "Opps, Quantity must be greater than 0");
+        return;
+      }
+    } else {
+      if (items.isEmpty) {
+        MaterialDialog.warning(context,
+            title: 'Error', body: "Opps, Items is required");
+        return;
+      }
+    }
+
     try {
       var uuid = Uuid();
       MaterialDialog.loading(context);
@@ -799,6 +814,11 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   }
 
   void onPostOnlineToSAP() async {
+    if (items.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Error', body: "Opps, Items is required");
+      return;
+    }
     final connected = await hasInternet();
     if (!connected) {
       MaterialDialog.warning(context,
@@ -946,7 +966,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
     uom.text = '';
     uomAbEntry.text = '';
     isBatch.text = '';
-    isSerial.text = ''; 
+    isSerial.text = '';
     docEntry.text = '';
     refLineNo.text = '';
     isEdit = -1;

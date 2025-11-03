@@ -454,6 +454,11 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   }
 
   void onPostToSAP() async {
+    if (items.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Error', body: "Opps, Items is required");
+      return;
+    }
     try {
       // print(items);
       // return;

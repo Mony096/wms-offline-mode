@@ -434,6 +434,11 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
   }
 
   void onPostToSAP() async {
+    if (items.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Error', body: "Opps, Items is required");
+      return;
+    }
     try {
       var uuid = Uuid();
       MaterialDialog.loading(context);
