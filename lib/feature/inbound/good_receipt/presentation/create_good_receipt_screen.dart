@@ -482,7 +482,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
             "UseBaseUnits": "tNO",
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
-            "DocumentLinesBinAllocations": binAllocations
+            "DocumentLinesBinAllocations": item['BinId'] != "" ? binAllocations : []
           };
         }).toList(),
       };

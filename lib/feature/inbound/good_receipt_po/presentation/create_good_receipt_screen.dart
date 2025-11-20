@@ -701,7 +701,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
             "DocumentLinesBinAllocations":
-                isBin.length > 0 ? binAllocations : []
+                item['BinId'] != "" ? binAllocations : []
           };
         }).toList(),
       };

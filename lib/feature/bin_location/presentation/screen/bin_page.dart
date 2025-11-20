@@ -302,47 +302,66 @@ class _BinPageOfflineState extends State<BinPage> {
         child: Column(
           children: [
             const SizedBox(height: 50),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(15, 0, 15, 0),
+            Container(
+              margin: EdgeInsets.only(left: 9),
+              padding: const EdgeInsets.fromLTRB(15, 0, 0, 0),
               child: Row(
                 children: [
-                  const Text(
-                    "Bin Location",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Row(
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Colors.grey.shade200, // button background
+                          foregroundColor: Colors.black, // icon color
+                          padding: const EdgeInsets.all(8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Icon(Icons.arrow_back, size: 20),
+                      ),
+                      const SizedBox(width: 20),
+                      const Text(
+                        "Bin Location",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
                   const SizedBox(width: 20),
-                  Expanded(
-                    child: Container(
-                      margin: const EdgeInsets.only(left: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: TextField(
-                        controller: _filter,
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.search),
-                          hintText: 'Search...',
-                          suffixIcon: _filter.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _filter.clear();
-                                    setState(() {
-                                      filteredData = data;
-                                    });
-                                  },
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 13),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.only(left: 20, top: 25,right: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: TextField(
+                controller: _filter,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search...',
+                  suffixIcon: _filter.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _filter.clear();
+                            setState(() {
+                              filteredData = data;
+                            });
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                ),
               ),
             ),
             Expanded(

@@ -530,7 +530,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
             "BaseLine": item['BaseLine'],
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
-            "DocumentLinesBinAllocations": binAllocations
+            "DocumentLinesBinAllocations": item['BinId'] != "" ?  binAllocations : []
           };
         }).toList(),
       };

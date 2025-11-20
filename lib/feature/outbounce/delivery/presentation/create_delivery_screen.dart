@@ -551,10 +551,12 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
             "DocumentLinesBinAllocations":
-                isBin.length > 0 ? binAllocations : []
+                item['BinId'] != "" ? binAllocations : []
           };
         }).toList(),
       };
+      // print(data);
+      // return;
       if (widget.isEdit != null && widget.isEditFaild == true) {
         context.read<DeliveryFailedOfflineCubit>().removeByFailId(saveId.text);
         context.read<DeliveryOfflineCubit>().addData(data);

@@ -475,7 +475,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
             "DocumentLinesBinAllocations":
-                isBin.length > 0 ? binAllocations : []
+                item['BinId'] != "" ? binAllocations : []
           };
         }).toList(),
       };
