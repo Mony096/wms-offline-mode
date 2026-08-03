@@ -52,13 +52,16 @@ import 'package:wms_mobile/mobile_function/rmaScreen.dart';
 import 'package:wms_mobile/sync_to_sap.dart';
 import 'package:wms_mobile/utilies/dialog/dialog.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
+import 'package:wms_mobile/feature/pick_and_pack/pick_and_pack.dart';
+import 'package:wms_mobile/feature/item/presentation/screen/product_list_screen.dart';
 
 import '../constant/style.dart';
 
 const gridList = [
+  {"name": "Product", "img": "box.svg"},
   {"name": "Inbound", "img": "download.svg"},
   {"name": "Outbound", "img": "upload.svg"},
-  // {"name": "Pick & Pack", "img": "heigth.svg"},
+  {"name": "Pick and Pack", "img": "heigth.svg"},
   {"name": "Counting", "img": "counting1.svg"},
   {"name": "Lookup", "img": "look.svg"},
   {"name": "Log Out", "img": "logout1.svg"}
@@ -87,26 +90,25 @@ class _DashboardState extends State<Dashboard> {
   void onPressMenu(BuildContext context, int index) {
     switch (index) {
       case 0:
-        goTo(context, const Inbound());
+        goTo(context, const ProductListScreen());
         break;
       case 1:
-        goTo(context, const Outbound());
+        goTo(context, const Inbound());
         break;
       case 2:
-        goTo(context, const Counting());
+        goTo(context, const Outbound());
         break;
       case 3:
-        goTo(context, const ProductLookUp());
+        goTo(context, const PickAndPack());
         break;
       case 4:
+        goTo(context, const Counting());
+        break;
+      case 5:
+        goTo(context, const ProductLookUp());
+        break;
+      case 6:
         _logout(context);
-
-        // goTo(context, const LoginScreen());
-        // goTo(
-        //     context,
-        //     const SerialListPage(
-        //       warehouse: '',
-        //     ));
         break;
       default:
     }
