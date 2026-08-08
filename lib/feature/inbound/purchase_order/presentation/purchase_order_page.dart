@@ -77,22 +77,20 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
           (getDataFromDynamic(po['CardName'])).toString().toLowerCase();
       final comments =
           (getDataFromDynamic(po['Comments'])).toString().toLowerCase();
-   final docNum =
+      final docNum =
           (getDataFromDynamic(po['DocNum'])).toString().toLowerCase();
       // --- Filter A: textScan (Matches if textScan is not empty AND one field contains it) ---
       final matchesScan = textScan.isNotEmpty &&
           (cardCode.contains(textScan) ||
               cardName.contains(textScan) ||
               comments.contains(textScan) ||
-                docNum.contains(textScan)
-              );
+              docNum.contains(textScan));
 
       final matchesInput = textInput.isNotEmpty &&
           (cardCode.contains(textInput) ||
               cardName.contains(textInput) ||
               comments.contains(textInput) ||
-              docNum.contains(textInput)
-              );
+              docNum.contains(textInput));
       return matchesScan || matchesInput;
     }).toList();
 
@@ -140,7 +138,7 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
           child: Padding(
             padding: EdgeInsets.only(right: 65),
             child: Text(
-              'Purchase Order Lists - OFFLINE',
+              'Purchase Order Lists',
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -243,7 +241,11 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
                         decoration: InputDecoration(
                           contentPadding: const EdgeInsets.symmetric(
                               vertical: 10, horizontal: 12),
-                          hintText: 'Supplier Code...',
+                          hintText: 'Vendor Code or PO No.',
+                          hintStyle: const TextStyle(
+                            fontSize: 13.5,
+                            color: Colors.grey,
+                          ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
                             borderSide:
@@ -334,38 +336,91 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
                                   Row(
                                     mainAxisAlignment:
                                         MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        "${getDataFromDynamic(po['CardCode'])} - ${getDataFromDynamic(po['DocNum'])}",
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Doc Date : ${getDataFromDynamic(po['DocDueDate'], isDate: true)}',
-                                        style: const TextStyle(
-                                            fontSize: 13.5,
-                                            color: Colors.black54),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
-                                        child: Text(
-                                          getDataFromDynamic(po['Comments']),
-                                          overflow: TextOverflow.ellipsis,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text.rich(
+                                              TextSpan(
+                                                text: 'Vendor Code : ',
+                                                style: const TextStyle(
+                                                    color: Colors.grey),
+                                                children: [
+                                                  TextSpan(
+                                                    text:
+                                                        "${getDataFromDynamic(po['CardCode'])}",
+                                                    style: const TextStyle(
+                                                      color: Colors.black,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text.rich(
+                                              TextSpan(
+                                                text: 'PO No.            : ',
+                                                style: const TextStyle(
+                                                    color: Colors.grey),
+                                                children: [
+                                                  TextSpan(
+                                                    text:
+                                                        "${getDataFromDynamic(po['DocNum'])}",
+                                                    style: const TextStyle(
+                                                      color: Colors.black,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            if (getDataFromDynamic(
+                                                        po['Comments'])
+                                                    .toString()
+                                                    .trim()
+                                                    .isNotEmpty &&
+                                                getDataFromDynamic(
+                                                            po['Comments'])
+                                                        .toString()
+                                                        .trim() !=
+                                                    'null') ...[
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                getDataFromDynamic(
+                                                        po['Comments'])
+                                                    .toString(),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                       ),
-                                      const SizedBox(width: 30),
-                                      Text(
-                                        'Delivery Date : ${getDataFromDynamic(po['DocDate'], isDate: true)}',
-                                        style: const TextStyle(
-                                            fontSize: 13.5,
-                                            color: Colors.black54),
+                                      const SizedBox(width: 10),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            'Doc Date : ${getDataFromDynamic(po['DocDueDate'], isDate: true)}',
+                                            style: const TextStyle(
+                                                fontSize: 13.5,
+                                                color: Colors.black54),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Delivery Date : ${getDataFromDynamic(po['DocDate'], isDate: true)}',
+                                            style: const TextStyle(
+                                                fontSize: 13.5,
+                                                color: Colors.black54),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
