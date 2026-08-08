@@ -143,7 +143,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: isSelected ? const Color(0xFF131A3F) : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
                       child: Text(
@@ -186,7 +186,10 @@ class _ProductListScreenState extends State<ProductListScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemBuilder: (context, index) {
                 final item = _filteredData[index];
-                final stock = item['Stock'] ?? 0;
+                final stock = item['QuantityOnStock'] ?? item['Stock'] ?? 0;
+                final stockDisplay = stock is num 
+                    ? (stock % 1 == 0 ? stock.toInt().toString() : stock.toString()) 
+                    : stock.toString();
                 
                 return GestureDetector(
                   onTap: () {
@@ -247,7 +250,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              '$stock',
+                              stockDisplay,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,

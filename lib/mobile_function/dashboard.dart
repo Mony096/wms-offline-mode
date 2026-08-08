@@ -54,18 +54,11 @@ import 'package:wms_mobile/utilies/dialog/dialog.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
 import 'package:wms_mobile/feature/pick_and_pack/pick_and_pack.dart';
 import 'package:wms_mobile/feature/item/presentation/screen/product_list_screen.dart';
+import 'package:wms_mobile/config/company_config.dart';
 
 import '../constant/style.dart';
 
-const gridList = [
-  {"name": "Product", "img": "box.svg"},
-  {"name": "Inbound", "img": "download.svg"},
-  {"name": "Outbound", "img": "upload.svg"},
-  {"name": "Pick and Pack", "img": "heigth.svg"},
-  {"name": "Counting", "img": "counting1.svg"},
-  {"name": "Lookup", "img": "look.svg"},
-  {"name": "Log Out", "img": "logout1.svg"}
-];
+
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -77,6 +70,22 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   String warehouseCode = '';
   String warehouseName = '';
+
+  List<Map<String, String>> get _activeMenus {
+    List<Map<String, String>> menus = [];
+    if (CompanyConfig.showProductMenu) {
+      menus.add({"name": "Product", "img": "box.svg"});
+    }
+    menus.addAll([
+      {"name": "Inbound", "img": "download.svg"},
+      {"name": "Outbound", "img": "upload.svg"},
+      {"name": "Pick and Pack", "img": "heigth.svg"},
+      {"name": "Counting", "img": "counting1.svg"},
+      {"name": "Lookup", "img": "look.svg"},
+      {"name": "Log Out", "img": "logout1.svg"}
+    ]);
+    return menus;
+  }
   void _logout(BuildContext context) {
     MaterialDialog.loading(context);
     _clearAllData();
@@ -87,27 +96,27 @@ class _DashboardState extends State<Dashboard> {
     });
   }
 
-  void onPressMenu(BuildContext context, int index) {
-    switch (index) {
-      case 0:
+  void onPressMenu(BuildContext context, String menuName) {
+    switch (menuName) {
+      case "Product":
         goTo(context, const ProductListScreen());
         break;
-      case 1:
+      case "Inbound":
         goTo(context, const Inbound());
         break;
-      case 2:
+      case "Outbound":
         goTo(context, const Outbound());
         break;
-      case 3:
+      case "Pick and Pack":
         goTo(context, const PickAndPack());
         break;
-      case 4:
+      case "Counting":
         goTo(context, const Counting());
         break;
-      case 5:
+      case "Lookup":
         goTo(context, const ProductLookUp());
         break;
-      case 6:
+      case "Log Out":
         _logout(context);
         break;
       default:
@@ -362,12 +371,12 @@ class _DashboardState extends State<Dashboard> {
               // ),
               Expanded(
                 child: ListView.builder(
-                  itemCount: gridList.length,
+                  itemCount: _activeMenus.length,
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   itemBuilder: (BuildContext context, int index) {
-                    final isLast = index == gridList.length - 1;
+                    final isLast = index == _activeMenus.length - 1;
                     return GestureDetector(
-                      onTap: () => onPressMenu(context, index),
+                      onTap: () => onPressMenu(context, _activeMenus[index]['name']!),
                       child: Container(
                         margin: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 6),
@@ -401,7 +410,7 @@ class _DashboardState extends State<Dashboard> {
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: SvgPicture.asset(
-                                    "images/svg/${gridList[index]["img"]}",
+                                    "images/svg/${_activeMenus[index]["img"]}",
                                     width: 28,
                                     height: 28,
                                     color: isLast
@@ -412,7 +421,7 @@ class _DashboardState extends State<Dashboard> {
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  "${gridList[index]['name']}",
+                                  "${_activeMenus[index]['name']}",
                                   style: TextStyle(
                                     fontWeight: FontWeight.w500,
                                     fontSize: 15.5,

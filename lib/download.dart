@@ -34,6 +34,9 @@ class DownloadItem {
   bool isLoading;
   bool success;
   bool failed;
+  String progressText;
+  int downloadedCount;
+  double? progressValue;
 
   DownloadItem({
     required this.name,
@@ -43,6 +46,9 @@ class DownloadItem {
     this.isLoading = false,
     this.success = false,
     this.failed = false,
+    this.progressText = "",
+    this.downloadedCount = 0,
+    this.progressValue,
   });
 }
 
@@ -132,7 +138,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       url: 'Items',
       queryParams: {
         '\$select':
-            "ItemCode,ItemName,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry, ManageSerialNumbers, ManageBatchNumbers"
+            "ItemCode,ItemName,QuantityOnStock,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry, ManageSerialNumbers, ManageBatchNumbers"
       },
       onSave: (context, data) async =>
           context.read<ItemOfflineCubit>().addData(data),
@@ -402,27 +408,68 @@ class _DownloadScreenState extends State<DownloadScreen> {
       item.isLoading = true;
       item.failed = false;
       item.success = false;
+      item.progressText = "Downloading...";
+      item.downloadedCount = 0;
     });
     await _saveDownloadState();
 
     try {
-      // Step 1️⃣ — Get list from SAP
-      final data = await getFromSAP(
-        host: host,
-        port: port,
-        token: token,
-        endpoint: item.url,
-        queryParams: item.queryParams,
-      );
+      int skip = 0;
+      int top = 3000;
+      List<dynamic> allValues = [];
+      bool hasMore = true;
+      int totalCount = 0;
 
-      var values = data["value"];
+      // Step 1️⃣ — Get list from SAP with pagination loop
+      while (hasMore) {
+        Map<String, String> currentParams = Map.from(item.queryParams ?? {});
+        currentParams['\$top'] = top.toString();
+        currentParams['\$skip'] = skip.toString();
+
+        if (skip == 0) {
+          currentParams['\$inlinecount'] = 'allpages';
+        }
+
+        final data = await getFromSAP(
+          host: host,
+          port: port,
+          token: token,
+          endpoint: item.url,
+          queryParams: currentParams,
+        );
+
+        if (skip == 0) {
+          final countRaw = data["odata.count"] ?? data["@odata.count"];
+          totalCount = int.tryParse(countRaw?.toString() ?? "0") ?? 0;
+        }
+
+        List<dynamic> values = data["value"] ?? [];
+        allValues.addAll(values);
+
+        setState(() {
+          item.downloadedCount = allValues.length;
+          if (totalCount > 0) {
+            item.progressText =
+                "Downloading ${item.downloadedCount}/$totalCount...";
+            item.progressValue = item.downloadedCount / totalCount;
+          } else {
+            item.progressText = "Downloading ${item.downloadedCount}...";
+          }
+        });
+
+        if (values.length < top) {
+          hasMore = false;
+        } else {
+          skip += top;
+        }
+      }
 
       // Step 2️⃣ — Special case for InventoryCountings
       if (item.url == "InventoryCountings") {
         List<dynamic> detailedList = [];
 
         // Loop through each item and fetch details by ID
-        for (final inv in values) {
+        for (final inv in allValues) {
           final docEntry = inv["DocumentEntry"];
           if (docEntry == null) continue;
 
@@ -436,21 +483,27 @@ class _DownloadScreenState extends State<DownloadScreen> {
 
             detailedList.add(detail);
             debugPrint("✅ Loaded detail for InventoryCounting $docEntry");
+
+            setState(() {
+              item.progressText =
+                  "Loading details ${detailedList.length}/${allValues.length}...";
+              item.progressValue = detailedList.length / allValues.length;
+            });
           } catch (e) {
             debugPrint("⚠️ Failed to fetch detail for $docEntry: $e");
           }
         }
-        // Optionally also call item.onSave if needed
         await item.onSave(context, detailedList);
       } else {
         // Normal behavior for other endpoints
-        await item.onSave(context, values);
+        await item.onSave(context, allValues);
       }
 
       setState(() {
         item.success = true;
         item.isLoading = false;
         item.failed = false;
+        item.progressText = "Downloaded ${allValues.length} records";
       });
       await _saveDownloadState();
       return true;
@@ -460,6 +513,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
         item.failed = true;
         item.isLoading = false;
         item.success = false;
+        item.progressText = "Failed";
       });
       await _saveDownloadState();
       return false;
@@ -944,20 +998,22 @@ class _DownloadScreenState extends State<DownloadScreen> {
         // CircularProgressIndicator
         subtitle: item.isLoading
             ? Row(
-                children: const [
-                  SizedBox(
+                children: [
+                  const SizedBox(
                       width: 17,
                       height: 17,
                       child: CircularProgressIndicator(
                         color: Colors.blue,
                         strokeWidth: 2,
                       )),
-                  SizedBox(
+                  const SizedBox(
                     width: 7,
                   ),
                   Text(
-                    'Downloading data...',
-                    style: TextStyle(fontSize: 14),
+                    item.progressText.isNotEmpty
+                        ? item.progressText
+                        : 'Downloading data...',
+                    style: const TextStyle(fontSize: 14),
                   )
                 ],
               )

@@ -57,6 +57,7 @@ dependencies:
   http: ^1.5.0
   connectivity_plus: ^7.0.0
   uuid: ^4.5.1
+  image_picker: ^1.1.2
   # iscan_data_plugin: ^0.0.2
 
   # flutter_barcode_scanner: ^2.0.0
@@ -141,6 +142,7 @@ flutter:
     - images/svg/delivery.svg
     - images/svg/subtract.svg
     - images/svg/down_right.svg
+    - images/svg/box.svg
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
 

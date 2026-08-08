@@ -241,7 +241,7 @@ class _ItemPageState extends State<ItemPage> {
   final ScrollController _scrollController = ScrollController();
 
   String query =
-      "?\$top=10&\$skip=0&\$select=ItemCode,ItemName,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry,ManageSerialNumbers,ManageBatchNumbers";
+      "?\$top=10&\$skip=0&\$select=ItemCode,ItemName,QuantityOnStock,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry,ManageSerialNumbers,ManageBatchNumbers";
 
   TextEditingController filter = TextEditingController();
   List<dynamic> data = [];
