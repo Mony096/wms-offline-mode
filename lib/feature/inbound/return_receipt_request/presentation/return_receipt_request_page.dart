@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/core/enum/global.dart';
@@ -118,7 +116,11 @@ class _ReturnReceiptRequestPageState extends State<ReturnReceiptRequestPage> {
                     child: TextFormField(
                       controller: filter,
                       decoration: InputDecoration(
-                        hintText: 'Search Return Request',
+                        hintText: 'Customer Code or RTR No.',
+                        hintStyle: const TextStyle(
+                          fontSize: 13.5,
+                          color: Colors.grey,
+                        ),
                         filled: true,
                         fillColor: const Color.fromARGB(255, 243, 243, 243),
                         prefixIcon: Icon(Icons.search, color: PRIMARY_COLOR),
@@ -210,10 +212,22 @@ class _ReturnReceiptRequestPageState extends State<ReturnReceiptRequestPage> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    getDataFromDynamic(bp['CardCode']),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
+                                  Text.rich(
+                                    TextSpan(
+                                      text: "Customer Code : ",
+                                      style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.normal,
+                                          fontSize: 14),
+                                      children: [
+                                        TextSpan(
+                                          text: getDataFromDynamic(
+                                              bp['CardCode']),
+                                          style: const TextStyle(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   Text(
@@ -225,19 +239,29 @@ class _ReturnReceiptRequestPageState extends State<ReturnReceiptRequestPage> {
                               ),
                               const SizedBox(height: 8),
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
-                                    child: Text(
-                                      getDataFromDynamic(bp['CardName']),
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Text.rich(
+                                      TextSpan(
+                                        text: "RTR No.               : ",
+                                        style: const TextStyle(
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.normal,
+                                            fontSize: 14),
+                                        children: [
+                                          TextSpan(
+                                            text: getDataFromDynamic(bp['DocNum']),
+                                            style: const TextStyle(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 30),
                                   Text(
-                                    'Return Date : ${getDataFromDynamic(bp['DocDueDate'], isDate: true)}'
-                                    ,
+                                    'Return Date : ${getDataFromDynamic(bp['DocDueDate'], isDate: true)}',
                                     style: const TextStyle(
                                         fontSize: 13.5, color: Colors.black54),
                                   ),

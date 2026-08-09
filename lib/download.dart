@@ -69,7 +69,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
         '\$select':
             "DocEntry,CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
       },
-      onClear: (context) => context.read<PurchaseOrderOfflineCubit>().clearData(),
+      onClear: (context) =>
+          context.read<PurchaseOrderOfflineCubit>().clearData(),
       onSave: (context, data) async =>
           context.read<PurchaseOrderOfflineCubit>().addData(data),
     ),
@@ -93,7 +94,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
         '\$select':
             "DocEntry,CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
       },
-      onClear: (context) => context.read<PurchaseReturnRequestOfflineCubit>().clearData(),
+      onClear: (context) =>
+          context.read<PurchaseReturnRequestOfflineCubit>().clearData(),
       onSave: (context, data) async =>
           context.read<PurchaseReturnRequestOfflineCubit>().addData(data),
     ),
@@ -105,14 +107,17 @@ class _DownloadScreenState extends State<DownloadScreen> {
         '\$select':
             "DocEntry,CardCode,CardName,DocNum,DocDueDate,Comments,DocDate,DocumentLines,DocumentStatus"
       },
-      onClear: (context) => context.read<ReturnReceiptRequestOfflineCubit>().clearData(),
+      onClear: (context) =>
+          context.read<ReturnReceiptRequestOfflineCubit>().clearData(),
       onSave: (context, data) async =>
           context.read<ReturnReceiptRequestOfflineCubit>().addData(data),
     ),
     DownloadItem(
       name: 'Business Partners',
       url: 'BusinessPartners',
-      queryParams: {'\$select': "CardCode,CardName,CardType"},
+      queryParams: {
+        '\$select': "CardCode,CardName,CardType,CurrentAccountBalance"
+      },
       onClear: (context) => context.read<BusinessOfflineCubit>().clearData(),
       onSave: (context, data) async =>
           context.read<BusinessOfflineCubit>().addData(data),
@@ -171,14 +176,16 @@ class _DownloadScreenState extends State<DownloadScreen> {
     DownloadItem(
       name: 'Item Cycle Count',
       url: 'view.svc/CycleItemCountB1SLQuery',
-      onClear: (context) => context.read<ItemCycleCountOfflineCubit>().clearData(),
+      onClear: (context) =>
+          context.read<ItemCycleCountOfflineCubit>().clearData(),
       onSave: (context, data) async =>
           context.read<ItemCycleCountOfflineCubit>().addData(data),
     ),
     DownloadItem(
       name: 'Item Stock',
       url: 'view.svc/ItemB1SLQuery',
-      onClear: (context) => context.read<ItemFindStockOfflineCubit>().clearData(),
+      onClear: (context) =>
+          context.read<ItemFindStockOfflineCubit>().clearData(),
       onSave: (context, data) async =>
           context.read<ItemFindStockOfflineCubit>().addData(data),
     ),
@@ -221,13 +228,15 @@ class _DownloadScreenState extends State<DownloadScreen> {
     _loadDownloadState();
   }
 
-  void _logout() {
+  Future<void> _logout() async {
     MaterialDialog.loading(context);
-    _clearAllDataFromCatchError();
+    await _clearAllDataFromCatchError();
     const timeoutDuration = Duration(milliseconds: 200);
     Future.delayed(timeoutDuration, () {
-      BlocProvider.of<AuthorizationBloc>(context)
-          .add(const RequestLogoutEvent());
+      if (mounted) {
+        BlocProvider.of<AuthorizationBloc>(context)
+            .add(const RequestLogoutEvent());
+      }
     });
   }
 
@@ -435,7 +444,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
     }
 
     final success = await _fetchAndSave(item, token, host, port);
-    
+
     // Evaluate global status
     bool allSuccess = _downloads.every((element) => element.success);
     if (allSuccess) {
@@ -450,6 +459,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       });
     }
   }
+
   Future<bool> _fetchAndSave(
       DownloadItem item, dynamic token, dynamic host, dynamic port) async {
     setState(() {
@@ -580,11 +590,12 @@ class _DownloadScreenState extends State<DownloadScreen> {
     // 4️⃣ Save cleared download state
     await _saveDownloadState();
 
-    // 5️⃣ Update UI
+    // 5️⃣ Update storage
+    await LocalStorageManger.setString('isDownloaded', 'false');
+    await LocalStorageManger.setString('warehouse', "");
+    await LocalStorageManger.setString('warehouseName', "No Warehouse");
+
     setState(() {
-      LocalStorageManger.setString('isDownloaded', 'false');
-      LocalStorageManger.setString('warehouse', "");
-      LocalStorageManger.setString('warehouseName', "No Warehouse");
       isDownloadedString = "false";
     });
 
@@ -631,11 +642,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
     // 4️⃣ Save cleared download state
     await _saveDownloadState();
 
-    // 5️⃣ Update UI
+    // 5️⃣ Update storage
+    await LocalStorageManger.setString('isDownloaded', 'false');
+    await LocalStorageManger.setString('warehouse', "");
+    await LocalStorageManger.setString('warehouseName', "No Warehouse");
+
+    // 6️⃣ Update UI
     setState(() {
-      LocalStorageManger.setString('isDownloaded', 'false');
-      LocalStorageManger.setString('warehouse', "");
-      LocalStorageManger.setString('warehouseName', "No Warehouse");
       isDownloadedString = "false";
     });
   }
@@ -730,7 +743,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     },
                     borderRadius: BorderRadius.circular(8),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       child: Row(
                         children: const [
                           Text(
@@ -772,7 +786,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     Expanded(
                       child: Text(
                         downloadStatus,
-                        style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            color: Colors.red, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -789,9 +804,10 @@ class _DownloadScreenState extends State<DownloadScreen> {
                   flex: 3,
                   child: ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isDownloadingAll || isDownloadedString == "true"
-                          ? Colors.grey.shade400
-                          : PRIMARY_COLOR,
+                      backgroundColor:
+                          isDownloadingAll || isDownloadedString == "true"
+                              ? Colors.grey.shade400
+                              : PRIMARY_COLOR,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -803,10 +819,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                            child: CircularProgressIndicator(
+                                color: Colors.white, strokeWidth: 2.5),
                           )
                         : Icon(
-                            isDownloadedString == "true" ? Icons.cloud_done : Icons.cloud_download,
+                            isDownloadedString == "true"
+                                ? Icons.cloud_done
+                                : Icons.cloud_download,
                             size: 22,
                           ),
                     label: Text(
@@ -821,7 +840,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
                       ),
                     ),
                     onPressed: () async {
-                      if (isDownloadedString == "true" || isDownloadingAll) return;
+                      if (isDownloadedString == "true" || isDownloadingAll)
+                        return;
                       final connected = await hasInternet();
                       if (!connected) {
                         MaterialDialog.warning(context,
@@ -843,7 +863,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Colors.redAccent.shade100, width: 1.5),
+                        side: BorderSide(
+                            color: Colors.redAccent.shade100, width: 1.5),
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
@@ -867,11 +888,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     children: [
                       const Text(
                         "Downloading data...",
-                        style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black54),
+                        style: TextStyle(
+                            fontWeight: FontWeight.w600, color: Colors.black54),
                       ),
                       Text(
                         "${_downloads.where((e) => e.success).length} / ${_downloads.length}",
-                        style: const TextStyle(fontWeight: FontWeight.w700, color: PRIMARY_COLOR),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, color: PRIMARY_COLOR),
                       ),
                     ],
                   ),
@@ -881,10 +904,12 @@ class _DownloadScreenState extends State<DownloadScreen> {
                     child: LinearProgressIndicator(
                       value: _downloads.isEmpty
                           ? 0
-                          : _downloads.where((e) => e.success).length / _downloads.length,
+                          : _downloads.where((e) => e.success).length /
+                              _downloads.length,
                       minHeight: 8,
                       backgroundColor: Colors.grey.shade300,
-                      valueColor: const AlwaysStoppedAnimation<Color>(PRIMARY_COLOR),
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(PRIMARY_COLOR),
                     ),
                   ),
                 ],
@@ -968,7 +993,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
           child: item.isLoading
               ? const Padding(
                   padding: EdgeInsets.all(14.0),
-                  child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.blueAccent),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2.5, color: Colors.blueAccent),
                 )
               : Icon(iconData, color: iconColor, size: 24),
         ),
@@ -1007,9 +1033,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
           tooltip: 'Sync this item',
           icon: Icon(
             Icons.sync,
-            color: item.isLoading || isDownloadingAll ? Colors.grey : Colors.blueAccent,
+            color: item.isLoading || isDownloadingAll
+                ? Colors.grey
+                : Colors.blueAccent,
           ),
-          onPressed: item.isLoading || isDownloadingAll ? null : () => _syncSingleItem(item),
+          onPressed: item.isLoading || isDownloadingAll
+              ? null
+              : () => _syncSingleItem(item),
         ),
       ),
     );

@@ -135,6 +135,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
         );
         return;
       }
+      rtrText.text = getDataFromDynamic(matchedRReq['DocNum']);
 
       for (var element in lines) {
         final itemList = context.read<ItemOfflineCubit>().state;
@@ -748,6 +749,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
       cardCode.text = getDataFromDynamic(value['CardCode']);
       cardName.text = getDataFromDynamic(value['CardName']);
       docEntry.text = getDataFromDynamic(value['DocEntry']);
+      rtrText.text = getDataFromDynamic(value['DocNum']);
       if (mounted) MaterialDialog.loading(context);
       items = [];
       // final openLines = value['DocumentLines']
@@ -944,23 +946,29 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
                       child: Column(
                         children: [
                           Input(
+                            label: 'RTR No.',
+                            placeholder: 'RTR No.',
+                            controller: rtrText,
+                            readOnly: true,
+                            onPressed: onNavigateToReturnReceiptRequest,
+                          ),
+                          Input(
                             label: 'Warehouse',
                             placeholder: 'Warehouse',
                             controller: warehouse,
                             readOnly: true,
                             onPressed: onChangeWhs,
                           ),
-                          // Divider(thickness: 1, color: Colors.grey.shade400),
+                          Divider(thickness: 1, color: Colors.grey.shade400),
                           Input(
-                            label: 'RTR #',
-                            placeholder: 'RTR DocNum',
+                            label: 'Customer Code',
+                            placeholder: 'Customer Code',
                             controller: cardCode,
                             readOnly: true,
-                            onPressed: onNavigateToReturnReceiptRequest,
                           ),
                           Input(
-                            label: ' Name',
-                            placeholder: ' Name',
+                            label: 'Customer Name',
+                            placeholder: 'Customer Name',
                             controller: cardName,
                             readOnly: true,
                           ),

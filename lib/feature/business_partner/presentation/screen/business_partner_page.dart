@@ -116,7 +116,11 @@ class _BusinessPartnerPageState extends State<BusinessPartnerPage> {
                     child: TextFormField(
                       controller: filter,
                       decoration: InputDecoration(
-                        hintText: 'Search Business Partner',
+                        hintText: 'BP Name or BP Code',
+                         hintStyle: const TextStyle(
+                            fontSize: 13.5,
+                            color: Colors.grey,
+                          ),
                         filled: true,
                         fillColor: const Color.fromARGB(255, 243, 243, 243),
                         prefixIcon: Icon(Icons.search, color: PRIMARY_COLOR),
@@ -203,17 +207,67 @@ class _BusinessPartnerPageState extends State<BusinessPartnerPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                getDataFromDynamic(bp['CardCode']),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text.rich(
+                                    TextSpan(
+                                      text: "BP Code : ",
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.normal,
+                                        fontSize: 16,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: getDataFromDynamic(bp['CardCode']),
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Text.rich(
+                                    TextSpan(
+                                      text: "Balance : ",
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.normal,
+                                        fontSize: 14,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: formatBalance(bp['CurrentAccountBalance']),
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 4),
-                              Text(
-                                getDataFromDynamic(bp['CardName']),
-                                style: const TextStyle(fontSize: 14),
+                              Text.rich(
+                                TextSpan(
+                                  text: "BP Name : ",
+                                  style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.normal,
+                                    fontSize: 14,
+                                  ),
+                                  children: [
+                                    TextSpan(
+                                      text: getDataFromDynamic(bp['CardName']),
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),

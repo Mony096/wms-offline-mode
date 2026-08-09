@@ -975,8 +975,8 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                           Input(
                             controller: poText,
                             readOnly: true,
-                            label: 'SO. #',
-                            placeholder: 'DocNum',
+                            label: 'SO No.',
+                            placeholder: 'SO No.',
                             onPressed: onNavigateToSO,
                           ),
                           Input(

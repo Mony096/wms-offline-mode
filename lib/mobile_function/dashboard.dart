@@ -74,13 +74,15 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   String warehouseCode = '';
   String warehouseName = '';
-  void _logout(BuildContext context) {
+  Future<void> _logout(BuildContext context) async {
     MaterialDialog.loading(context);
-    _clearAllData();
+    await _clearAllData();
     const timeoutDuration = Duration(milliseconds: 200);
     Future.delayed(timeoutDuration, () {
-      BlocProvider.of<AuthorizationBloc>(context)
-          .add(const RequestLogoutEvent());
+      if (mounted) {
+        BlocProvider.of<AuthorizationBloc>(context)
+            .add(const RequestLogoutEvent());
+      }
     });
   }
 
@@ -161,11 +163,14 @@ class _DashboardState extends State<Dashboard> {
     context.read<PhysicalCountOfflineCubit>().clearData();
     context.read<CycleCountOfflineCubit>().clearData();
     context.read<BinCountOfflineCubit>().clearData();
-    // 5️⃣ Update UI
+    
+    // 5️⃣ Update storage and UI
+    await LocalStorageManger.setString('download_status', '[]');
+    await LocalStorageManger.setString('isDownloaded', 'false');
+    await LocalStorageManger.setString('warehouse', "");
+    await LocalStorageManger.setString('warehouseName', "No Warehouse");
+    
     setState(() {
-      LocalStorageManger.setString('isDownloaded', 'false');
-      LocalStorageManger.setString('warehouse', "");
-      LocalStorageManger.setString('warehouseName', "No Warehouse");
     });
   }
 

@@ -25,8 +25,8 @@ class _SettingScreenState extends State<SettingScreen> {
     final db = await LocalStorageManger.getString('db');
 
     setState(() {
-      _hostConfig.text = host.isEmpty ? 'https://192.168.1.10' : host;
-      _portConfig.text = port.isEmpty ? '50000' : port;
+      _hostConfig.text = host.isEmpty ? 'https://svr10.biz-dimension.com' : host;
+      _portConfig.text = port.isEmpty ? '5000' : port;
       _dbConfig.text = db.isEmpty ? "SBOLK" : db;
     });
   }

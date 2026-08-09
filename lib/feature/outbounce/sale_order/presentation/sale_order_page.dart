@@ -34,9 +34,10 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
       //         cardType.toLowerCase();
       final code = getDataFromDynamic(bp['CardCode']).toLowerCase();
       final name = getDataFromDynamic(bp['CardName']).toLowerCase();
+      final docNum = getDataFromDynamic(bp['DocNum']).toLowerCase();
 
       // if (searchText.isEmpty) return typeMatch;
-      return (code.contains(searchText) || name.contains(searchText));
+      return (code.contains(searchText) || name.contains(searchText) || docNum.contains(searchText));
     }).toList();
 
     setState(() => filteredData = results);
@@ -111,7 +112,11 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
                     child: TextFormField(
                       controller: filter,
                       decoration: InputDecoration(
-                        hintText: 'Search Sale Order',
+                        hintText: 'Customer Code or SO No.',
+                         hintStyle: const TextStyle(
+                          fontSize: 13.5,
+                          color: Colors.grey,
+                        ),
                         filled: true,
                         fillColor: const Color.fromARGB(255, 243, 243, 243),
                         prefixIcon: Icon(Icons.search, color: PRIMARY_COLOR),
@@ -199,18 +204,27 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    getDataFromDynamic(bp['CardCode']),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
+                                  Text.rich(
+                                    TextSpan(
+                                      text: "Customer Code : ",
+                                      style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.normal,
+                                          fontSize: 14),
+                                      children: [
+                                        TextSpan(
+                                          text: getDataFromDynamic(bp['CardCode']),
+                                          style: const TextStyle(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   Text(
-                                    'Date : ${getDataFromDynamic(bp['DocDate'], isDate: true)}'
-                                    ,
+                                    'Date : ${getDataFromDynamic(bp['DocDate'], isDate: true)}',
                                     style: const TextStyle(
                                         fontSize: 13.5, color: Colors.black54),
                                   ),
@@ -218,16 +232,27 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
                               ),
                               const SizedBox(height: 8),
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
-                                    child: Text(
-                                      getDataFromDynamic(bp['CardName']),
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Text.rich(
+                                      TextSpan(
+                                        text: "SO No.                : ",
+                                        style: const TextStyle(
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.normal,
+                                            fontSize: 14),
+                                        children: [
+                                          TextSpan(
+                                            text: getDataFromDynamic(bp['DocNum']),
+                                            style: const TextStyle(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 30),
                                   Text(
                                     'Delivery Date : ${getDataFromDynamic(bp['DocDueDate'], isDate: true)}',
                                     style: const TextStyle(

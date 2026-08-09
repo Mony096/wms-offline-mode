@@ -117,6 +117,25 @@ String convertQuantityUoM(double baseQty, double alternativeQty, double qty) {
   return fractionDigits(qty * double.parse(totalQty), digit: 4);
 }
 
+String formatBalance(dynamic value) {
+  try {
+    double parsedValue = 0.0;
+    if (value is double) {
+      parsedValue = value;
+    } else if (value is int) {
+      parsedValue = value.toDouble();
+    } else if (value != null) {
+      parsedValue = double.parse(value.toString());
+    } else {
+      return '0.00';
+    }
+    final formatter = NumberFormat('#,##0.00', 'en_US');
+    return formatter.format(parsedValue);
+  } catch (e) {
+    return '0.00';
+  }
+}
+
 Future<dynamic> postToSAP({
   required String host,
   required String port,

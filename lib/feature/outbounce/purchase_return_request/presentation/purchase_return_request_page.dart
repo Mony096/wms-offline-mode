@@ -38,9 +38,10 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
       //         cardType.toLowerCase();
       final code = getDataFromDynamic(bp['CardCode']).toLowerCase();
       final name = getDataFromDynamic(bp['CardName']).toLowerCase();
+      final docNum = getDataFromDynamic(bp['DocNum']).toLowerCase();
 
       // if (searchText.isEmpty) return typeMatch;
-      return (code.contains(searchText) || name.contains(searchText));
+      return (code.contains(searchText) || name.contains(searchText) || docNum.contains(searchText));
     }).toList();
 
     setState(() => filteredData = results);
@@ -114,7 +115,11 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
                     child: TextFormField(
                       controller: filter,
                       decoration: InputDecoration(
-                        hintText: 'Search Goods Return Request',
+                        hintText: 'Vendor Code or GRTR No',
+                        hintStyle: const TextStyle(
+                          fontSize: 13.5,
+                          color: Colors.grey,
+                        ),
                         filled: true,
                         fillColor: const Color.fromARGB(255, 243, 243, 243),
                         prefixIcon: Icon(Icons.search, color: PRIMARY_COLOR),
@@ -203,13 +208,23 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    getDataFromDynamic(bp['CardCode']),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
+                                  Text.rich(
+                                    TextSpan(
+                                      text: "Vendor Code : ",
+                                      style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.normal,
+                                          fontSize: 14),
+                                      children: [
+                                        TextSpan(
+                                          text: getDataFromDynamic(bp['CardCode']),
+                                          style: const TextStyle(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   Text(
@@ -221,16 +236,27 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
                               ),
                               const SizedBox(height: 8),
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
-                                    child: Text(
-                                      getDataFromDynamic(bp['CardName']),
-                                      overflow: TextOverflow.ellipsis,
+                                    child: Text.rich(
+                                      TextSpan(
+                                        text: "GRTR No.       : ",
+                                        style: const TextStyle(
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.normal,
+                                            fontSize: 14),
+                                        children: [
+                                          TextSpan(
+                                            text: getDataFromDynamic(bp['DocNum']),
+                                            style: const TextStyle(
+                                                color: Colors.black,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
-                                  const SizedBox(width: 30),
                                   Text(
                                     'Return Date : ${getDataFromDynamic(bp['DocDueDate'], isDate: true)}',
                                     style: const TextStyle(

@@ -22,6 +22,7 @@ import '/feature/serial/good_receip_serial_screen.dart';
 import '/feature/bin_location/domain/entity/bin_entity.dart';
 import '/feature/bin_location/presentation/screen/bin_page.dart';
 import '/feature/business_partner/presentation/screen/business_partner_page.dart';
+import '/feature/warehouse/presentation/screen/warehouse_page.dart';
 import '../../../../core/error/failure.dart';
 import '../../../item/presentation/cubit/item_cubit.dart';
 import '/component/button/button.dart';
@@ -707,6 +708,13 @@ class _CreatePurchaseReturnScreenState
     }
   }
 
+  void onChangeWhs() async {
+    goTo(context, WarehousePage()).then((value) {
+      if (value == null) return;
+      warehouse.text = getDataFromDynamic(value);
+    });
+  }
+
   void onNavigateToPurchaseReturnRequest() async {
     goTo(context, PurchaseReturnRequestPage()).then((value) async {
       if (value == null) return;
@@ -994,10 +1002,18 @@ class _CreatePurchaseReturnScreenState
                           Input(
                             controller: poText,
                             readOnly: true,
-                            label: 'RTR. #',
-                            placeholder: 'DocNum',
+                            label: 'GRTR No.',
+                            placeholder: 'GRTR No.',
                             onPressed: onNavigateToPurchaseReturnRequest,
                           ),
+                          Input(
+                            label: 'Warehouse',
+                            placeholder: 'Warehouse',
+                            controller: warehouse,
+                            readOnly: true,
+                            onPressed: onChangeWhs,
+                          ),
+                          Divider(thickness: 1, color: Colors.grey.shade400),
                           Input(
                             controller: cardCode,
                             readOnly: true,
