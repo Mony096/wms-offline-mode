@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
 
 class SyncLogDeliveryScreen extends StatelessWidget {
   const SyncLogDeliveryScreen({super.key});
@@ -225,15 +226,29 @@ class SyncLogDeliveryScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 4),
                                 Expanded(
-                                  child: Text(
-                                    record["WarehouseCode"],
+                                  child: Builder(
+                                builder: (context) {
+                                  final whsList = context.read<WarehouseOfflineCubit>().state;
+                                  final code = record['WarehouseCode'] ?? '';
+                                  var name = '';
+                                  if (code.isNotEmpty) {
+                                    try {
+                                      final whs = whsList.firstWhere((w) => w['WarehouseCode'] == code);
+                                      name = whs['WarehouseName'] ?? '';
+                                    } catch (_) {}
+                                  }
+                                  final display = (name.isNotEmpty) ? name : (code.isNotEmpty ? code : '-');
+                                  return Text(
+                                    display,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w500,
                                       color: Colors.black87,
                                     ),
-                                  ),
+                                  );
+                                },
+                              ),
                                 ),
                               ],
                             ),

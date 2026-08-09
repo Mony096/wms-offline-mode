@@ -354,7 +354,7 @@ class _WarehousePageState extends State<WarehousePage> {
     } else {
       await LocalStorageManger.setString('warehouse', code);
       await LocalStorageManger.setString('warehouseName', name);
-      Navigator.pop(context, code);
+      Navigator.pop(context, {'code': code, 'name': name});
     }
   }
 

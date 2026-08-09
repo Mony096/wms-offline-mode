@@ -53,6 +53,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
   final uomText = TextEditingController();
   final quantity = TextEditingController();
   final warehouse = TextEditingController();
+  final warehouseNameUI = TextEditingController();
   final uom = TextEditingController();
   final uomAbEntry = TextEditingController();
   final itemCode = TextEditingController();
@@ -105,6 +106,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
       print(widget.isEdit);
       // ✅ Populate text fields safely
       warehouse.text = getDataFromDynamic(widget.isEdit['FromWarehouse']);
+      warehouseNameUI.text = warehouse.text;
       saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
       if (mounted) MaterialDialog.loading(context);
 
@@ -217,6 +219,8 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
     // Load warehouse code first
     final whs = await LocalStorageManger.getString('warehouse');
     warehouse.text = whs;
+    final whsName = await LocalStorageManger.getString('warehouseName');
+    warehouseNameUI.text = whsName.isNotEmpty ? whsName : warehouse.text;
     // Get current BinCubit state
     // final state = _blocBin.state;
     // final stateWarehouse = _blocWarehouse.state;
@@ -435,7 +439,13 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
   void onChangeWhs() async {
     goTo(context, WarehousePage()).then((value) {
       if (value == null) return;
-      warehouse.text = getDataFromDynamic(value);
+      if (value is Map) {
+        warehouse.text = getDataFromDynamic(value['code']);
+        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty ? getDataFromDynamic(value['name']) : warehouse.text;
+      } else {
+        warehouse.text = getDataFromDynamic(value);
+        warehouseNameUI.text = warehouse.text;
+      }
     });
   }
 
@@ -925,7 +935,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
                     Input(
                       label: 'Warehouse',
                       placeholder: 'Warehouse',
-                      controller: warehouse,
+                      controller: warehouseNameUI,
                       readOnly: true,
                       onPressed: onChangeWhs,
                     ),

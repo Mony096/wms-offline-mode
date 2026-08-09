@@ -51,6 +51,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
   final quantity = TextEditingController();
   final ref = TextEditingController();
   final warehouse = TextEditingController();
+  final warehouseNameUI = TextEditingController();
   final uom = TextEditingController();
   final uomAbEntry = TextEditingController();
   final itemCode = TextEditingController();
@@ -231,6 +232,8 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
   void init() async {
     final whs = await LocalStorageManger.getString('warehouse');
     warehouse.text = whs;
+    final whsName = await LocalStorageManger.getString('warehouseName');
+    warehouseNameUI.text = whsName.isNotEmpty ? whsName : warehouse.text;
   }
 
   void onSelectItem() async {
@@ -883,7 +886,13 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
   void onChangeWhs() async {
     goTo(context, WarehousePage()).then((value) {
       if (value == null) return;
-      warehouse.text = getDataFromDynamic(value);
+      if (value is Map) {
+        warehouse.text = getDataFromDynamic(value['code']);
+        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty ? getDataFromDynamic(value['name']) : warehouse.text;
+      } else {
+        warehouse.text = getDataFromDynamic(value);
+        warehouseNameUI.text = warehouse.text;
+      }
     });
   }
 
@@ -1038,7 +1047,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
                     Input(
                       label: 'Warehouse',
                       placeholder: 'Warehouse',
-                      controller: warehouse,
+                      controller: warehouseNameUI,
                       readOnly: true,
                       onPressed: onChangeWhs,
                     ),

@@ -38,6 +38,7 @@ class _CreateWarehouseTransferScreenState
   final uomText = TextEditingController();
   final quantity = TextEditingController();
   final warehouse = TextEditingController();
+  final warehouseNameUI = TextEditingController();
   final toWarehouse = TextEditingController();
   final uom = TextEditingController();
   final uomAbEntry = TextEditingController();
@@ -91,6 +92,8 @@ class _CreateWarehouseTransferScreenState
   void init() async {
     final whs = await LocalStorageManger.getString('warehouse');
     warehouse.text = whs;
+    final whsName = await LocalStorageManger.getString('warehouseName');
+    warehouseNameUI.text = whsName.isNotEmpty ? whsName : warehouse.text;
   }
 
   void onSelectItem() async {

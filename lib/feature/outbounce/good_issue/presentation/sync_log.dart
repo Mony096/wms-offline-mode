@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
 
 class SyncLogGoodsIssueScreen extends StatelessWidget {
   const SyncLogGoodsIssueScreen({super.key});
@@ -178,11 +179,24 @@ class SyncLogGoodsIssueScreen extends StatelessWidget {
 
                             // --- Partner + Warehouse
 
-                            Text(
-                              "Warehouse : ${record['U_lk_whsdesc'] ?? '-'}",
-                              style: const TextStyle(
-                                  fontSize: 13, color: Colors.black54),
-                            ),
+                            Builder(
+                                builder: (context) {
+                                  final whsList = context.read<WarehouseOfflineCubit>().state;
+                                  final code = record['U_lk_whsdesc'] ?? '';
+                                  var name = '';
+                                  if (code.isNotEmpty) {
+                                    try {
+                                      final whs = whsList.firstWhere((w) => w['WarehouseCode'] == code);
+                                      name = whs['WarehouseName'] ?? '';
+                                    } catch (_) {}
+                                  }
+                                  final display = (name.isNotEmpty) ? name : (code.isNotEmpty ? code : '-');
+                                  return Text(
+                                    "Warehouse : $display",
+                                    style: const TextStyle(fontSize: 13, color: Colors.black54),
+                                  );
+                                },
+                              ),
                             const SizedBox(height: 10),
 
                             // --- Items list

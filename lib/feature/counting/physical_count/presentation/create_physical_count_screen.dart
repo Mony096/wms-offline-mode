@@ -52,6 +52,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   final quantity = TextEditingController();
   final ref = TextEditingController();
   final warehouse = TextEditingController();
+  final warehouseNameUI = TextEditingController();
   final uom = TextEditingController();
   final uomAbEntry = TextEditingController();
   final itemCode = TextEditingController();
@@ -268,7 +269,13 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   void onChangeWhs() async {
     goTo(context, WarehousePage()).then((value) {
       if (value == null) return;
-      warehouse.text = getDataFromDynamic(value);
+      if (value is Map) {
+        warehouse.text = getDataFromDynamic(value['code']);
+        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty ? getDataFromDynamic(value['name']) : warehouse.text;
+      } else {
+        warehouse.text = getDataFromDynamic(value);
+        warehouseNameUI.text = warehouse.text;
+      }
     });
   }
 
@@ -893,7 +900,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                     Input(
                       label: 'Warehouse',
                       placeholder: 'Warehouse',
-                      controller: warehouse,
+                      controller: warehouseNameUI,
                       readOnly: true,
                       onPressed: onChangeWhs,
                     ),

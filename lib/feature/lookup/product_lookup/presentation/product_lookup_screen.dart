@@ -34,6 +34,7 @@ class CreateProductLookUpScreen extends StatefulWidget {
 
 class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
   final warehouse = TextEditingController();
+  final warehouseNameUI = TextEditingController();
   final itemCode = TextEditingController();
   final itemName = TextEditingController();
 
@@ -78,6 +79,8 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
   void init() async {
     final whs = await LocalStorageManger.getString('warehouse');
     warehouse.text = whs;
+    final whsName = await LocalStorageManger.getString('warehouseName');
+    warehouseNameUI.text = whsName.isNotEmpty ? whsName : warehouse.text;
   }
 
   void onSelectItem() async {
@@ -260,7 +263,13 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
   void onChangeWhs() async {
     goTo(context, WarehousePage()).then((value) {
       if (value == null) return;
-      warehouse.text = getDataFromDynamic(value);
+      if (value is Map) {
+        warehouse.text = getDataFromDynamic(value['code']);
+        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty ? getDataFromDynamic(value['name']) : warehouse.text;
+      } else {
+        warehouse.text = getDataFromDynamic(value);
+        warehouseNameUI.text = warehouse.text;
+      }
     });
   }
 
@@ -339,7 +348,7 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                     Input(
                       label: 'Warehouse',
                       placeholder: 'Warehouse',
-                      controller: warehouse,
+                      controller: warehouseNameUI,
                       readOnly: true,
                       onPressed: onChangeWhs,
                     ),

@@ -59,6 +59,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   final quantity = TextEditingController();
   final ref = TextEditingController();
   final warehouse = TextEditingController();
+  final warehouseNameUI = TextEditingController();
   final uom = TextEditingController();
   final uomAbEntry = TextEditingController();
   final itemCode = TextEditingController();
@@ -268,6 +269,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   void init() async {
     final whs = await LocalStorageManger.getString('warehouse');
     warehouse.text = whs;
+    final whsName = await LocalStorageManger.getString('warehouseName');
+    warehouseNameUI.text = whsName.isNotEmpty ? whsName : warehouse.text;
     if (!widget.isQuickCount && widget.isEdit == null) {
       if (mounted) MaterialDialog.loading(context);
 
@@ -1366,7 +1369,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                     Input(
                       label: 'Warehouse',
                       placeholder: 'Warehouse',
-                      controller: warehouse,
+                      controller: warehouseNameUI,
                       readOnly: true,
                       onPressed: onChangeWhs,
                     ),
