@@ -617,18 +617,36 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
                       : null,
                 ),
                 const SizedBox(height: 40),
-                ContentHeader(),
                 Expanded(
-                  child: Scrollbar(
-                    child: ListView(
-                      // crossAxisAlignment: CrossAxisAlignment.start,
-                      children: items
-                          .map((item) => GestureDetector(
-                                onTap: () => onEdit(item),
-                                child: ItemRow(item: item),
-                              ))
-                          .toList(),
-                    ),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isPhone = constraints.maxWidth < 600;
+                      final content = Column(
+                        children: [
+                          ContentHeader(isPhone: isPhone),
+                          Expanded(
+                            child: Scrollbar(
+                              child: ListView(
+                                // crossAxisAlignment: CrossAxisAlignment.start,
+                                children: items
+                                    .map((item) => GestureDetector(
+                                          onTap: () => onEdit(item),
+                                          child: ItemRow(item: item, isPhone: isPhone),
+                                        ))
+                                    .toList(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                      if (isPhone) {
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: content,
+                        );
+                      }
+                      return content;
+                    },
                   ),
                 ),
               ],
@@ -703,7 +721,13 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
 }
 
 class ContentHeader extends StatelessWidget {
-  const ContentHeader({super.key});
+  const ContentHeader({super.key, this.isPhone = false});
+  final bool isPhone;
+
+  Widget _buildColumn(Widget child, int flex, double fixedWidth) {
+    if (isPhone) return SizedBox(width: fixedWidth, child: child);
+    return Expanded(flex: flex, child: child);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -717,18 +741,28 @@ class ContentHeader extends StatelessWidget {
         ),
       ),
       child: Row(
-        children: const [
-          Expanded(
-            flex: 3,
-            child: Text(
+        children: [
+          _buildColumn(
+            const Text(
               'Item No.',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
               ),
             ),
+            3,
+            220,
           ),
-          Expanded(child: Text('UoM')),
-          Expanded(child: Text('Qty/Op.')),
+          _buildColumn(
+            const Text('UoM', textAlign: TextAlign.center),
+            1,
+            60,
+          ),
+          _buildColumn(
+            const Text('Qty/Op.', textAlign: TextAlign.center),
+            1,
+            90,
+          ),
         ],
       ),
     );
@@ -736,9 +770,15 @@ class ContentHeader extends StatelessWidget {
 }
 
 class ItemRow extends StatelessWidget {
-  const ItemRow({super.key, required this.item});
+  const ItemRow({super.key, required this.item, this.isPhone = false});
 
   final dynamic item;
+  final bool isPhone;
+
+  Widget _buildColumn(Widget child, int flex, double fixedWidth) {
+    if (isPhone) return SizedBox(width: fixedWidth, child: child);
+    return Expanded(flex: flex, child: child);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -749,22 +789,47 @@ class ItemRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                flex: 3,
-                child: Text(
-                  getDataFromDynamic(item['ItemCode']),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                  ),
+              _buildColumn(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      getDataFromDynamic(item['ItemCode']),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      getDataFromDynamic(item['ItemDescription']),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
+                3,
+                220,
               ),
-              Expanded(child: Text(getDataFromDynamic(item['UoMCode']))),
-              Expanded(child: Text('${item['Quantity']}/0')),
+              _buildColumn(
+                Text(
+                  getDataFromDynamic(item['UoMCode']),
+                  textAlign: TextAlign.center,
+                ),
+                1,
+                60,
+              ),
+              _buildColumn(
+                Text(
+                  '${item['Quantity']}/0',
+                  textAlign: TextAlign.center,
+                ),
+                1,
+                90,
+              ),
             ],
           ),
-          SizedBox(height: 6),
-          Text(getDataFromDynamic(item['ItemDescription']))
         ],
       ),
     );

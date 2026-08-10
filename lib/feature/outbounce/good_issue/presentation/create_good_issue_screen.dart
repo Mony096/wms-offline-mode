@@ -1050,32 +1050,43 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300, width: 0.5),
                 ),
-                child: Column(
-                  children: [
-                    ContentHeader(),
-                    items.isEmpty
-                        ? Container(
-                            padding: EdgeInsets.all(20),
-                            child: Text(
-                              "No Item available",
-                              style:
-                                  TextStyle(fontSize: 15, color: Colors.grey),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isPhone = constraints.maxWidth < 600;
+                    final content = Column(
+                      children: [
+                        ContentHeader(isPhone: isPhone),
+                        items.isEmpty
+                            ? Container(
+                                padding: EdgeInsets.all(20),
+                                child: Text(
+                                  "No Item available",
+                                  style:
+                                      TextStyle(fontSize: 15, color: Colors.grey),
+                                ),
+                              )
+                            : Container(),
+                        ...items.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final item = entry.value;
+                          return GestureDetector(
+                            onTap: () => onEdit(item, index),
+                            child: ItemRow(
+                              item: item,
+                              isPhone: isPhone,
                             ),
-                          )
-                        : Container(),
-                    ...items.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final item = entry.value;
-                      return GestureDetector(
-                        onTap: () => onEdit(item, index),
-                        child: ItemRow(
-                          item: item,
-
-                          // Optional: pass index if you need inside ItemRow
-                        ),
+                          );
+                        }).toList(),
+                      ],
+                    );
+                    if (isPhone) {
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: content,
                       );
-                    }).toList(),
-                  ],
+                    }
+                    return content;
+                  },
                 ),
               )
             ],
@@ -1136,8 +1147,15 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
 }
 
 class ContentHeader extends StatelessWidget {
-  const ContentHeader({super.key, this.hideOpenQty});
+  const ContentHeader({super.key, this.hideOpenQty, this.isPhone = false});
   final dynamic hideOpenQty;
+  final bool isPhone;
+
+  Widget _buildColumn(Widget child, int flex, double fixedWidth) {
+    if (isPhone) return SizedBox(width: fixedWidth, child: child);
+    return Expanded(flex: flex, child: child);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1150,21 +1168,22 @@ class ContentHeader extends StatelessWidget {
       ),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       child: Row(
-        children: const [
-          Expanded(
-            flex: 3,
-            child: Text(
+        children: [
+          _buildColumn(
+            const Text(
               'Item No',
+              textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.black54,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
             ),
+            3,
+            220,
           ),
-          Expanded(
-            flex: 1,
-            child: Text(
+          _buildColumn(
+            const Text(
               'UoM',
               style: TextStyle(
                 color: Colors.black54,
@@ -1173,11 +1192,12 @@ class ContentHeader extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
+            1,
+            60,
           ),
-          Expanded(
-            flex: 1,
-            child: Text(
-              'Qty',
+          _buildColumn(
+            const Text(
+              'QTY',
               style: TextStyle(
                 color: Colors.black54,
                 fontWeight: FontWeight.w600,
@@ -1185,6 +1205,8 @@ class ContentHeader extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
+            1,
+            90,
           ),
         ],
       ),
@@ -1193,13 +1215,20 @@ class ContentHeader extends StatelessWidget {
 }
 
 class ItemRow extends StatelessWidget {
-  const ItemRow({super.key, required this.item, this.po, this.hideOpenQty});
+  const ItemRow({super.key, required this.item, this.po, this.hideOpenQty, this.isPhone = false});
   final dynamic po;
   final dynamic item;
   final dynamic hideOpenQty;
+  final bool isPhone;
+
   String getDataFromDynamic(dynamic value) {
     if (value == null) return '';
     return value.toString();
+  }
+
+  Widget _buildColumn(Widget child, int flex, double fixedWidth) {
+    if (isPhone) return SizedBox(width: fixedWidth, child: child);
+    return Expanded(flex: flex, child: child);
   }
 
   @override
@@ -1210,47 +1239,54 @@ class ItemRow extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // First Row (Item, UoM, Qty, Open Qty)
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                flex: 3,
-                child: Text(
-                  getDataFromDynamic(item['ItemCode']),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
+              _buildColumn(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      getDataFromDynamic(item['ItemCode']),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      getDataFromDynamic(item['ItemDescription']),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
+                3,
+                220,
               ),
-              Expanded(
-                flex: 1,
-                child: Text(
+              _buildColumn(
+                Text(
                   getDataFromDynamic(item['UoMCode']),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),
+                1,
+                60,
               ),
-              Expanded(
-                flex: 1,
-                child: Text(
+              _buildColumn(
+                Text(
                   getDataFromDynamic(item['Quantity']),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),
+                1,
+                90,
               ),
             ],
-          ),
-
-          const SizedBox(height: 4),
-
-          // Second Row (Description)
-          Text(
-            getDataFromDynamic(item['ItemDescription']),
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 13,
-            ),
           ),
 
           // Divider

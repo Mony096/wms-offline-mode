@@ -9,79 +9,104 @@ class ListToDoItem extends StatefulWidget {
     this.qty,
     this.openQty,
     this.desc,
+    this.isPhone = false,
   });
   final itemCode;
   final uom;
   final qty;
   final openQty;
   final desc;
+  final bool isPhone;
+
   @override
   State<ListToDoItem> createState() => _ListToDoItemState();
 }
 
 class _ListToDoItemState extends State<ListToDoItem> {
+  String getDataFromDynamic(dynamic value) {
+    if (value == null) return '';
+    return value.toString();
+  }
+
+  Widget _buildColumn(Widget child, int flex, double fixedWidth) {
+    if (widget.isPhone) return SizedBox(width: fixedWidth, child: child);
+    return Expanded(flex: flex, child: child);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-          color: Color.fromARGB(255, 255, 255, 255),
-          border: Border(
-            // left: BorderSide(
-            //   color: Color.fromARGB(255, 200, 196, 196),
-            //   width: 0.5,
-            // ),
-            bottom: BorderSide(
-              color: Color.fromARGB(255, 188, 183, 183),
-              width: 0.5,
-            ),
-            // right: BorderSide(
-            //   color: Color.fromARGB(255, 192, 188, 188),
-            //   width: 0.5,
-            // ),
-          )),
-      // padding: const EdgeInsets.all(5),
-      width: double.infinity,
-      height: 75.0,
-      child: Row(
+      color: Colors.grey.shade50,
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(
-            width: 10,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildColumn(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      getDataFromDynamic(widget.itemCode),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      getDataFromDynamic(widget.desc),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                3,
+                220,
+              ),
+              _buildColumn(
+                Text(
+                  getDataFromDynamic(widget.uom),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13),
+                ),
+                1,
+                60,
+              ),
+              _buildColumn(
+                Text(
+                  getDataFromDynamic(widget.qty),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13),
+                ),
+                1,
+                90,
+              ),
+              _buildColumn(
+                Text(
+                  getDataFromDynamic(widget.openQty),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13),
+                ),
+                1,
+                80,
+              ),
+            ],
           ),
-          Expanded(
-              flex: 6,
-              child: Container(
-                child: Column(children: [
-                  Expanded(
-                      flex: 3,
-                      child: Container(
-                        child: Row(
-                          children: [
-                            Expanded(
-                                flex: 7,
-                                child: Text(
-                                  "${widget.itemCode}",
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                )),
-                            Expanded(flex: 2, child: Text("${widget.uom}")),
-                            Expanded(
-                                flex: 2,
-                                child: Text(
-                                    "${widget.qty ?? 0}/${widget.openQty ?? 0}")),
-                          ],
-                        ),
-                      )),
-                  Expanded(
-                      flex: 3,
-                      child: Container(
-                        child: Row(
-                          children: [
-                            Expanded(flex: 7, child: Text("${widget.desc}")),
-                          ],
-                        ),
-                      ))
-                ]),
-              )),
-          // Expanded(flex: 1, child: Container(child: Text("")))
+
+          // Divider
+          const SizedBox(height: 8),
+          Divider(
+            height: 1,
+            thickness: 0.6,
+            color: Colors.grey.shade300,
+          ),
         ],
       ),
     );

@@ -149,37 +149,44 @@ class _QuickGoodReceiptCreateScreenState
                 height: 20,
               ),
               Container(
-                height: 40,
-                width: double.infinity,
                 decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: Colors.black, width: 1.0),
-                  ),
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300, width: 0.5),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(flex: 7, child: Text("Item Number")),
-                    Expanded(flex: 2, child: Text("UoM")),
-                    Expanded(flex: 2, child: Text("Qty/Open")),
-                  ],
-                ),
-              ),
-              Container(
-                // height: d,
-                child: ListView.builder(
-                  // padding: const EdgeInsets.fromLTRB(0, 13, 0, 0),
-                  shrinkWrap: true,
-                  itemCount: document.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    return GestureDetector(
-                        onTap: () {},
-                        child: ListToDoItem(
-                          itemCode: document[index]["ItemCode"],
-                          desc: document[index]["ItemDescription"],
-                          uom: document[index]["UoM"],
-                          qty: document[index]["Quantity"],
-                          openQty: document[index]["TotalQty"],
-                        ));
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isPhone = constraints.maxWidth < 600;
+                    final content = Column(
+                      children: [
+                        ContentHeader(isPhone: isPhone),
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: document.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            return GestureDetector(
+                              onTap: () {},
+                              child: ListToDoItem(
+                                itemCode: document[index]["ItemCode"],
+                                desc: document[index]["ItemDescription"],
+                                uom: document[index]["UoM"],
+                                qty: document[index]["Quantity"],
+                                openQty: document[index]["TotalQty"],
+                                isPhone: isPhone,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                    if (isPhone) {
+                      return SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: content,
+                      );
+                    }
+                    return content;
                   },
                 ),
               ),
@@ -241,6 +248,89 @@ class _QuickGoodReceiptCreateScreenState
       //     ),
       //   ],
       // ),
+    );
+  }
+}
+
+class ContentHeader extends StatelessWidget {
+  const ContentHeader({
+    super.key,
+    this.isPhone = false,
+  });
+  final bool isPhone;
+
+  Widget _buildColumn(Widget child, int flex, double fixedWidth) {
+    if (isPhone) return SizedBox(width: fixedWidth, child: child);
+    return Expanded(flex: flex, child: child);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 214, 214, 215), // Dark navy header
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(8),
+          topRight: Radius.circular(8),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      child: Row(
+        children: [
+          _buildColumn(
+            const Text(
+              'Item No',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.black54,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+            3,
+            220,
+          ),
+          _buildColumn(
+            const Text(
+              'UoM',
+              style: TextStyle(
+                color: Colors.black54,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            1,
+            60,
+          ),
+          _buildColumn(
+            const Text(
+              'QTY Received',
+              style: TextStyle(
+                color: Colors.black54,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            1,
+            90,
+          ),
+          _buildColumn(
+            const Text(
+              'Open QTY',
+              style: TextStyle(
+                color: Colors.black54,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            1,
+            80,
+          )
+        ],
+      ),
     );
   }
 }
