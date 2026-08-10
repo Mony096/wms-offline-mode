@@ -143,7 +143,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
       final item = {
         "ItemCode": itemCode.text,
         "ItemDescription": itemName.text,
-        "Quantity": quantity.text,
+        "Quantity": quantity.text.replaceAll(',', ''),
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "UoMCode": uom.text,
@@ -209,7 +209,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
       onConfirm: () {
         itemCode.text = getDataFromDynamic(item['ItemCode']);
         itemName.text = getDataFromDynamic(item['ItemDescription']);
-        quantity.text = getDataFromDynamic(item['Quantity']);
+        quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
         uom.text = getDataFromDynamic(item['UoMCode']);
         uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
         sbinCode.text = getDataFromDynamic(item['SBinCode']);
@@ -606,7 +606,9 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
                 ),
                 Input(
                   controller: quantity,
-                  label: 'Quantity.',
+                  
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+label: 'Quantity.',
                   placeholder: 'Quantity',
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
                   onEditingComplete: onCompleteQuantiyInput,
@@ -822,7 +824,7 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  '${item['Quantity']}/0',
+                  '${formatQuantity(item['Quantity'])}/0',
                   textAlign: TextAlign.center,
                 ),
                 1,

@@ -118,10 +118,10 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
       }
 
       if (totalAddedQuantity + currentQuantity >
-              double.parse(quantity.text).toInt() &&
+              parseQuantity(quantity.text).toInt() &&
           updateIndex < 0) {
         throw Exception(
-            'Quantity exceeds available. Remaining quantity is ${double.parse(quantity.text).toInt() - totalAddedQuantity}.');
+            'Quantity exceeds available. Remaining quantity is ${parseQuantity(quantity.text).toInt() - totalAddedQuantity}.');
       }
 
       if (updateIndex < 0) {
@@ -143,7 +143,7 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
                     0,
                     (sum, item) =>
                         sum + double.parse(item['Quantity']).toInt()) >
-                double.parse(quantity.text).toInt() &&
+                parseQuantity(quantity.text).toInt() &&
             updateIndex >= 0) {
           updateIndex = -1;
           quantityPerBatch.text = quantity.text;
@@ -215,7 +215,7 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
 
   void onComplete() {
     try {
-      final qty = double.parse(quantity.text).toInt();
+      final qty = parseQuantity(quantity.text).toInt();
       int totalAddedQuantity = items.fold(
           0, (sum, item) => sum + double.parse(item['Quantity']).toInt());
       if (qty == 0) {
@@ -255,12 +255,12 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
       }
       int totalAddedQuantity = items.fold(
           0, (sum, item) => sum + double.parse(item['Quantity']).toInt());
-      if (totalAddedQuantity > double.parse(quantity.text).toInt()) {
+      if (totalAddedQuantity > parseQuantity(quantity.text).toInt()) {
         items = [];
         MaterialDialog.success(context,
             title: 'Failed',
             body:
-                'Quantity exceeds available. Remaining quantity is ${double.parse(quantity.text).toInt() - totalAddedQuantity}.');
+                'Quantity exceeds available. Remaining quantity is ${parseQuantity(quantity.text).toInt() - totalAddedQuantity}.');
       }
       setState(() {
         items;
@@ -351,7 +351,9 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
                     ),
                     Input(
                       controller: quantity,
-                      label: 'Quantity',
+                      
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+label: 'Quantity',
                       placeholder: 'Qty',
                       keyboardType:
                           TextInputType.numberWithOptions(decimal: true),

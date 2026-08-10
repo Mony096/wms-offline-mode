@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../constant/style.dart';
 
@@ -16,6 +17,7 @@ class Input extends StatelessWidget {
     this.onEditingComplete,
     this.initialValue = '',
     this.keyboardType = TextInputType.text,
+    this.inputFormatters, // ✅ new parameter
   });
 
   final String label;
@@ -28,6 +30,7 @@ class Input extends StatelessWidget {
   final Function()? onEditingComplete;
   final String initialValue;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters; // ✅ formatters
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +55,7 @@ class Input extends StatelessWidget {
               onEditingComplete: onEditingComplete,
               style: TextStyle(fontSize: 14.5,color: Colors.black),
               keyboardType: keyboardType,
+              inputFormatters: inputFormatters, // ✅ wire up
               // initialValue: initialValue,
 
               decoration: InputDecoration(

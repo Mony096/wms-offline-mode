@@ -497,11 +497,22 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                     ),
                                   ),
                                   Expanded(
-                                      child: Text((getDataFromDynamic(
-                                          item['InvntryUom'])))),
+                                    flex: 1,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 10),
+                                      child: Text(
+                                        getDataFromDynamic(item['InvntryUom']),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                  ),
                                   Expanded(
-                                      child: Text((getDataFromDynamic(
-                                          item['OnHandQty'])))),
+                                    flex: 1,
+                                    child: Text(
+                                      formatQuantity(getDataFromDynamic(item['OnHandQty'])),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
                                 ],
                               ),
                               // SizedBox(
@@ -850,17 +861,14 @@ class ContentHeader extends StatelessWidget {
           ),
           Expanded(
             flex: 1,
-            child: Padding(
-              padding: EdgeInsets.only(right: 30),
-              child: Text(
-                'UoM',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-                textAlign: TextAlign.center,
+            child: Text(
+              'UoM',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
+              textAlign: TextAlign.center,
             ),
           ),
           Expanded(

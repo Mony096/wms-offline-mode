@@ -193,9 +193,7 @@ class ReviewCycleCountOfflineSave extends StatelessWidget {
                                 children: [
                                   _buildRow(
                                       "Warehouse",
-                                      record['InventoryPostingLines'][0]
-                                              ["WarehouseCode"] ??
-                                          ''),
+                                      getWarehouseName(context, record['InventoryPostingLines'][0]['WarehouseCode'] ?? '')),
                                   const SizedBox(height: 5),
                                   _buildRow("Reference",
                                       record['Reference2'] ?? 'N/A'),
@@ -250,7 +248,7 @@ class ReviewCycleCountOfflineSave extends StatelessWidget {
                                                 ),
                                               ),
                                               Text(
-                                                "Qty: ${line['CountedQuantity'] ?? '0'}",
+                                                "Qty: ${formatQuantity(line['CountedQuantity'] ?? '0')}",
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Colors.black87,

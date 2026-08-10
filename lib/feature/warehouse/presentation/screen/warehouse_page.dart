@@ -352,8 +352,6 @@ class _WarehousePageState extends State<WarehousePage> {
 
       await goTo(context, const Dashboard(), removeAllPreviousRoutes: true);
     } else {
-      await LocalStorageManger.setString('warehouse', code);
-      await LocalStorageManger.setString('warehouseName', name);
       Navigator.pop(context, {'code': code, 'name': name});
     }
   }

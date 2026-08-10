@@ -6,6 +6,7 @@ import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_c
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
+import 'package:wms_mobile/helper/helper.dart';
 
 class SyncLogPhysicalCountScreen extends StatelessWidget {
   const SyncLogPhysicalCountScreen({super.key});
@@ -210,7 +211,7 @@ class SyncLogPhysicalCountScreen extends StatelessWidget {
                                   final whsList = context.read<WarehouseOfflineCubit>().state;
                                   var code = '';
                                   try {
-                                    code = record['InventoryCountingLines'][0]["WarehouseCode"] ?? '';
+                                    code = getWarehouseName(context, record['InventoryCountingLines'][0]['WarehouseCode'] ?? '');
                                   } catch (_) {}
                                   
                                   var name = '';
@@ -326,7 +327,7 @@ class SyncLogPhysicalCountScreen extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        "Qty: ${line['CountedQuantity'] ?? '0'}",
+                                        "Qty: ${formatQuantity(line['CountedQuantity'] ?? '0')}",
                                         style: const TextStyle(
                                           fontSize: 13,
                                           color: Colors.black87,

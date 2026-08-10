@@ -260,7 +260,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
       final item = {
         "ItemCode": itemCode.text,
         "ItemDescription": itemName.text,
-        "Quantity": quantity.text,
+        "Quantity": quantity.text.replaceAll(',', ''),
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "UoMCode": uom.text,
@@ -325,7 +325,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
       onConfirm: () {
         itemCode.text = getDataFromDynamic(item['ItemCode']);
         itemName.text = getDataFromDynamic(item['ItemDescription']);
-        quantity.text = getDataFromDynamic(item['Quantity']);
+        quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
         uom.text = getDataFromDynamic(item['UoMCode']);
         uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
         binCode.text = getDataFromDynamic(item['BinCode']);
@@ -1012,7 +1012,9 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                       label: 'Input Qty',
                       placeholder: 'Quantity',
                       controller: quantity,
-                      focusNode: _quantity,
+                      
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+focusNode: _quantity,
                       onFieldSubmitted: (value) {
                         _handleScanSubmitted(value, _quantity);
                       },
@@ -1299,7 +1301,7 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  getDataFromDynamic(item['Quantity']),
+                  formatQuantity(getDataFromDynamic(item['Quantity'])),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),

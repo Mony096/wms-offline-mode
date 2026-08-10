@@ -308,7 +308,7 @@ class _CreatePurchaseReturnScreenState
       final item = {
         "ItemCode": itemCode.text,
         "ItemDescription": itemName.text,
-        "Quantity": quantity.text,
+        "Quantity": quantity.text.replaceAll(',', ''),
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "TotalQuantity": totalQty.text,
@@ -376,13 +376,13 @@ class _CreatePurchaseReturnScreenState
       onConfirm: () {
         itemCode.text = getDataFromDynamic(item['ItemCode']);
         itemName.text = getDataFromDynamic(item['ItemDescription']);
-        quantity.text = getDataFromDynamic(item['Quantity']);
+        quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
         uom.text = getDataFromDynamic(item['UoMCode']);
         uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
         binCode.text = getDataFromDynamic(item['BinCode']);
         binId.text = getDataFromDynamic(item['BinId']);
         baseUoM.text = getDataFromDynamic(item['BaseUoM']);
-        totalQty.text = getDataFromDynamic(item['TotalQuantity']);
+        totalQty.text = formatQuantity(getDataFromDynamic(item['TotalQuantity']));
         refLineNo.text = getDataFromDynamic(item['BaseLine']);
         uoMGroupDefinitionCollection.text = jsonEncode(
           item['UoMGroupDefinitionCollection'],
@@ -1196,7 +1196,9 @@ class _CreatePurchaseReturnScreenState
                             label: 'Input Qty',
                             placeholder: 'Quantity',
                             controller: quantity,
-                            focusNode: _quantity,
+                            
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+focusNode: _quantity,
                             onFieldSubmitted: (value) {
                               _handleScanSubmitted(value, _quantity);
                             },
@@ -1507,7 +1509,7 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  getDataFromDynamic(item['Quantity']),
+                  formatQuantity(getDataFromDynamic(item['Quantity'])),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),
@@ -1516,9 +1518,7 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  ((double.tryParse(item['TotalQuantity'].toString()) ?? 0) -
-                          (double.tryParse(item['Quantity'].toString()) ?? 0))
-                      .toString(),
+                  formatQuantity(((double.tryParse(item['TotalQuantity'].toString()) ?? 0) - (double.tryParse(item['Quantity'].toString()) ?? 0))),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),
@@ -1707,13 +1707,13 @@ class ReviewRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  getDataFromDynamic(item['TotalQuantity']),
+                  formatQuantity(getDataFromDynamic(item['TotalQuantity'])),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
               Expanded(
                 child: Text(
-                  getDataFromDynamic(item['Quantity']),
+                  formatQuantity(getDataFromDynamic(item['Quantity'])),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
@@ -1727,9 +1727,7 @@ class ReviewRow extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  ((double.tryParse(item['TotalQuantity'].toString()) ?? 0) -
-                          (double.tryParse(item['Quantity'].toString()) ?? 0))
-                      .toString(),
+                  formatQuantity(((double.tryParse(item['TotalQuantity'].toString()) ?? 0) - (double.tryParse(item['Quantity'].toString()) ?? 0))),
                   textAlign: TextAlign.right,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),

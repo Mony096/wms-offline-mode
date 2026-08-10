@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
+import 'package:wms_mobile/helper/helper.dart';
 
 class SyncLogCycleCountScreen extends StatelessWidget {
   const SyncLogCycleCountScreen({super.key});
@@ -193,9 +194,7 @@ class SyncLogCycleCountScreen extends StatelessWidget {
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
-                                    record['InventoryPostingLines'][0]
-                                            ["WarehouseCode"] ??
-                                        '',
+                                    getWarehouseName(context, record['InventoryPostingLines'][0]['WarehouseCode'] ?? ''),
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontSize: 12,
@@ -320,7 +319,7 @@ class SyncLogCycleCountScreen extends StatelessWidget {
                                         ),
                                       ),
                                       Text(
-                                        "Qty: ${line['CountedQuantity'] ?? '0'}",
+                                        "Qty: ${formatQuantity(line['CountedQuantity'] ?? '0')}",
                                         style: const TextStyle(
                                           fontSize: 13,
                                           color: Colors.black87,

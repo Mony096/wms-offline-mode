@@ -38,6 +38,7 @@ import '/utilies/storage/locale_storage.dart';
 // import 'package:iscan_data_plugin/iscan_data_plugin.dart';
 import '../../../../constant/style.dart';
 import 'cubit/quick_count_cubit.dart';
+import 'package:wms_mobile/helper/helper.dart';
 
 class CreateQuickCountScreen extends StatefulWidget {
   const CreateQuickCountScreen(
@@ -405,7 +406,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         if (matchedItemStock.isNotEmpty) {
           final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
           setState(() {
-            inWhsQty.text = onHandQty.toString();
+            inWhsQty.text = formatQuantity(onHandQty);
           });
         } else {
           setState(() {
@@ -457,7 +458,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
       final item = {
         "ItemCode": itemCode.text,
         "ItemDescription": itemName.text,
-        "Quantity": quantity.text,
+        "Quantity": quantity.text.replaceAll(',', ''),
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "UoMCode": uom.text,
@@ -468,8 +469,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         "BaseUoM": baseUoM.text,
         "BinEntry": binId.text,
         "BinCode": binCode.text,
-        "InWhsQty": inWhsQty.text,
-        "Variance": variance.text,
+        "InWhsQty": inWhsQty.text.replaceAll(',', ''),
+        "Variance": variance.text.replaceAll(',', ''),
         "BarCode": barCode.text,
         "ManageSerialNumbers": isSerial.text,
         "ManageBatchNumbers": isBatch.text,
@@ -512,7 +513,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         print(item);
         itemCode.text = getDataFromDynamic(item['ItemCode']);
         itemName.text = getDataFromDynamic(item['ItemDescription']);
-        quantity.text = getDataFromDynamic(item['Quantity']);
+        quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
         uom.text = getDataFromDynamic(item['UoMCode']);
         uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
         binCode.text = getDataFromDynamic(item['BinCode']);
@@ -527,8 +528,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         isBatch.text = getDataFromDynamic(item['ManageBatchNumbers']);
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
-        inWhsQty.text = getDataFromDynamic(item["InWhsQty"]);
-        variance.text = getDataFromDynamic(item["Variance"]);
+        inWhsQty.text = formatQuantity(getDataFromDynamic(item["InWhsQty"]));
+        variance.text = formatQuantity(getDataFromDynamic(item["Variance"]));
 
         barCode.text = getDataFromDynamic(item['BarCode']);
 
@@ -553,7 +554,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
           if (matchedItemStock.isNotEmpty) {
             final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
             setState(() {
-              inWhsQty.text = onHandQty.toString();
+              inWhsQty.text = formatQuantity(onHandQty);
             });
           } else {
             setState(() {
@@ -625,7 +626,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         if (matched.isNotEmpty) {
           final onHandQty = matched['OnHandQty'] ?? 0;
           setState(() {
-            inWhsQty.text = onHandQty.toString();
+            inWhsQty.text = formatQuantity(onHandQty);
           });
         } else {
           // ❌ Not found in offline data
@@ -660,7 +661,13 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
       itemName.text = "";
       uom.text = "";
       uomAbEntry.text = "";
-      warehouse.text = getDataFromDynamic(value);
+      if (value is Map) {
+        warehouse.text = getDataFromDynamic(value['code']);
+        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty ? getDataFromDynamic(value['name']) : warehouse.text;
+      } else {
+        warehouse.text = getDataFromDynamic(value);
+        warehouseNameUI.text = warehouse.text;
+      }
     });
   }
 
@@ -1194,7 +1201,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
           if (matchedItemStock.isNotEmpty) {
             final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
             setState(() {
-              inWhsQty.text = onHandQty.toString();
+              inWhsQty.text = formatQuantity(onHandQty);
             });
           } else {
             setState(() {
@@ -1220,8 +1227,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
 
   void onCompleteQuantiyInput() {
     FocusScope.of(context).requestFocus(FocusNode());
-    variance.text = (double.parse(quantity.text.isEmpty ? "0" : quantity.text) -
-            double.parse(inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+    variance.text = (parseQuantity(quantity.text) -
+            parseQuantity(inWhsQty.text))
         .toString();
     onNavigateSerialOrBatch();
   }
@@ -1229,8 +1236,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   void onNavigateSerialOrBatch({bool force = false}) {
     // return;
     // if (quantity.text == "") return;
-    // if (double.parse(inWhsQty.text).toInt() ==
-    //     double.parse(quantity.text).toInt()) return;
+    // if (parseQuantity(inWhsQty.text).toInt() ==
+    //     parseQuantity(quantity.text).toInt()) return;
 
     if (isSerial.text == 'tYES') {
       final serialList = serialsInput.text == "" || serialsInput.text == "null"
@@ -1245,10 +1252,9 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         GoodReceiptSerialScreen(
             itemCode: itemCode.text,
             quantity: quantity.text,
-            listAllSerial: double.parse(
-                            inWhsQty.text.isEmpty ? "0" : inWhsQty.text)
+            listAllSerial: parseQuantity(inWhsQty.text)
                         .toInt() <
-                    double.parse(quantity.text.isEmpty ? "0" : quantity.text)
+                    parseQuantity(quantity.text)
                         .toInt()
                 ? null
                 : true,
@@ -1277,11 +1283,11 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
             quantity: quantity.text,
             isQuickCount: true,
             inWhsQty: inWhsQty.text,
-            alcQty: double.parse(quantity.text).toInt() -
-                double.parse(inWhsQty.text).toInt(),
+            alcQty: parseQuantity(quantity.text).toInt() -
+                parseQuantity(inWhsQty.text).toInt(),
             listAllBatch: true,
-            // double.parse(inWhsQty.text).toInt() <
-            //         double.parse(quantity.text).toInt()
+            // parseQuantity(inWhsQty.text).toInt() <
+            //         parseQuantity(quantity.text).toInt()
             //     ? null
             //     : true,
             serials: batches,
@@ -1545,20 +1551,15 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                 //         onNavigateSerialOrBatch(force: true);
                 //       }
                 //     : null,
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
                 onChanged: (value) {
-                  variance.text = (double.parse(value.isEmpty ? "0" : value) -
-                          double.parse(
-                              inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
-                      .toString();
+                  variance.text = formatQuantity(parseQuantity(value) - parseQuantity(inWhsQty.text));
                 },
                 onEditingComplete: onCompleteQuantiyInput,
                 onPressed: quantity.text.isNotEmpty &&
                         (isBatch.text == "tYES" || isSerial.text == "tYES")
-                    ? double.parse(inWhsQty.text.isEmpty ? "0" : inWhsQty.text)
-                                .toInt() !=
-                            double.parse(
-                                    quantity.text.isEmpty ? "0" : quantity.text)
-                                .toInt()
+                    ? parseQuantity(inWhsQty.text).toInt() !=
+                             parseQuantity(quantity.text).toInt()
                         ? () {
                             onNavigateSerialOrBatch(force: true);
                           }
@@ -1904,7 +1905,7 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  getDataFromDynamic(item['Quantity'] ?? "0"),
+                  formatQuantity(getDataFromDynamic(item['Quantity'] ?? "0")),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),

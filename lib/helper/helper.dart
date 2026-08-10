@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/core/enum/global.dart';
 import 'package:http/http.dart' as http;
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
 import 'package:wms_mobile/utilies/dialog/dialog.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -133,6 +135,35 @@ String formatBalance(dynamic value) {
     return formatter.format(parsedValue);
   } catch (e) {
     return '0.00';
+  }
+}
+
+String formatQuantity(dynamic value) {
+  try {
+    double parsedValue = 0.0;
+    if (value is double) {
+      parsedValue = value;
+    } else if (value is int) {
+      parsedValue = value.toDouble();
+    } else if (value != null && value.toString().isNotEmpty) {
+      // Remove commas before parsing in case it's already formatted
+      parsedValue = double.parse(value.toString().replaceAll(',', ''));
+    } else {
+      return '0';
+    }
+    final formatter = NumberFormat('#,##0.######', 'en_US');
+    return formatter.format(parsedValue);
+  } catch (e) {
+    return '0';
+  }
+}
+
+double parseQuantity(dynamic value) {
+  if (value == null || value.toString().isEmpty) return 0.0;
+  try {
+    return double.parse(value.toString().replaceAll(',', ''));
+  } catch (e) {
+    return 0.0;
   }
 }
 
@@ -308,4 +339,58 @@ Future<bool> hasInternet() async {
 
   // Failsafe return, though the logic above should cover all cases.
   return false;
+}
+
+class ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+      TextEditingValue oldValue, TextEditingValue newValue) {
+    if (newValue.text.isEmpty) {
+      return newValue.copyWith(text: '');
+    }
+    String text = newValue.text;
+    if (text.startsWith('.')) {
+      text = '0' + text;
+    }
+    if (RegExp(r'[^0-9.]').hasMatch(text.replaceAll(',', ''))) {
+      return oldValue;
+    }
+    if (text.split('.').length > 2) {
+      return oldValue;
+    }
+    List<String> parts = text.replaceAll(',', '').split('.');
+    String integerPart = parts[0];
+    String decimalPart = parts.length > 1 ? '.' + parts[1] : '';
+
+    String formattedInteger = '';
+    int count = 0;
+    for (int i = integerPart.length - 1; i >= 0; i--) {
+      if (count != 0 && count % 3 == 0) {
+        formattedInteger = ',' + formattedInteger;
+      }
+      formattedInteger = integerPart[i] + formattedInteger;
+      count++;
+    }
+
+    String formattedText = formattedInteger + decimalPart;
+    int cursorOffset = newValue.selection.end +
+        (formattedText.length - newValue.text.length);
+    if (cursorOffset < 0) cursorOffset = 0;
+    if (cursorOffset > formattedText.length) cursorOffset = formattedText.length;
+
+    return TextEditingValue(
+      text: formattedText,
+      selection: TextSelection.collapsed(offset: cursorOffset),
+    );
+  }
+}
+
+String getWarehouseName(BuildContext context, String warehouseCode) {
+  try {
+    final whsState = context.read<WarehouseOfflineCubit>().state;
+    final matched = whsState.firstWhere((w) => w['WarehouseCode'] == warehouseCode, orElse: () => {});
+    return matched.isNotEmpty && matched['WarehouseName'] != null ? matched['WarehouseName'] : warehouseCode;
+  } catch (e) {
+    return warehouseCode;
+  }
 }

@@ -93,6 +93,7 @@
 //   }
 // }
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../constant/style.dart';
 
 class InputCol extends StatelessWidget {
@@ -111,7 +112,8 @@ class InputCol extends StatelessWidget {
     this.onTap,
     this.focusNode,
     this.onFieldSubmitted,
-    this.onChanged, // ✅ new parameter
+    this.onChanged,
+    this.inputFormatters, // ✅ new parameter
   });
 
   final String label;
@@ -127,7 +129,8 @@ class InputCol extends StatelessWidget {
   final TextInputType? keyboardType;
   final FocusNode? focusNode;
   final Function(String)? onFieldSubmitted;
-  final Function(String)? onChanged; // ✅ callback when text changes
+  final Function(String)? onChanged;
+  final List<TextInputFormatter>? inputFormatters; // ✅ formatters
 
   @override
   Widget build(BuildContext context) {
@@ -159,8 +162,9 @@ class InputCol extends StatelessWidget {
             keyboardType: keyboardType,
             textAlign: TextAlign.left,
             onTap: onTap,
-            onChanged: onChanged, // ✅ wire up
+            onChanged: onChanged,
             onFieldSubmitted: onFieldSubmitted,
+            inputFormatters: inputFormatters, // ✅ wire up
             style: const TextStyle(fontSize: 14),
             decoration: InputDecoration(
               contentPadding: onPressed != null

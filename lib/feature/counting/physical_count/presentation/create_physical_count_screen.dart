@@ -33,6 +33,7 @@ import '/helper/helper.dart';
 import '/utilies/dialog/dialog.dart';
 // import 'package:iscan_data_plugin/iscan_data_plugin.dart';
 import '../../../../constant/style.dart';
+import 'package:wms_mobile/helper/helper.dart';
 
 class CreatePhysicalCountScreen extends StatefulWidget {
   const CreatePhysicalCountScreen({
@@ -289,7 +290,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
       final item = {
         "ItemCode": itemCode.text,
         "ItemDescription": itemName.text,
-        "Quantity": quantity.text,
+        "Quantity": quantity.text.replaceAll(',', ''),
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "UoMCode": uom.text,
@@ -305,8 +306,8 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
             serialsInput.text == "" ? [] : jsonDecode(serialsInput.text) ?? [],
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
-        "InWhsQty": inWhsQty.text,
-        "Variance": variance.text,
+        "InWhsQty": inWhsQty.text.replaceAll(',', ''),
+        "Variance": variance.text.replaceAll(',', ''),
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -340,7 +341,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
       onConfirm: () {
         itemCode.text = getDataFromDynamic(item['ItemCode']);
         itemName.text = getDataFromDynamic(item['ItemDescription']);
-        quantity.text = getDataFromDynamic(item['Quantity']);
+        quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
         uom.text = getDataFromDynamic(item['UoMCode']);
         uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
         binCode.text = getDataFromDynamic(item['BinCode']);
@@ -348,7 +349,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
         baseUoM.text = getDataFromDynamic(item['BaseUoM']);
         docEntry.text = getDataFromDynamic(item['DocEntry']);
         refLineNo.text = getDataFromDynamic(item['BaseLine']);
-        variance.text = getDataFromDynamic(item["Variance"]);
+        variance.text = formatQuantity(getDataFromDynamic(item["Variance"]));
         uoMGroupDefinitionCollection.text = jsonEncode(
           item['UoMGroupDefinitionCollection'],
         );
@@ -373,7 +374,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
           if (matchedItemStock.isNotEmpty) {
             final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
             setState(() {
-              inWhsQty.text = onHandQty.toString();
+              inWhsQty.text = formatQuantity(onHandQty);
             });
           } else {
             setState(() {
@@ -395,7 +396,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
           if (matchedItemStock.isNotEmpty) {
             final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
             setState(() {
-              inWhsQty.text = onHandQty.toString();
+              inWhsQty.text = formatQuantity(onHandQty);
             });
           } else {
             setState(() {
@@ -459,7 +460,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
           if (matched.isNotEmpty) {
             final onHandQty = matched['OnHandQty'] ?? 0;
             setState(() {
-              inWhsQty.text = onHandQty.toString();
+              inWhsQty.text = formatQuantity(onHandQty);
             });
           } else {
             // ❌ Not found in offline data
@@ -818,8 +819,8 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
 
   void onCompleteQuantiyInput() {
     FocusScope.of(context).requestFocus(FocusNode());
-    variance.text = (double.parse(quantity.text.isEmpty ? "0" : quantity.text) -
-            double.parse(inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+    variance.text = (parseQuantity(quantity.text) -
+            parseQuantity(inWhsQty.text))
         .toString();
     // onNavigateSerialOrBatch();
   }
@@ -1058,14 +1059,15 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                 label: 'Input Qty',
                 placeholder: 'Quantity',
                 controller: quantity,
-                focusNode: _quantity,
+                
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+focusNode: _quantity,
                 onFieldSubmitted: (value) {
                   _handleScanSubmitted(value, _quantity);
                 },
                 onChanged: (value) {
                   variance.text = (double.parse(value.isEmpty ? "0" : value) -
-                          double.parse(
-                              inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+                          parseQuantity(inWhsQty.text))
                       .toString();
                 },
                 readOnly: isSerialOrBatch ? true : false, // simpler
@@ -1425,7 +1427,7 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  getDataFromDynamic(item['Quantity'] ?? "0"),
+                  formatQuantity(getDataFromDynamic(item['Quantity'] ?? "0")),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),

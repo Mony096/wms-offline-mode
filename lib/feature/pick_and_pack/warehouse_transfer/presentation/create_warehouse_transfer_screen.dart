@@ -150,7 +150,7 @@ class _CreateWarehouseTransferScreenState
       final item = {
         "ItemCode": itemCode.text,
         "ItemDescription": itemName.text,
-        "Quantity": quantity.text,
+        "Quantity": quantity.text.replaceAll(',', ''),
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "UoMCode": uom.text,
@@ -216,7 +216,7 @@ class _CreateWarehouseTransferScreenState
       onConfirm: () {
         itemCode.text = getDataFromDynamic(item['ItemCode']);
         itemName.text = getDataFromDynamic(item['ItemDescription']);
-        quantity.text = getDataFromDynamic(item['Quantity']);
+        quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
         uom.text = getDataFromDynamic(item['UoMCode']);
         uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
         sbinCode.text = getDataFromDynamic(item['SBinCode']);
@@ -589,7 +589,9 @@ class _CreateWarehouseTransferScreenState
                 ),
                 Input(
                   controller: quantity,
-                  label: 'Quantity.',
+                  
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+label: 'Quantity.',
                   placeholder: 'Quantity',
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
                   onEditingComplete: onCompleteQuantiyInput,
@@ -743,7 +745,7 @@ class ItemRow extends StatelessWidget {
                 ),
               ),
               Expanded(child: Text(getDataFromDynamic(item['UoMCode']))),
-              Expanded(child: Text('${item['Quantity']}/0')),
+              Expanded(child: Text('${formatQuantity(item['Quantity'])}/0')),
             ],
           ),
           SizedBox(height: 6),

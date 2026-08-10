@@ -407,7 +407,7 @@ class _PhysicalCountListsState extends State<PhysicalCountLists> {
                                                         ),
                                                       ),
                                                       Text(
-                                                        "Qty: ${line['CountedQuantity'] ?? '0'}",
+                                                        "Qty: ${formatQuantity(line['CountedQuantity'] ?? '0')}",
                                                         style: const TextStyle(
                                                           fontSize: 13,
                                                           color: Colors.black87,

@@ -104,7 +104,7 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
         throw Exception(
             "Opps, Quantity not found can't generate serial number!");
       }
-      if (items.length >= double.parse(quantity.text).toInt()) {
+      if (items.length >= parseQuantity(quantity.text).toInt()) {
         throw Exception(
             'Serial Number can not be greater than ${widget.quantity}.');
       }
@@ -199,8 +199,8 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
       }
 
       // Check if the number of serial numbers exceeds the allowed quantity
-      if (items.length > double.parse(quantity.text).toInt()) {
-        items.removeRange(double.parse(quantity.text).toInt(), items.length);
+      if (items.length > parseQuantity(quantity.text).toInt()) {
+        items.removeRange(parseQuantity(quantity.text).toInt(), items.length);
         MaterialDialog.success(
           context,
           title: 'Failed',
@@ -212,7 +212,7 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
 
   void onComplete() {
     try {
-      if (items.length < double.parse(quantity.text).toInt() &&
+      if (items.length < parseQuantity(quantity.text).toInt() &&
           widget.isQuickCount != true) {
         throw Exception(
             'Cannot add document without complete selection of serial numbers.');
@@ -277,7 +277,9 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
                     ),
                     Input(
                       controller: quantity,
-                      label: 'Quantity',
+                      
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+label: 'Quantity',
                       placeholder: 'Qty',
                       keyboardType:
                           TextInputType.numberWithOptions(decimal: true),

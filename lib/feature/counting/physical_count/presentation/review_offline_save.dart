@@ -198,9 +198,7 @@ class ReviewPhysicalCountOfflineSave extends StatelessWidget {
                                   const SizedBox(height: 5),
                                   _buildRow(
                                       "Warehouse",
-                                      record['InventoryCountingLines'][0]
-                                              ["WarehouseCode"] ??
-                                          ''),
+                                      getWarehouseName(context, record['InventoryCountingLines'][0]['WarehouseCode'] ?? '')),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),
@@ -252,7 +250,7 @@ class ReviewPhysicalCountOfflineSave extends StatelessWidget {
                                                 ),
                                               ),
                                               Text(
-                                                "Qty: ${line['CountedQuantity'] ?? '0'}",
+                                                "Qty: ${formatQuantity(line['CountedQuantity'] ?? '0')}",
                                                 style: const TextStyle(
                                                   fontSize: 13,
                                                   color: Colors.black87,

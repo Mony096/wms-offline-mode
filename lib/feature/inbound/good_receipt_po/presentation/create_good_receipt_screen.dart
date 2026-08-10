@@ -447,7 +447,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       final item = {
         "ItemCode": itemCode.text,
         "ItemDescription": itemName.text,
-        "Quantity": quantity.text,
+        "Quantity": quantity.text.replaceAll(',', ''),
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "UoMCode": uom.text,
@@ -516,7 +516,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       onConfirm: () {
         itemCode.text = getDataFromDynamic(item['ItemCode']);
         itemName.text = getDataFromDynamic(item['ItemDescription']);
-        quantity.text = getDataFromDynamic(item['Quantity']);
+        quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
         uom.text = getDataFromDynamic(item['UoMCode']);
         uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
         binCode.text = getDataFromDynamic(item['BinCode']);
@@ -527,7 +527,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         );
         baseLine.text = getDataFromDynamic(item['BaseLine']);
         originalQty.text = getDataFromDynamic(item['OriginalQty']);
-        totalQuantity.text = getDataFromDynamic(item['TotalQuantity']);
+        totalQuantity.text = formatQuantity(getDataFromDynamic(item['TotalQuantity']));
         isSerial.text = getDataFromDynamic(item['ManageSerialNumbers']);
         isBatch.text = getDataFromDynamic(item['ManageBatchNumbers']);
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
@@ -1367,7 +1367,9 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
                               label: 'Input Qty',
                               placeholder: 'Quantity',
                               controller: quantity,
-                              focusNode: _quantity,
+                              
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+focusNode: _quantity,
                               onFieldSubmitted: (value) {
                                 _handleScanSubmitted(value, _quantity);
                               },
@@ -1695,7 +1697,7 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  getDataFromDynamic(item['Quantity']),
+                  formatQuantity(getDataFromDynamic(item['Quantity'])),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),
@@ -1705,11 +1707,7 @@ class ItemRow extends StatelessWidget {
               !hideOpenQty
                   ? _buildColumn(
                       Text(
-                        ((double.tryParse(item['TotalQuantity'].toString()) ??
-                                    0) -
-                                (double.tryParse(item['Quantity'].toString()) ??
-                                    0))
-                            .toString(),
+                        formatQuantity(((double.tryParse(item['TotalQuantity'].toString()) ?? 0) - (double.tryParse(item['Quantity'].toString()) ?? 0))),
                         textAlign: TextAlign.center,
                         style: const TextStyle(fontSize: 13),
                       ),
@@ -1899,13 +1897,13 @@ class ReviewRow extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  getDataFromDynamic(item['TotalQuantity']),
+                  formatQuantity(getDataFromDynamic(item['TotalQuantity'])),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
               Expanded(
                 child: Text(
-                  getDataFromDynamic(item['Quantity']),
+                  formatQuantity(getDataFromDynamic(item['Quantity'])),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
@@ -1919,9 +1917,7 @@ class ReviewRow extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  ((double.tryParse(item['TotalQuantity'].toString()) ?? 0) -
-                          (double.tryParse(item['Quantity'].toString()) ?? 0))
-                      .toString(),
+                  formatQuantity(((double.tryParse(item['TotalQuantity'].toString()) ?? 0) - (double.tryParse(item['Quantity'].toString()) ?? 0))),
                   textAlign: TextAlign.right,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),

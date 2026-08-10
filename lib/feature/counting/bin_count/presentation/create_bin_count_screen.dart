@@ -33,6 +33,7 @@ import '/helper/helper.dart';
 import '/utilies/dialog/dialog.dart';
 import '../../../../constant/style.dart';
 import 'cubit/binlocation_count_cubit.dart';
+import 'package:wms_mobile/helper/helper.dart';
 
 class CreateBinCountScreen extends StatefulWidget {
   const CreateBinCountScreen({
@@ -267,7 +268,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
         if (matchedItemStock.isNotEmpty) {
           final onHandQty = matchedItemStock['OnHandQty'] ?? 0;
           setState(() {
-            inWhsQty.text = onHandQty.toString();
+            inWhsQty.text = formatQuantity(onHandQty);
           });
         } else {
           setState(() {
@@ -325,7 +326,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
       final item = {
         "ItemCode": itemCode.text,
         "ItemDescription": itemName.text,
-        "Quantity": quantity.text,
+        "Quantity": quantity.text.replaceAll(',', ''),
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "UoMCode": uom.text,
@@ -341,8 +342,8 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
             serialsInput.text == "" ? [] : jsonDecode(serialsInput.text) ?? [],
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
-        "InWhsQty": inWhsQty.text,
-        "Variance": variance.text,
+        "InWhsQty": inWhsQty.text.replaceAll(',', ''),
+        "Variance": variance.text.replaceAll(',', ''),
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -376,7 +377,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
       onConfirm: () {
         itemCode.text = getDataFromDynamic(item['ItemCode']);
         itemName.text = getDataFromDynamic(item['ItemDescription']);
-        quantity.text = getDataFromDynamic(item['Quantity']);
+        quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
         uom.text = getDataFromDynamic(item['UoMCode']);
         uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
         binCode.text = getDataFromDynamic(item['BinCode']);
@@ -387,8 +388,8 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
         uoMGroupDefinitionCollection.text = jsonEncode(
           item['UoMGroupDefinitionCollection'],
         );
-        inWhsQty.text = getDataFromDynamic(item["InWhsQty"]);
-        variance.text = getDataFromDynamic(item["Variance"]);
+        inWhsQty.text = formatQuantity(getDataFromDynamic(item["InWhsQty"]));
+        variance.text = formatQuantity(getDataFromDynamic(item["Variance"]));
         setState(() {
           isEdit = index;
           isSerialOrBatchs = item['InventoryCountingLineUoMs'];
@@ -447,7 +448,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
           if (matched.isNotEmpty) {
             final onHandQty = matched['OnHandQty'] ?? 0;
             setState(() {
-              inWhsQty.text = onHandQty.toString();
+              inWhsQty.text = formatQuantity(onHandQty);
             });
           } else {
             // ❌ Not found in offline data
@@ -832,8 +833,8 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
 
   void onCompleteQuantiyInput() {
     FocusScope.of(context).requestFocus(FocusNode());
-    variance.text = (double.parse(quantity.text.isEmpty ? "0" : quantity.text) -
-            double.parse(inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+    variance.text = (parseQuantity(quantity.text) -
+            parseQuantity(inWhsQty.text))
         .toString();
     // onNavigateSerialOrBatch();
   }
@@ -1204,14 +1205,15 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
                 label: 'Input Qty',
                 placeholder: 'Quantity',
                 controller: quantity,
-                focusNode: _quantity,
+                
+                inputFormatters: [ThousandsSeparatorInputFormatter()],
+focusNode: _quantity,
                 onFieldSubmitted: (value) {
                   _handleScanSubmitted(value, _quantity);
                 },
                 onChanged: (value) {
                   variance.text = (double.parse(value.isEmpty ? "0" : value) -
-                          double.parse(
-                              inWhsQty.text.isEmpty ? "0" : inWhsQty.text))
+                          parseQuantity(inWhsQty.text))
                       .toString();
                 },
                 // readOnly: isSerialOrBatch ? true : false, // simpler
@@ -1562,7 +1564,7 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  getDataFromDynamic(item['Quantity']),
+                  formatQuantity(getDataFromDynamic(item['Quantity'])),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),
