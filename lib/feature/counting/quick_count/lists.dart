@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/component/button/button.dart';
@@ -330,11 +331,18 @@ class _QuickCountListsState extends State<QuickCountLists> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          _buildRow(
-                                              "Warehouse",
-                                              record['InventoryPostingLines'][0]
-                                                      ["WarehouseCode"] ??
-                                                  ''),
+                                          (() {
+                                            final code = record['InventoryPostingLines']?[0]?["WarehouseCode"] ?? '';
+                                            final whsList = context.read<WarehouseOfflineCubit>().state;
+                                            final whs = whsList.firstWhere(
+                                              (w) => w['WarehouseCode'] == code,
+                                              orElse: () => null,
+                                            );
+                                            final name = (whs != null && whs['WarehouseName'] != null && whs['WarehouseName'].toString().trim().isNotEmpty)
+                                                ? whs['WarehouseName'].toString().trim()
+                                                : code;
+                                            return _buildRow("Warehouse", name);
+                                          })(),
                                           const SizedBox(height: 5),
                                           _buildRow("Reference",
                                               record['Reference2'] ?? 'N/A'),

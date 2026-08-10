@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:wms_mobile/component/button/button.dart';
@@ -336,11 +337,18 @@ class _PhysicalCountListsState extends State<PhysicalCountLists> {
                                               record['DocumentNumber'] ??
                                                   'N/A'),
                                           const SizedBox(height: 5),
-                                          _buildRow(
-                                              "Warehouse",
-                                              record['InventoryCountingLines']
-                                                      [0]["WarehouseCode"] ??
-                                                  ''),
+                                          (() {
+                                            final code = record['InventoryCountingLines']?[0]?["WarehouseCode"] ?? '';
+                                            final whsList = context.read<WarehouseOfflineCubit>().state;
+                                            final whs = whsList.firstWhere(
+                                              (w) => w['WarehouseCode'] == code,
+                                              orElse: () => null,
+                                            );
+                                            final name = (whs != null && whs['WarehouseName'] != null && whs['WarehouseName'].toString().trim().isNotEmpty)
+                                                ? whs['WarehouseName'].toString().trim()
+                                                : code;
+                                            return _buildRow("Warehouse", name);
+                                          })(),
                                           const Padding(
                                             padding: EdgeInsets.only(
                                                 left: 0, top: 3, bottom: 12),

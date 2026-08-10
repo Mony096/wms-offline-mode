@@ -38,6 +38,7 @@ class DownloadItem {
   int downloadedCount;
   String progressText;
   double progressValue;
+  String? errorMessage;
 
   DownloadItem({
     required this.name,
@@ -51,6 +52,7 @@ class DownloadItem {
     this.downloadedCount = 0,
     this.progressText = "",
     this.progressValue = 0.0,
+    this.errorMessage,
   });
 }
 
@@ -132,7 +134,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       name: 'Counting Sheets',
       url: 'InventoryCountings',
       queryParams: {
-        '\$select': "DocumentNumber,DocumentStatus,DocumentEntry",
+        '\$select': "DocumentNumber,DocumentStatus,DocumentEntry,CountDate,CountTime",
         '\$filter': "DocumentStatus eq 'cdsOpen'"
       },
       onClear: (context) => context.read<COSOfflineCubit>().clearData(),
@@ -571,6 +573,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
         item.failed = true;
         item.isLoading = false;
         item.success = false;
+        item.errorMessage = e.toString();
       });
       await _saveDownloadState();
       return false;
@@ -1059,8 +1062,10 @@ class _DownloadScreenState extends State<DownloadScreen> {
                 : item.success
                     ? 'Successfully synced'
                     : item.failed
-                        ? 'Failed. Will retry.'
+                        ? 'Failed: ${item.errorMessage ?? 'Will retry.'}'
                         : 'Waiting to sync',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,

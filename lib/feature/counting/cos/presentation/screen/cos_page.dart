@@ -33,11 +33,10 @@ class _CosPageState extends State<CosPage> {
         filteredData = allData;
       } else {
         filteredData = allData
-            .where((item) =>
-                getDataFromDynamic(item['DocumentNumber'])
-                    .toString()
-                    .toLowerCase()
-                    .contains(query))
+            .where((item) => getDataFromDynamic(item['DocumentNumber'])
+                .toString()
+                .toLowerCase()
+                .contains(query))
             .toList();
       }
     });
@@ -77,7 +76,7 @@ class _CosPageState extends State<CosPage> {
         backgroundColor: PRIMARY_COLOR,
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
-          'Counting Sheet Lists (Offline)',
+          'Counting Sheet Lists',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
@@ -136,6 +135,10 @@ class _CosPageState extends State<CosPage> {
                           controller: filter,
                           decoration: const InputDecoration(
                             hintText: 'Search Document Number...',
+                              hintStyle: const TextStyle(
+                            fontSize: 13.5,
+                            color: Colors.grey,
+                          ),
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.symmetric(
                                 vertical: 14, horizontal: 10),
@@ -182,20 +185,98 @@ class _CosPageState extends State<CosPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              getDataFromDynamic(cos['DocumentNumber']),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      text: "Document No. : ",
+                                      style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.normal,
+                                          fontSize: 13.5),
+                                      children: [
+                                        TextSpan(
+                                          text: getDataFromDynamic(
+                                              cos['DocumentNumber']),
+                                          style: const TextStyle(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Text.rich(
+                                  TextSpan(
+                                    text: "Count Date : ",
+                                    style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.normal,
+                                        fontSize: 13.5),
+                                    children: [
+                                      TextSpan(
+                                        text: getDataFromDynamic(
+                                                cos['CountDate'] ?? '-')
+                                            .split('T')[0],
+                                        // style: const TextStyle(
+                                        //     color: Colors.black,
+                                        //     fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              getDataFromDynamic(
-                                  cos['DocumentStatus']?.split("cds").last ??
-                                      "-"),
-                              style: const TextStyle(
-                                  fontSize: 13, color: Colors.black87),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text.rich(
+                                    TextSpan(
+                                      text: "Status              : ",
+                                      style: const TextStyle(
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.normal,
+                                          fontSize: 13.5),
+                                      children: [
+                                        TextSpan(
+                                          text: getDataFromDynamic(
+                                              cos['DocumentStatus']
+                                                      ?.split("cds")
+                                                      .last ??
+                                                  "-"),
+                                          style: const TextStyle(
+                                              color: Colors.black,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                Text.rich(
+                                  TextSpan(
+                                    text: "Count Time : ",
+                                    style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.normal,
+                                        fontSize: 13.5),
+                                    children: [
+                                      TextSpan(
+                                        text: getDataFromDynamic(
+                                            '${cos['CountTime']}     ' ??
+                                                cos['Time'] ??
+                                                '-'),
+                                        // style: const TextStyle(
+                                        //     color: Colors.black,
+                                        //     fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
