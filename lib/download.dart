@@ -35,6 +35,9 @@ class DownloadItem {
   bool isLoading;
   bool success;
   bool failed;
+  int downloadedCount;
+  String progressText;
+  double progressValue;
 
   DownloadItem({
     required this.name,
@@ -45,6 +48,9 @@ class DownloadItem {
     this.isLoading = false,
     this.success = false,
     this.failed = false,
+    this.downloadedCount = 0,
+    this.progressText = "",
+    this.progressValue = 0.0,
   });
 }
 
@@ -470,23 +476,62 @@ class _DownloadScreenState extends State<DownloadScreen> {
     await _saveDownloadState();
 
     try {
-      // Step 1️⃣ — Get list from SAP
-      final data = await getFromSAP(
-        host: host,
-        port: port,
-        token: token,
-        endpoint: item.url,
-        queryParams: item.queryParams,
-      );
+      int skip = 0;
+      int top = 3000;
+      List<dynamic> allValues = [];
+      bool hasMore = true;
+      int totalCount = 0;
 
-      var values = data["value"];
+      // Step 1️⃣ — Get list from SAP with pagination loop
+      while (hasMore) {
+        Map<String, String> currentParams = Map.from(item.queryParams ?? {});
+        currentParams['\$top'] = top.toString();
+        currentParams['\$skip'] = skip.toString();
+
+        if (skip == 0) {
+          currentParams['\$inlinecount'] = 'allpages';
+        }
+
+        final data = await getFromSAP(
+          host: host,
+          port: port,
+          token: token,
+          endpoint: item.url,
+          queryParams: currentParams,
+        );
+
+        if (skip == 0) {
+          final countRaw = data["odata.count"] ?? data["@odata.count"];
+          totalCount = int.tryParse(countRaw?.toString() ?? "0") ?? 0;
+        }
+
+        List<dynamic> values = data["value"] ?? [];
+        allValues.addAll(values);
+
+        setState(() {
+          item.downloadedCount = allValues.length;
+          if (totalCount > 0) {
+            item.progressText =
+                "Downloading ${item.downloadedCount}/$totalCount...";
+            item.progressValue = item.downloadedCount / totalCount;
+          } else {
+            item.progressText = "Downloading ${item.downloadedCount}...";
+          }
+        });
+
+        if (values.length < top) {
+          hasMore = false;
+        } else {
+          skip += top;
+        }
+      }
 
       // Step 2️⃣ — Special case for InventoryCountings
       if (item.url == "InventoryCountings") {
         List<dynamic> detailedList = [];
 
         // Loop through each item and fetch details by ID
-        for (final inv in values) {
+        for (final inv in allValues) {
           final docEntry = inv["DocumentEntry"];
           if (docEntry == null) continue;
 
@@ -510,7 +555,7 @@ class _DownloadScreenState extends State<DownloadScreen> {
       } else {
         // Normal behavior for other endpoints
         item.onClear?.call(context);
-        await item.onSave(context, values);
+        await item.onSave(context, allValues);
       }
 
       setState(() {
