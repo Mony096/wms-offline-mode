@@ -647,7 +647,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
 
       return;
     }
-    MaterialDialog.loading(context);
+    final progressNotifier = ValueNotifier<String>("Preparing to sync...");
+    MaterialDialog.loading(context, progressNotifier: progressNotifier);
 
     // 2️⃣ Load stored credentials
     final username = await LocalStorageManger.getString('username');
@@ -694,16 +695,29 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
       print("✅ Login successful. Token saved.");
 
       // 5️⃣ Process each sync group
+      final modulesWithData = <SyncItem>[];
       for (final group in _syncGroups) {
         for (final item in group.items) {
+          if (item.getCount(context) > 0) {
+            modulesWithData.add(item);
+          }
+        }
+      }
+      
+      int totalModules = modulesWithData.length;
+      
+      if (totalModules == 0) {
+        progressNotifier.value = "No offline data to sync.";
+        await Future.delayed(const Duration(milliseconds: 1000));
+      } else {
+        int currentModule = 0;
+        for (final item in modulesWithData) {
+          currentModule++;
           try {
             final count = item.getCount(context);
-            if (count > 0) {
-              print("🔄 Syncing ${item.name} ($count records)...");
-              await item.onSync(context);
-            } else {
-              print("⚠️ Skipping ${item.name} — no offline data.");
-            }
+            progressNotifier.value = "Syncing ${item.name}...\n($currentModule of $totalModules)\n$count records";
+            print("🔄 Syncing ${item.name} ($count records)...");
+            await item.onSync(context);
           } catch (e) {
             print("❌ Failed to sync ${item.name}: $e");
           }

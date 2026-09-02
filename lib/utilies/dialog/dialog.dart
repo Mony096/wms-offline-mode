@@ -269,8 +269,8 @@ class MaterialDialog {
     }
   }
 
-static Future<void> loading(BuildContext context,
-      {bool? barrierDismissible}) async {
+  static Future<void> loading(BuildContext context,
+      {bool? barrierDismissible, ValueNotifier<String>? progressNotifier}) async {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return showDialog<void>(
@@ -284,13 +284,35 @@ static Future<void> loading(BuildContext context,
           contentPadding: const EdgeInsets.all(10),
           // 👇 Dynamically adjust padding based on screen width
           insetPadding: EdgeInsets.symmetric(
-            horizontal: screenWidth * 0.3, // takes 40% of width
+            horizontal: screenWidth * 0.1, // takes 20% of width
           ),
-          content: const Center(
-            child: SizedBox(
-              height: 100,
-              width: 100,
-              child: LoadingCircle(enableShadow: false),
+          content: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(
+                  height: 80,
+                  width: 80,
+                  child: LoadingCircle(enableShadow: false),
+                ),
+                if (progressNotifier != null) ...[
+                  const SizedBox(height: 20),
+                  ValueListenableBuilder<String>(
+                    valueListenable: progressNotifier,
+                    builder: (context, value, child) {
+                      return Text(
+                        value,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ],
             ),
           ),
         );
