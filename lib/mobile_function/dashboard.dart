@@ -24,10 +24,12 @@ import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline
 import 'package:wms_mobile/feature/item/presentation/cubit/items_cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/screen/batch_list_page.dart';
 import 'package:wms_mobile/feature/list_serial/presentation/screen/Serial_list_page.dart';
 import 'package:wms_mobile/feature/lookup/lookup.dart';
+import 'package:wms_mobile/feature/item/presentation/screen/product_list_screen.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
 import 'package:wms_mobile/feature/outbounce/delivery/presentation/cubit/delivery_offline_cubit.dart';
 import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
@@ -61,6 +63,7 @@ const gridList = [
   // {"name": "Pick & Pack", "img": "heigth.svg"},
   {"name": "Counting", "img": "counting1.svg"},
   {"name": "Lookup", "img": "look.svg"},
+  // {"name": "Product", "img": "product.svg"},
   {"name": "Log Out", "img": "logout1.svg"}
 ];
 
@@ -102,14 +105,13 @@ class _DashboardState extends State<Dashboard> {
         break;
       case 4:
         _logout(context);
-
-        // goTo(context, const LoginScreen());
-        // goTo(
-        //     context,
-        //     const SerialListPage(
-        //       warehouse: '',
-        //     ));
         break;
+      // case 4:
+      //   goTo(context, const ProductListScreen());
+      //   break;
+      // case 5:
+      //   _logout(context);
+      //   break;
       default:
     }
   }
@@ -139,6 +141,7 @@ class _DashboardState extends State<Dashboard> {
     context.read<WarehouseOfflineCubit>().clearData();
     context.read<BinOfflineCubit>().clearData();
     context.read<ItemOfflineCubit>().clearData();
+    context.read<ItemsGroupOfflineCubit>().clearData();
     context.read<UOMGroupOfflineCubit>().clearData();
     context.read<UOMOfflineCubit>().clearData();
     context.read<ItemBarcodeOfflineCubit>().clearData();

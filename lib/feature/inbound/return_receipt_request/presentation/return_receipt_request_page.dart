@@ -30,6 +30,14 @@ class _ReturnReceiptRequestPageState extends State<ReturnReceiptRequestPage> {
   }
 
   void _applyFilter(List<dynamic> allData) {
+    allData = allData.where((doc) {
+      final lines = doc['DocumentLines'] as List<dynamic>? ?? [];
+      return lines.any((line) {
+        final qty = double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ?? 0.0;
+        return line['LineStatus'] == 'bost_Open' && qty > 0;
+      });
+    }).toList();
+
     final searchText = filter.text.trim().toLowerCase();
     final cardType = _mapType(widget.type);
 

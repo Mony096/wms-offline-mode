@@ -57,7 +57,14 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
 
   void onFilter() {
     // Use a local variable to capture the state once.
-    final allData = _offlineCubit.state;
+    final rawData = _offlineCubit.state;
+    final allData = rawData.where((doc) {
+      final lines = doc['DocumentLines'] as List<dynamic>? ?? [];
+      return lines.any((line) {
+        final qty = double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ?? 0.0;
+        return line['LineStatus'] == 'bost_Open' && qty > 0;
+      });
+    }).toList();
     final textScan = filter.text.trim().toLowerCase();
     final textInput = filterInput.text.trim().toLowerCase();
 
@@ -152,7 +159,7 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
           final displayList = filteredData.isEmpty &&
                   filter.text.isEmpty &&
                   filterInput.text.isEmpty
-              ? state
+              ? state.where((doc) { final lines = doc['DocumentLines'] as List<dynamic>? ?? []; return lines.any((line) { final qty = double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ?? 0.0; return line['LineStatus'] == 'bost_Open' && qty > 0; }); }).toList()
               : filteredData;
 
           // if (displayList.isEmpty) {

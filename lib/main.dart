@@ -42,6 +42,7 @@ import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline
 import 'package:wms_mobile/feature/item/presentation/cubit/items_cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/cubit/item_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
@@ -93,6 +94,7 @@ void main() async {
   await Hive.openBox("warehouse");
   await Hive.openBox("bin");
   await Hive.openBox("item");
+  await Hive.openBox("item_group");
   await Hive.openBox("item_barcode");
   await Hive.openBox("uom_group");
   await Hive.openBox("uom");
@@ -194,6 +196,7 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => WarehouseOfflineCubit()),
         BlocProvider(create: (_) => BinOfflineCubit()),
         BlocProvider(create: (_) => ItemOfflineCubit()),
+        BlocProvider(create: (_) => ItemsGroupOfflineCubit()),
         BlocProvider(create: (_) => UOMGroupOfflineCubit()),
         BlocProvider(create: (_) => UOMOfflineCubit()),
         BlocProvider(create: (_) => ItemBarcodeOfflineCubit()),

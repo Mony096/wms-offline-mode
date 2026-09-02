@@ -33,6 +33,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
   // final cardName = TextEditingController();
   // final poText = TextEditingController();
   final uomText = TextEditingController();
+  final remark = TextEditingController();
   final quantity = TextEditingController();
   final warehouse = TextEditingController();
   final uom = TextEditingController();
@@ -282,6 +283,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
         // "CardName": cardName.text,
         "FromWarehouse": warehouse.text,
         "ToWarehouse": warehouse.text,
+        "Comments": remark.text,
         "DocumentStatus": "bost_Open",
         "U_tl_sobincode": tbinCode.text,
         "StockTransferLines": items.map((item) {
@@ -578,6 +580,11 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
                   controller: warehouse,
                   readOnly: true,
                   onPressed: () {},
+                ),
+                Input(
+                  label: 'Remark',
+                  placeholder: 'Remark',
+                  controller: remark,
                 ),
                 Input(
                   controller: sbinCode,

@@ -195,6 +195,8 @@ class SyncFailLogPurchaseReturnScreen extends StatelessWidget {
                                   const SizedBox(height: 5),
                                   _buildRow("Warehouse",
                                       record['WarehouseCode'] ?? ''),
+                                  const SizedBox(height: 5),
+                                  _buildRow("Remark", record['Comments'] ?? ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),

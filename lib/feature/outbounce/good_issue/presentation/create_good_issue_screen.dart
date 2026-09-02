@@ -52,6 +52,7 @@ class CreateGoodIssueScreen extends StatefulWidget {
 class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
   final cardCode = TextEditingController();
   final cardName = TextEditingController();
+  final remark = TextEditingController();
   final poText = TextEditingController();
   final uomText = TextEditingController();
   final quantity = TextEditingController();
@@ -107,7 +108,8 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
       if (widget.isEdit == null) return;
       print(widget.isEdit);
       // ✅ Populate text fields safely
-      giType.text = getDataFromDynamic(widget.isEdit['U_lk_gitype']);
+      giType.text = getDataFromDynamic(widget.isEdit['U_LK_Type']);
+      remark.text = getDataFromDynamic(widget.isEdit['Comments']);
       warehouse.text = getDataFromDynamic(widget.isEdit['U_lk_whsdesc']);
       warehouseNameUI.text = warehouse.text;
       saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
@@ -408,7 +410,8 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
                 ? saveId.text
                 : uuid.v4(),
         "U_lk_whsdesc": warehouse.text,
-        "U_lk_gitype": giType.text,
+        "U_LK_Type": giType.text,
+        "Comments": remark.text,
         "DocumentLines": items.asMap().entries.map((entry) {
           int parentIndex = entry.key;
           Map<String, dynamic> item = entry.value;
@@ -836,6 +839,11 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
                       controller: warehouseNameUI,
                       readOnly: true,
                       onPressed: onChangeWhs,
+                    ),
+                    Input(
+                      label: 'Remark',
+                      placeholder: 'Remark',
+                      controller: remark,
                     ),
                     // Divider(thickness: 1, color: Colors.grey.shade400),
                   ],

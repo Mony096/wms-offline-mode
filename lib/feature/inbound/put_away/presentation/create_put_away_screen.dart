@@ -50,6 +50,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
   // final cardCode = TextEditingController();
   // final cardName = TextEditingController();
   // final poText = TextEditingController();
+  final remark = TextEditingController();
   final uomText = TextEditingController();
   final quantity = TextEditingController();
   final warehouse = TextEditingController();
@@ -106,6 +107,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
       print(widget.isEdit);
       // ✅ Populate text fields safely
       warehouse.text = getDataFromDynamic(widget.isEdit['FromWarehouse']);
+      remark.text = getDataFromDynamic(widget.isEdit['Comments']);
       warehouseNameUI.text = warehouse.text;
       saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
       if (mounted) MaterialDialog.loading(context);
@@ -469,6 +471,7 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
                 : uuid.v4(),
         "FromWarehouse": warehouse.text,
         "ToWarehouse": warehouse.text,
+        "Comments": remark.text,
         "DocumentStatus": "bost_Open",
         // "U_tl_sobincode": tbinCode.text,
         "StockTransferLines": items.asMap().entries.map((entry) {
@@ -938,6 +941,11 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
                       controller: warehouseNameUI,
                       readOnly: true,
                       onPressed: onChangeWhs,
+                    ),
+                    Input(
+                      label: 'Remark',
+                      placeholder: 'Remark',
+                      controller: remark,
                     ),
                     // Input(
                     //   controller: sbinCode,

@@ -192,6 +192,8 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                                       "Warehouse",
                                       getWarehouseName(context, record['InventoryPostingLines'][0]['WarehouseCode'] ?? '')),
                                   const SizedBox(height: 5),
+                                  _buildRow("Remark", record['Remarks'] ?? ''),
+                                  const SizedBox(height: 5),
                                   _buildRow("Reference",
                                       record['Reference2'] ?? 'N/A'),
                                   const Padding(

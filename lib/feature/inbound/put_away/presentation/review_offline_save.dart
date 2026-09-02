@@ -184,6 +184,8 @@ class ReviewPutAwayOfflineSave extends StatelessWidget {
                                 children: [
                                   _buildRow("Warehouse",
                                       record['FromWarehouse'] ?? ''),
+                                  const SizedBox(height: 5),
+                                  _buildRow("Remark", record['Comments'] ?? ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),

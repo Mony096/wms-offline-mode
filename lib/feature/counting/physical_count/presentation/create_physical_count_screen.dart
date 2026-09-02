@@ -50,6 +50,7 @@ class CreatePhysicalCountScreen extends StatefulWidget {
 
 class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   final uomText = TextEditingController();
+  final remark = TextEditingController();
   final quantity = TextEditingController();
   final ref = TextEditingController();
   final warehouse = TextEditingController();
@@ -103,6 +104,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
       // ✅ Populate text fields safely
       cosDocEntry.text = getDataFromDynamic(widget.isEdit['DocumentEntry']);
       cos.text = getDataFromDynamic(widget.isEdit['DocumentNumber']);
+      remark.text = getDataFromDynamic(widget.isEdit['Remarks']);
       warehouse.text = getDataFromDynamic(
           widget.isEdit['InventoryCountingLines'][0]["WarehouseCode"]);
       saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
@@ -504,6 +506,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                 ? saveId.text
                 : uuid.v4(),
         "DocumentNumber": cos.text,
+        "Remarks": remark.text,
         "InventoryCountingLines": items.map((item) {
           List<dynamic> inventoryCountingLineUoMs = [
             {
@@ -904,6 +907,11 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                       controller: warehouseNameUI,
                       readOnly: true,
                       onPressed: onChangeWhs,
+                    ),
+                    Input(
+                      label: 'Remark',
+                      placeholder: 'Remark',
+                      controller: remark,
                     ),
                     // Divider(thickness: 1, color: Colors.grey.shade400),
                   ],

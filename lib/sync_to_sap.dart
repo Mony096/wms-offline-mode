@@ -788,12 +788,12 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             context: context);
       }
     }
-    context.read<GoodReceiptPoOfflineCubit>().clearData();
-    context.read<GoodReceiptPoOfflineCubit>().clearCachLog();
+    context.read<GoodReceiptPoOfflineCubit>().clearData();//
+//     context.read<GoodReceiptPoOfflineCubit>().clearCachLog();
 
     ///////////////
-    context.read<QuickGoodReceiptOfflineCubit>().clearData();
-    context.read<QuickGoodReceiptOfflineCubit>().clearCachLog();
+    context.read<QuickGoodReceiptOfflineCubit>().clearData();//
+//     context.read<QuickGoodReceiptOfflineCubit>().clearCachLog();
 
     final jsonDataRRT = context.read<ReturnReceiptOfflineCubit>().getJsonData();
     for (var element in jsonDataRRT.toList()) {
@@ -807,15 +807,15 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             context: context);
       }
     }
-    context.read<ReturnReceiptOfflineCubit>().clearData();
-    context.read<ReturnReceiptOfflineCubit>().clearCachLog();
+    context.read<ReturnReceiptOfflineCubit>().clearData();//
+//     context.read<ReturnReceiptOfflineCubit>().clearCachLog();
 
     //////////////
-    context.read<GoodsReceiptOfflineCubit>().clearData();
-    context.read<GoodsReceiptOfflineCubit>().clearCachLog();
+    context.read<GoodsReceiptOfflineCubit>().clearData();//
+//     context.read<GoodsReceiptOfflineCubit>().clearCachLog();
 
-    context.read<PutAwayOfflineCubit>().clearData();
-    context.read<PutAwayOfflineCubit>().clearCachLog();
+    context.read<PutAwayOfflineCubit>().clearData();//
+//     context.read<PutAwayOfflineCubit>().clearCachLog();
 
     final jsonDataSO = context.read<DeliveryOfflineCubit>().getJsonData();
     for (var element in jsonDataSO.toList()) {
@@ -829,8 +829,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             context: context);
       }
     }
-    context.read<DeliveryOfflineCubit>().clearData();
-    context.read<DeliveryOfflineCubit>().clearCachLog();
+    context.read<DeliveryOfflineCubit>().clearData();//
+//     context.read<DeliveryOfflineCubit>().clearCachLog();
 
     ///////////
     ///
@@ -848,26 +848,26 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context: context);
       }
     }
-    context.read<PurchaseReturnOfflineCubit>().clearData();
-    context.read<PurchaseReturnOfflineCubit>().clearCachLog();
+    context.read<PurchaseReturnOfflineCubit>().clearData();//
+//     context.read<PurchaseReturnOfflineCubit>().clearCachLog();
 
     /////////////////
     ///
     ///
-    context.read<GoodsIssueOfflineCubit>().clearData();
-    context.read<GoodsIssueOfflineCubit>().clearCachLog();
+    context.read<GoodsIssueOfflineCubit>().clearData();//
+//     context.read<GoodsIssueOfflineCubit>().clearCachLog();
 
-    context.read<QuickCountOfflineCubit>().clearData();
-    context.read<QuickCountOfflineCubit>().clearCachLog();
+    context.read<QuickCountOfflineCubit>().clearData();//
+//     context.read<QuickCountOfflineCubit>().clearCachLog();
 
-    context.read<PhysicalCountOfflineCubit>().clearData();
-    context.read<PhysicalCountOfflineCubit>().clearCachLog();
+    context.read<PhysicalCountOfflineCubit>().clearData();//
+//     context.read<PhysicalCountOfflineCubit>().clearCachLog();
 
-    context.read<CycleCountOfflineCubit>().clearData();
-    context.read<CycleCountOfflineCubit>().clearCachLog();
+    context.read<CycleCountOfflineCubit>().clearData();//
+//     context.read<CycleCountOfflineCubit>().clearCachLog();
 
-    context.read<BinCountOfflineCubit>().clearData();
-    context.read<BinCountOfflineCubit>().clearCachLog();
+    context.read<BinCountOfflineCubit>().clearData();//
+//     context.read<BinCountOfflineCubit>().clearCachLog();
 
     await Future.delayed(const Duration(milliseconds: 1000));
 

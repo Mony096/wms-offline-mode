@@ -195,10 +195,12 @@ class ReviewGoodsIssueOfflineSave extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   _buildRow("Goods Receipt Type",
-                                      record['U_lk_gitype'] ?? 'N/A'),
+                                      record['U_LK_Type'] ?? 'N/A'),
                                   const SizedBox(height: 5),
                                   _buildRow("Warehouse",
                                       record['U_lk_whsdesc'] ?? ''),
+                                  const SizedBox(height: 5),
+                                  _buildRow("Remark", record['Comments'] ?? ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),

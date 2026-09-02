@@ -191,6 +191,9 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
     try {
       MaterialDialog.loading(context);
 
+      // Add a smooth 2 second loading delay for better UX
+      await Future.delayed(const Duration(seconds: 2));
+
       final itemStockCubit = context.read<ItemFindStockOfflineCubit>();
       final batchListCubit = context.read<BatchListOfflineCubit>();
 
@@ -201,7 +204,7 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
       final matchedItemStock = itemStockList
           .where(
             (item) =>
-                item['ItemCode'] == itemCode.text &&
+                (itemCode.text.isEmpty || item['ItemCode'] == itemCode.text) &&
                 item['WhsCode'] == warehouse.text,
           )
           .toList();
@@ -216,35 +219,30 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
         return;
       }
 
-      // Step 2: Check if item requires serial or batch
-      final itemData = matchedItemStock[0];
-      final isSerialOrBatch =
-          itemData["IsSerial"] == "Y" || itemData["IsBatch"] == "Y";
+      List<dynamic> allSerialsOrBatches = [];
 
-      if (isSerialOrBatch) {
-        // Get offline batch/serial data
-        final batchList = batchListCubit.getJsonData();
-        final matchedSerialOrBatch = batchList
-            .where(
-              (b) =>
-                  b['ItemCode'] == itemCode.text &&
-                  b['WhsCode'] == warehouse.text,
-            )
-            .toList();
+      for (var itemData in matchedItemStock) {
+        final isSerialOrBatch =
+            itemData["IsSerial"] == "Y" || itemData["IsBatch"] == "Y";
 
-        setState(() {
-          items = [itemData];
-          serialOrBatchList = matchedSerialOrBatch;
-        });
-
-        print("Serial/Batch List: $serialOrBatchList");
-      } else {
-        // Regular non-serial/batch item
-        setState(() {
-          items = [itemData];
-          serialOrBatchList = [];
-        });
+        if (isSerialOrBatch) {
+          // Get offline batch/serial data
+          final batchList = batchListCubit.getJsonData();
+          final matchedSerialOrBatch = batchList
+              .where(
+                (b) =>
+                    b['ItemCode'] == itemData['ItemCode'] &&
+                    b['WhsCode'] == warehouse.text,
+              )
+              .toList();
+          allSerialsOrBatches.addAll(matchedSerialOrBatch);
+        }
       }
+
+      setState(() {
+        items = matchedItemStock;
+        serialOrBatchList = allSerialsOrBatches;
+      });
 
       MaterialDialog.close(context);
     } catch (e) {
@@ -265,7 +263,9 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
       if (value == null) return;
       if (value is Map) {
         warehouse.text = getDataFromDynamic(value['code']);
-        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty ? getDataFromDynamic(value['name']) : warehouse.text;
+        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty
+            ? getDataFromDynamic(value['name'])
+            : warehouse.text;
       } else {
         warehouse.text = getDataFromDynamic(value);
         warehouseNameUI.text = warehouse.text;
@@ -301,7 +301,7 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
         barCode.text = barcode;
         itemCode.clear();
         onCompleteTextEditItem();
-              onGetItem();
+        onGetItem();
 
         isClickScanItem = false;
       }
@@ -444,75 +444,219 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
 
               // ====== Bin Location ======
 
-              const SizedBox(height: 30),
+              const SizedBox(height: 10),
+              // List Header
               Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300, width: 0.5),
+                margin: EdgeInsets.zero,
+                decoration: const BoxDecoration(
+                  color: PRIMARY_COLOR,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    topRight: Radius.circular(8),
+                  ),
                 ),
-                child: Column(
+                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                child: Row(
                   children: [
-                    ContentHeader(),
-                    items.isEmpty
-                        ? Container(
-                            padding: EdgeInsets.all(20),
-                            child: Text(
-                              "No Item available",
-                              style:
-                                  TextStyle(fontSize: 15, color: Colors.grey),
-                            ),
-                          )
-                        : Container(),
+                    const Icon(
+                      Icons.inventory_2_outlined,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Item Detail',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const Spacer(),
+                    const Padding(
+                      padding: EdgeInsets.only(right: 17.0),
+                      child: Text(
+                        'Qty',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
-              // Column(children: []),
-              Column(
+              if (items.isEmpty)
+                Container(
+                  margin: EdgeInsets.zero,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border.all(color: Colors.grey.shade200),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    ),
+                  ),
+                  padding: EdgeInsets.all(30),
+                  child: Center(
+                    child: Text(
+                      "No Item available",
+                      style: TextStyle(fontSize: 15, color: Colors.grey),
+                    ),
+                  ),
+                ),
+              if (items.isNotEmpty)
+                Container(
+                  margin: EdgeInsets.zero,
+                  padding: EdgeInsets.fromLTRB(6, 10, 6, 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    border: Border(
+                      left: BorderSide(color: Colors.grey.shade200),
+                      right: BorderSide(color: Colors.grey.shade200),
+                      bottom: BorderSide(color: Colors.grey.shade200),
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    ),
+                  ),
+                  child: Column(
                 children: items
                     .where((f) => f["OnHandQty"] > 0)
                     .map(
                       (item) => GestureDetector(
                         // onTap: () => onEdit(item),
                         child: Container(
-                          padding:
-                              item["IsBatch"] == "Y" && item["IsSerial"] == "Y"
-                                  ? EdgeInsets.only(top: 15)
-                                  : EdgeInsets.fromLTRB(5, 15, 0, 15),
+                          margin:
+                              EdgeInsets.only(bottom: 8), // tightened card margin
+                          padding: EdgeInsets.all(14), // tightened card padding
                           decoration: BoxDecoration(
-                              border: Border(bottom: BorderSide(width: 0.1)),
-                              color: Colors.grey.shade50),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 8,
+                                offset: Offset(0, 4),
+                              ),
+                            ],
+                            border: Border.all(color: Colors.grey.shade100),
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
-                                    flex: 3,
                                     child: Text(
-                                      getDataFromDynamicBin(item['BinCode']),
+                                      getDataFromDynamic(item['ItemCode']),
                                       style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 16,
+                                          color: PRIMARY_COLOR,
+                                          letterSpacing: 0.2),
                                     ),
                                   ),
-                                  Expanded(
-                                    flex: 1,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(right: 10),
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: PRIMARY_COLOR.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      formatQuantity(item['OnHandQty']),
+                                      style: TextStyle(
+                                          color: PRIMARY_COLOR,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 6),
+                              Text(
+                                getDataFromDynamic(item['ItemName']),
+                                style: TextStyle(
+                                    color: Colors.grey.shade700,
+                                    fontSize: 13,
+                                    height: 1.3),
+                              ),
+                              SizedBox(height: 12),
+                              Divider(height: 1, color: Colors.grey.shade100),
+                              SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  if (item['BinCode'] == null ||
+                                      item['BinCode'].toString().trim().isEmpty)
+                                    Row(
+                                      children: [
+                                        Icon(Icons.layers_outlined,
+                                            size: 16,
+                                            color: Colors.grey.shade400),
+                                        SizedBox(width: 4),
+                                        Text('No Bin',
+                                            style: TextStyle(
+                                                color: Colors.grey.shade400,
+                                                fontSize: 13)),
+                                      ],
+                                    )
+                                  else
+                                    Expanded(
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.location_on_outlined,
+                                              size: 16, color: PRIMARY_COLOR),
+                                          SizedBox(width: 4),
+                                          Expanded(
+                                            child: RichText(
+                                              text: TextSpan(
+                                                children: [
+                                                  TextSpan(
+                                                    text: 'Bin Location : ',
+                                                    style: TextStyle(
+                                                        color: Colors
+                                                            .grey.shade500,
+                                                        fontSize: 13),
+                                                  ),
+                                                  TextSpan(
+                                                    text: getDataFromDynamicBin(
+                                                        item['BinCode']),
+                                                    style: TextStyle(
+                                                        color: Colors.black87,
+                                                        fontSize: 13,
+                                                        fontWeight:
+                                                            FontWeight.w600),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  if (item['BinCode'] == null ||
+                                      item['BinCode'].toString().trim().isEmpty)
+                                    Spacer(),
+                                  if (getDataFromDynamic(item['InvntryUom']).isNotEmpty)
+                                    Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
                                       child: Text(
                                         getDataFromDynamic(item['InvntryUom']),
-                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            color: Colors.grey.shade700,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500),
                                       ),
                                     ),
-                                  ),
-                                  Expanded(
-                                    flex: 1,
-                                    child: Text(
-                                      formatQuantity(getDataFromDynamic(item['OnHandQty'])),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
                                 ],
                               ),
                               // SizedBox(
@@ -691,9 +835,10 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                                   flex: 2,
                                                   child: Padding(
                                                     padding: EdgeInsets.only(
-                                                        left: 5),
+                                                        right: 9.0),
                                                     child: Text(
                                                       "Qty",
+                                                      textAlign: TextAlign.right,
                                                       style: TextStyle(
                                                           fontSize: 14),
                                                     ),
@@ -747,16 +892,12 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                                                             fontSize: 14))),
                                                                 Expanded(
                                                                     flex: 2,
-                                                                    child:
-                                                                        Padding(
-                                                                      padding: const EdgeInsets
-                                                                          .only(
-                                                                          left:
-                                                                              5),
-                                                                      child:
-                                                                          Text(
-                                                                        (getDataFromDynamic(
-                                                                            e['Quantity'])),
+                                                                    child: Padding(
+                                                                      padding: const EdgeInsets.only(right: 9.0),
+                                                                      child: Text(
+                                                                        formatQuantity(
+                                                                            e['Quantity']),
+                                                                        textAlign: TextAlign.right,
                                                                         style: TextStyle(
                                                                             fontSize:
                                                                                 14),
@@ -777,14 +918,6 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                           ),
                         ),
                       ),
-                      // GestureDetector(
-                      //       // onTap: () => onEdit(item),
-                      //       child: Container(
-                      //         padding: const EdgeInsets.symmetric(vertical: 20),
-                      //         decoration: BoxDecoration(
-                      //             border: Border(bottom: BorderSide(width: 0.1))),
-                      //         child: Column(
-                      //           crossAxisAlignment: CrossAxisAlignment.start,
                       //           children: [
                       //             Row(
                       //               children: [
@@ -811,6 +944,7 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                     )
                     .toList(),
               ),
+            ),
             ],
           ),
         ),
@@ -851,7 +985,7 @@ class ContentHeader extends StatelessWidget {
           Expanded(
             flex: 3,
             child: Text(
-              'Bin Info',
+              'Item / Bin Info',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
@@ -914,7 +1048,7 @@ class ItemRow extends StatelessWidget {
                 ),
               ),
               Expanded(child: Text(getDataFromDynamic(item['UoMCode']))),
-              Expanded(child: Text('${item['Quantity']}/0')),
+              Expanded(child: Text('${formatQuantity(item['Quantity'])}/0')),
             ],
           ),
           SizedBox(height: 6),

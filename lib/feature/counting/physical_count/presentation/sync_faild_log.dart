@@ -202,6 +202,8 @@ class SyncFailLogPhysicalCountScreen extends StatelessWidget {
                                   _buildRow(
                                       "Warehouse",
                                       getWarehouseName(context, record['InventoryCountingLines'][0]['WarehouseCode'] ?? '')),
+                                  const SizedBox(height: 5),
+                                  _buildRow("Remark", record['Remarks'] ?? ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),

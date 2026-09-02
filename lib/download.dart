@@ -14,6 +14,7 @@ import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline
 import 'package:wms_mobile/feature/item/presentation/cubit/items_cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_find_stock_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_group_offline_cubit.dart';
 import 'package:wms_mobile/feature/list_batch/presentation/cubit/batch_list_offline_cubit.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
 import 'package:wms_mobile/feature/outbounce/purchase_return_request/presentation/cubit/purchase_return_request_offline_cubit.dart';
@@ -154,12 +155,22 @@ class _DownloadScreenState extends State<DownloadScreen> {
       url: 'Items',
       queryParams: {
         '\$select':
-            "ItemCode,ItemName,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry, ManageSerialNumbers, ManageBatchNumbers"
+            "ItemCode,ItemName,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry, ManageSerialNumbers, ManageBatchNumbers, ItemsGroupCode"
       },
       onClear: (context) => context.read<ItemOfflineCubit>().clearData(),
       onSave: (context, data) async =>
           context.read<ItemOfflineCubit>().addData(data),
     ),
+    // DownloadItem(
+    //   name: 'Item Groups',
+    //   url: 'ItemGroups',
+    //   queryParams: {
+    //     '\$select': "Number,GroupName"
+    //   },
+    //   onClear: (context) => context.read<ItemsGroupOfflineCubit>().clearData(),
+    //   onSave: (context, data) async =>
+    //       context.read<ItemsGroupOfflineCubit>().addData(data),
+    // ),
     DownloadItem(
       name: 'UoM Groups',
       url: 'UnitOfMeasurementGroups',
@@ -214,20 +225,20 @@ class _DownloadScreenState extends State<DownloadScreen> {
       onSave: (context, data) async =>
           context.read<BinOfflineCubit>().addData(data),
     ),
-    DownloadItem(
-      name: 'Goods Issue Type',
-      url: 'LK_OIGE',
-      onClear: (context) => context.read<IssueTypeOfflineCubit>().clearData(),
-      onSave: (context, data) async =>
-          context.read<IssueTypeOfflineCubit>().addData(data),
-    ),
-    DownloadItem(
-      name: 'Goods Receipt Type',
-      url: 'LK_OIGN',
-      onClear: (context) => context.read<ReceiptTypeOfflineCubit>().clearData(),
-      onSave: (context, data) async =>
-          context.read<ReceiptTypeOfflineCubit>().addData(data),
-    ),
+    // DownloadItem(
+    //   name: 'Goods Issue Type',
+    //   url: 'LK_OIGE',
+    //   onClear: (context) => context.read<IssueTypeOfflineCubit>().clearData(),
+    //   onSave: (context, data) async =>
+    //       context.read<IssueTypeOfflineCubit>().addData(data),
+    // ),
+    // DownloadItem(
+    //   name: 'Goods Receipt Type',
+    //   url: 'LK_OIGN',
+    //   onClear: (context) => context.read<ReceiptTypeOfflineCubit>().clearData(),
+    //   onSave: (context, data) async =>
+    //       context.read<ReceiptTypeOfflineCubit>().addData(data),
+    // ),
   ];
 
   @override

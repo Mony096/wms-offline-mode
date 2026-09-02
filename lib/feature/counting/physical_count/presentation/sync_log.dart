@@ -13,7 +13,7 @@ class SyncLogPhysicalCountScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.read<PhysicalCountOfflineCubit>();
+    final cubit = context.watch<PhysicalCountOfflineCubit>();
     final failed =
         cubit.failedRecords.map((e) => {...e, "status": "failed"}).toList();
     final success =
@@ -43,6 +43,31 @@ class SyncLogPhysicalCountScreen extends StatelessWidget {
               color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17),
         ),
         elevation: 3,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep, color: Colors.white),
+            onPressed: () { showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Clear All Logs'),
+                content: const Text('Are you sure you want to clear all sync logs?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      cubit.clearCachLog(); 
+                    },
+                    child: const Text('Clear', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            ); },
+          ),
+        ],
       ),
       body: allRecords.isEmpty
           ? const Center(
@@ -168,7 +193,51 @@ class SyncLogPhysicalCountScreen extends StatelessWidget {
                                   style: const TextStyle(
                                       fontSize: 13, color: Colors.grey),
                                 ),
-                                Icon(icon, color: color, size: 20),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                                      onPressed: () {
+                                        showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Remove Log'),
+                                          content: const Text('Are you sure you want to remove this log?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                if (record['logId'] != null) {
+                                          cubit.removeMemoryLog(record['logId']);
+                                        }
+                                              },
+                                              child: const Text('Remove', style: TextStyle(color: Colors.red)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                      },
+                                    ),
+                                    const SizedBox(width: 8),
+                                    GestureDetector(
+                                  onTap: () {
+
+                                    showJsonDialog(context, record);
+
+                                  },
+
+                                  child: Icon(icon, color: color, size: 20),
+
+                                ),
+                                  ],
+                                ),
                               ],
                             ),
                             const SizedBox(height: 5),
@@ -236,8 +305,10 @@ class SyncLogPhysicalCountScreen extends StatelessWidget {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Remark : ${record['Remarks'] ?? '-'}",   style: const TextStyle(fontSize: 13, color: Colors.black54), ), 
                             const SizedBox(height: 10),
-
                             // --- Items list
                             const Text(
                               "Items:",

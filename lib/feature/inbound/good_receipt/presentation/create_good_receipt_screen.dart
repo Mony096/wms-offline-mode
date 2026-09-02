@@ -68,6 +68,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
   final binCode = TextEditingController();
   final grType = TextEditingController();
   final grTypeName = TextEditingController();
+  final remark = TextEditingController();
 
   final serialsInput = TextEditingController();
   final batchesInput = TextEditingController();
@@ -108,7 +109,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
       if (widget.isEdit == null) return;
       print(widget.isEdit);
       // ✅ Populate text fields safely
-      grType.text = getDataFromDynamic(widget.isEdit['U_lk_grtype']);
+      grType.text = getDataFromDynamic(widget.isEdit['U_LK_Type_GR']);
+      remark.text = getDataFromDynamic(widget.isEdit['Comments']);
       warehouse.text = getDataFromDynamic(widget.isEdit['U_lk_whsdesc']);
       warehouseNameUI.text = warehouse.text;
       saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
@@ -421,7 +423,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
             : widget.isEdit != null
                 ? saveId.text
                 : uuid.v4(),
-        "U_lk_grtype": grType.text,
+        "U_LK_Type_GR": grType.text,
+        "Comments": remark.text,
         "U_lk_whsdesc": warehouse.text,
         "DocumentLines": items.asMap().entries.map((entry) {
           int parentIndex = entry.key;
@@ -851,6 +854,11 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                       controller: warehouseNameUI,
                       readOnly: true,
                       onPressed: onChangeWhs,
+                    ),
+                    Input(
+                      label: 'Remark',
+                      placeholder: 'Remark',
+                      controller: remark,
                     ),
                     // Divider(thickness: 1, color: Colors.grey.shade400),
                   ],

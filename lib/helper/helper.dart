@@ -394,3 +394,46 @@ String getWarehouseName(BuildContext context, String warehouseCode) {
     return warehouseCode;
   }
 }
+
+
+void showJsonDialog(BuildContext context, Map<dynamic, dynamic> record) {
+  final data = Map<String, dynamic>.from(record);
+  data.remove('SaveId');
+  data.remove('status');
+  data.remove('error');
+  data.remove('timestamp');
+  
+  final jsonString = const JsonEncoder.withIndent('  ').convert(data);
+
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Payload JSON', style: TextStyle(fontSize: 16)),
+            IconButton(
+              icon: const Icon(Icons.copy, size: 20),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: jsonString));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Copied to clipboard')),
+                );
+              },
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Text(jsonString, style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      );
+    },
+  );
+}

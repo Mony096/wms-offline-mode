@@ -44,6 +44,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
   void clearCachLog() {
     failedRecords = [];
     successRecords = [];
+  emit(List.from(state));
   }
 
   List<dynamic> getJsonData() {
@@ -102,7 +103,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
     box.put('data', []);
     emit([]);
 
-    failedRecords.clear();
+    // // failedRecords.clear();
     successRecords.clear();
 
     final host = await LocalStorageManger.getString('host');
@@ -156,6 +157,7 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
     var uuid = Uuid();
 
     // 3️⃣ Post each record to SAP
+    final currentFailures = <dynamic>[];
     for (var item in items) {
       final startTime = DateTime.now();
 
@@ -167,25 +169,28 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
           endpoint: 'PurchaseDeliveryNotes',
           body: item,
         );
-        successRecords.add({
+        successRecords.insert(0, {
           ...item,
           'success': "Synced Successfully to SAP",
           'timestamp': startTime.toIso8601String(),
+          'logId': uuid.v4(),
         });
         print("✅ Synced: ${item['DocEntry'] ?? 'N/A'}");
       } catch (e) {
         print("🔥 Failed to sync record: $e");
         print(item);
-        failedRecords.add({
+        failedRecords.insert(0, {
           ...item,
           'error': e.toString(),
           'timestamp': startTime.toIso8601String(),
+          'logId': uuid.v4(),
           'failId': uuid.v4(),
         });
+        currentFailures.add(failedRecords.first);
       }
     }
     // Clean up failed records
-    final cleanedFailedRecords = failedRecords.map((item) {
+    final cleanedFailedRecords = currentFailures.map((item) {
       final newItem = Map<String, dynamic>.from(item);
       newItem.remove('error');
       // newItem.remove('timestamp');
@@ -209,4 +214,11 @@ class GoodReceiptPoOfflineCubit extends Cubit<List<dynamic>> {
     print(
         "🎯 Sync completed. Success: ${items.length - failedRecords.length}, Failed: ${failedRecords.length}");
   }
+
+  void removeMemoryLog(String logId) {
+    failedRecords.removeWhere((item) => item['logId'] == logId || item['failId'] == logId);
+    successRecords.removeWhere((item) => item['logId'] == logId || item['failId'] == logId);
+    emit(List.from(state)); // trigger rebuild
+  }
+
 }

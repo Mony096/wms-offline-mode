@@ -197,10 +197,12 @@ class SyncFailLogGoodReceiptScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 5),
                                   _buildRow("Goods Receipt Tyle",
-                                      record['U_lk_grtype'] ?? 'N/A'),
+                                      record['U_LK_Type_GR'] ?? 'N/A'),
                                   const SizedBox(height: 5),
                                   _buildRow("Warehouse",
                                       record['U_lk_whsdesc'] ?? 'N/A'),
+                                  const SizedBox(height: 5),
+                                  _buildRow("Remark", record['Comments'] ?? ''),
                                   const Padding(
                                     padding: EdgeInsets.only(
                                         left: 0, top: 3, bottom: 12),

@@ -57,6 +57,7 @@ class CreateQuickCountScreen extends StatefulWidget {
 
 class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   final uomText = TextEditingController();
+  final remark = TextEditingController();
   final quantity = TextEditingController();
   final ref = TextEditingController();
   final warehouse = TextEditingController();
@@ -119,6 +120,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
               ? widget.isEdit['InventoryPostingLines'][0]["WarehouseCode"]
               : null);
       ref.text = getDataFromDynamic(widget.isEdit['Reference2']);
+      remark.text = getDataFromDynamic(widget.isEdit['Remarks']);
       saveIdQC.text = getDataFromDynamic(widget.isEdit['SaveId']);
       saveIdCC.text = getDataFromDynamic(widget.isEdit['SaveId']);
       if (mounted) MaterialDialog.loading(context);
@@ -702,6 +704,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                 : saveIdCC.text
             : uuid.v4(),
         "Reference2": ref.text,
+        "Remarks": remark.text,
         "InventoryPostingLines": filteredItems.asMap().entries.map((entry) {
           int index = entry.key;
           Map<String, dynamic> item = entry.value;
@@ -1378,6 +1381,11 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                       controller: warehouseNameUI,
                       readOnly: true,
                       onPressed: onChangeWhs,
+                    ),
+                    Input(
+                      label: 'Remark',
+                      placeholder: 'Remark',
+                      controller: remark,
                     ),
                     // Divider(thickness: 1, color: Colors.grey.shade400),
                   ],

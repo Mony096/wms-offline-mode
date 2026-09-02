@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/constant/style.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
+import 'package:wms_mobile/feature/item/presentation/cubit/items_group_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 import 'product_detail_screen.dart';
 
@@ -17,8 +18,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
   List<dynamic> _allData = [];
   List<dynamic> _filteredData = [];
   
-  String _selectedCategory = 'All';
-  final List<String> _categories = ['All', 'IT Equipment', 'Laptop', 'Screen', 'Mouse', 'Keyboard'];
+  String _selectedCategoryName = 'All';
+  int? _selectedCategoryNumber;
+  List<dynamic> _categories = [];
 
   @override
   void initState() {
@@ -29,6 +31,14 @@ class _ProductListScreenState extends State<ProductListScreen> {
 
   void _loadData() {
     final offlineData = context.read<ItemOfflineCubit>().state;
+    final itemGroups = context.read<ItemsGroupOfflineCubit>().state;
+    
+    // Set categories dynamically
+    _categories = [
+      {'Number': -1, 'GroupName': 'All'},
+      ...itemGroups
+    ];
+
     // We add some mock items if the list is empty for demo purposes based on prototype
     if (offlineData.isEmpty) {
       _allData = [
@@ -48,13 +58,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
     _applyFilters();
   }
 
-  void _onCategorySelected(String category) {
-    setState(() {
-      _selectedCategory = category;
-    });
-    _applyFilters();
-  }
-
   void _applyFilters() {
     final text = _searchController.text.toLowerCase();
     setState(() {
@@ -63,13 +66,9 @@ class _ProductListScreenState extends State<ProductListScreen> {
         final name = (item['ItemName'] ?? '').toString().toLowerCase();
         final matchesSearch = code.contains(text) || name.contains(text);
         
-        // Mock category filter since we don't have ItemsGroupCode in query yet
         bool matchesCategory = true;
-        if (_selectedCategory != 'All') {
-          if (_selectedCategory == 'Laptop' && !name.contains('laptop')) matchesCategory = false;
-          if (_selectedCategory == 'Screen' && !name.contains('monitor')) matchesCategory = false;
-          if (_selectedCategory == 'Keyboard' && !name.contains('keyboard')) matchesCategory = false;
-          if (_selectedCategory == 'Mouse' && !name.contains('mouse') && !name.contains('logitech')) matchesCategory = false;
+        if (_selectedCategoryName != 'All' && _selectedCategoryNumber != null) {
+          matchesCategory = item['ItemsGroupCode']?.toString() == _selectedCategoryNumber?.toString();
         }
         
         return matchesSearch && matchesCategory;
@@ -135,9 +134,16 @@ class _ProductListScreenState extends State<ProductListScreen> {
               itemCount: _categories.length,
               itemBuilder: (context, index) {
                 final category = _categories[index];
-                final isSelected = category == _selectedCategory;
+                final categoryName = category['GroupName'] ?? '';
+                final isSelected = categoryName == _selectedCategoryName;
                 return GestureDetector(
-                  onTap: () => _onCategorySelected(category),
+                  onTap: () {
+                    setState(() {
+                      _selectedCategoryName = categoryName;
+                      _selectedCategoryNumber = category['Number'];
+                    });
+                    _applyFilters();
+                  },
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -147,7 +153,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ),
                     child: Center(
                       child: Text(
-                        category,
+                        categoryName,
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.black87,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -211,17 +217,6 @@ class _ProductListScreenState extends State<ProductListScreen> {
                     ),
                     child: Row(
                       children: [
-                        // Mock Image Container
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.computer, color: Colors.blueGrey, size: 28),
-                        ),
-                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,

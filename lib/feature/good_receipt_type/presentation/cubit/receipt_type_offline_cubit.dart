@@ -1,35 +1,21 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 
 class ReceiptTypeOfflineCubit extends Cubit<List<dynamic>> {
-  ReceiptTypeOfflineCubit() : super([]) {
-    loadData();
-  }
+  ReceiptTypeOfflineCubit() : super(const [
+    {'Code': 'SA', 'Name': 'Stock Adjustment'},
+    {'Code': 'RB', 'Name': 'Receipt from Borrowing Stock'},
+    {'Code': 'PE', 'Name': 'Product Exchange'},
+    {'Code': 'PM', 'Name': 'Promotion'},
+  ]);
 
-  final Box box = Hive.box('receipt_type');
+  // Methods are kept to avoid breaking changes in UI but are no-ops
+  void loadData() {}
 
-  // Load existing data from Hive
-  void loadData() {
-    final List<dynamic> items = box.get('data', defaultValue: []).cast<dynamic>();
-    emit(items);
-  }
+  void addData(dynamic item) {}
 
-  // Add data to Hive
-  void addData(dynamic item) {
-    final List<dynamic> items = box.get('data', defaultValue: []).cast<dynamic>();
-    items.addAll(item);
-    box.put('data', items);
-    emit(items);
-  }
+  void clearData() {}
 
-  // Clear data
-  void clearData() {
-    box.put('data', []);
-    emit([]);
-  }
-   // 👇 New function to print all saved data
   void printAllData() {
-    final List<dynamic> items = box.get('data', defaultValue: []).cast<dynamic>();
-    print("🟢 Hive Data: $items");
+    print("🟢 Predefined Goods Receipt Data: $state");
   }
 }

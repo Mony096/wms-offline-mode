@@ -54,6 +54,7 @@ class CreateDeliveryScreen extends StatefulWidget {
 class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
   final cardCode = TextEditingController();
   final cardName = TextEditingController();
+  final remark = TextEditingController();
   final poText = TextEditingController();
   final uomText = TextEditingController();
   final quantity = TextEditingController();
@@ -128,6 +129,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
 
       cardCode.text = getDataFromDynamic(widget.isEdit['CardCode']);
       cardName.text = getDataFromDynamic(widget.isEdit['CardName']);
+      remark.text = getDataFromDynamic(widget.isEdit['Comments']);
       warehouse.text = getDataFromDynamic(widget.isEdit['WarehouseCode']);
       warehouseNameUI.text = warehouse.text;
       saveId.text = getDataFromDynamic(widget.isEdit['SaveId']);
@@ -490,6 +492,7 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                 : uuid.v4(),
         "CardCode": cardCode.text,
         "CardName": cardName.text,
+        "Comments": remark.text,
         "WarehouseCode": warehouse.text,
         "DocumentLines": filteredItems.asMap().entries.map((entry) {
           int parentIndex = entry.key;
@@ -995,6 +998,11 @@ class _CreateDeliveryScreenState extends State<CreateDeliveryScreen> {
                             controller: warehouseNameUI,
                             readOnly: true,
                             onPressed: onChangeWhs,
+                          ),
+                          Input(
+                            label: 'Remark',
+                            placeholder: 'Remark',
+                            controller: remark,
                           ),
                           Divider(thickness: 1, color: Colors.grey.shade400),
                           Input(
