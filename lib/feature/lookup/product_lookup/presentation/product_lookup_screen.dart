@@ -774,8 +774,8 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                                             padding: EdgeInsets
                                                                 .fromLTRB(5, 7,
                                                                     5, 10),
-                                                            color: Colors
-                                                                .grey.shade50,
+                                                            // color: Colors
+                                                            //     .grey.shade50,
                                                             child: Column(
                                                               children: [
                                                                 Row(
@@ -791,7 +791,7 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                                                               Text(
                                                                             getDataFromDynamic(e["Batch_Serial"]),
                                                                             style:
-                                                                                TextStyle(fontSize: 14),
+                                                                                TextStyle(fontSize: 13),
                                                                           ),
                                                                         )),
                                                                     Expanded(
@@ -807,9 +807,7 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                                                         ))
                                                                   ],
                                                                 ),
-                                                                SizedBox(
-                                                                  height: 5,
-                                                                ),
+                                                              
                                                               ],
                                                             ),
                                                           )),
@@ -921,8 +919,8 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                                             padding: EdgeInsets
                                                                 .fromLTRB(5, 10,
                                                                     5, 10),
-                                                            color: Colors
-                                                                .grey.shade50,
+                                                            // color: Colors
+                                                            //     .grey.shade50,
                                                             child: Column(
                                                               children: [
                                                                 Row(
@@ -938,7 +936,7 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                                                               Text(
                                                                             getDataFromDynamic(e["Batch_Serial"]), // Use null-aware operator to handle null
                                                                             style:
-                                                                                TextStyle(fontSize: 14),
+                                                                                TextStyle(fontSize: 13),
                                                                           ),
                                                                         )),
                                                                     Expanded(
