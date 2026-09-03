@@ -16,8 +16,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text("Clear Failed Data?"),
-        content: const Text(
-            "This will remove all offline data. Are you sure?"),
+        content: const Text("This will remove all offline data. Are you sure?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -190,7 +189,11 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                                 children: [
                                   _buildRow(
                                       "Warehouse",
-                                      getWarehouseName(context, record['InventoryPostingLines'][0]['WarehouseCode'] ?? '')),
+                                      getWarehouseName(
+                                          context,
+                                          record['InventoryPostingLines'][0]
+                                                  ['WarehouseCode'] ??
+                                              '')),
                                   const SizedBox(height: 5),
                                   _buildRow("Remark", record['Remarks'] ?? ''),
                                   const SizedBox(height: 5),
@@ -441,7 +444,7 @@ class ReviewQuickCountOfflineSave extends StatelessWidget {
                     ),
 
                     // 🔹 Index Badge
-                   Positioned(
+                    Positioned(
                       top: 8,
                       right: 8,
                       child: Container(

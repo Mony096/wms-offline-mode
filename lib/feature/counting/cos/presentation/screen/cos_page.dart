@@ -135,10 +135,10 @@ class _CosPageState extends State<CosPage> {
                           controller: filter,
                           decoration: const InputDecoration(
                             hintText: 'Search Document Number...',
-                              hintStyle: const TextStyle(
-                            fontSize: 13.5,
-                            color: Colors.grey,
-                          ),
+                            hintStyle: const TextStyle(
+                              fontSize: 13.5,
+                              color: Colors.grey,
+                            ),
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.symmetric(
                                 vertical: 14, horizontal: 10),

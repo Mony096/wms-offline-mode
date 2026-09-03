@@ -335,14 +335,28 @@ class _BinCountListsState extends State<BinCountLists> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           (() {
-                                            final code = record['InventoryCountingLines']?[0]?["WarehouseCode"] ?? '';
-                                            final whsList = context.read<WarehouseOfflineCubit>().state;
+                                            final code =
+                                                record['InventoryCountingLines']
+                                                            ?[0]
+                                                        ?["WarehouseCode"] ??
+                                                    '';
+                                            final whsList = context
+                                                .read<WarehouseOfflineCubit>()
+                                                .state;
                                             final whs = whsList.firstWhere(
                                               (w) => w['WarehouseCode'] == code,
                                               orElse: () => null,
                                             );
-                                            final name = (whs != null && whs['WarehouseName'] != null && whs['WarehouseName'].toString().trim().isNotEmpty)
-                                                ? whs['WarehouseName'].toString().trim()
+                                            final name = (whs != null &&
+                                                    whs['WarehouseName'] !=
+                                                        null &&
+                                                    whs['WarehouseName']
+                                                        .toString()
+                                                        .trim()
+                                                        .isNotEmpty)
+                                                ? whs['WarehouseName']
+                                                    .toString()
+                                                    .trim()
                                                 : code;
                                             return _buildRow("Warehouse", name);
                                           })(),

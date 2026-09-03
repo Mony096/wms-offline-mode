@@ -582,11 +582,6 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
                   onPressed: () {},
                 ),
                 Input(
-                  label: 'Remark',
-                  placeholder: 'Remark',
-                  controller: remark,
-                ),
-                Input(
                   controller: sbinCode,
                   label: 'S.Bin.',
                   placeholder: 'Bin Location',
@@ -613,9 +608,8 @@ class _CreatePutAwayScreenState extends State<CreatePutAwayScreen> {
                 ),
                 Input(
                   controller: quantity,
-                  
-                inputFormatters: [ThousandsSeparatorInputFormatter()],
-label: 'Quantity.',
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
+                  label: 'Quantity.',
                   placeholder: 'Quantity',
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
                   onEditingComplete: onCompleteQuantiyInput,
@@ -624,6 +618,42 @@ label: 'Quantity.',
                           onNavigateSerialOrBatch(force: true);
                         }
                       : null,
+                ),
+                const SizedBox(height: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Remark",
+                      style: TextStyle(
+                        fontSize: 14.3,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 15, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextFormField(
+                        controller: remark,
+                        maxLines: 3,
+                        style: const TextStyle(fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Enter remark...',
+                          hintStyle:
+                              const TextStyle(fontSize: 14, color: Colors.grey),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 40),
                 Expanded(
@@ -640,7 +670,8 @@ label: 'Quantity.',
                                 children: items
                                     .map((item) => GestureDetector(
                                           onTap: () => onEdit(item),
-                                          child: ItemRow(item: item, isPhone: isPhone),
+                                          child: ItemRow(
+                                              item: item, isPhone: isPhone),
                                         ))
                                     .toList(),
                               ),

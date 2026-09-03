@@ -79,7 +79,7 @@ class SyncItem {
   final int Function(BuildContext) getLog;
   final int Function(BuildContext) getFaild;
 
-  final Future<void> Function(BuildContext) onSync;
+  final Future<void> Function(BuildContext, [ValueNotifier<String>?]) onSync;
   final void Function(BuildContext) onFailedSync;
 
   final void Function(BuildContext)? onGotoReview;
@@ -124,11 +124,10 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<GoodReceiptPoOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<GoodReceiptPoOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<GoodReceiptPoOfflineCubit>().post(
-                  context.read<GoodReciptPoFailedOfflineCubit>(),
+            onSync: (context, [progressNotifier]) async {
+              await context.read<GoodReceiptPoOfflineCubit>().post(context.read<GoodReciptPoFailedOfflineCubit>(),
                   context.read<PurchaseOrderOfflineCubit>(),
-                  context);
+                  context, progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewOfflineSave()).then((e) async => {
@@ -168,10 +167,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 .length,
             getLog: (context) =>
                 context.read<QuickGoodReceiptOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<QuickGoodReceiptOfflineCubit>().post(
-                    context.read<QuickGoodReceiptFailedOfflineCubit>(),
-                  );
+            onSync: (context, [progressNotifier]) async {
+              await context.read<QuickGoodReceiptOfflineCubit>().post(context.read<QuickGoodReceiptFailedOfflineCubit>(), progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewQuickOfflineSave()).then((e) async => {
@@ -209,11 +206,10 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<ReturnReceiptOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<ReturnReceiptOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<ReturnReceiptOfflineCubit>().post(
-                  context.read<ReturnReceiptFailedOfflineCubit>(),
+            onSync: (context, [progressNotifier]) async {
+              await context.read<ReturnReceiptOfflineCubit>().post(context.read<ReturnReceiptFailedOfflineCubit>(),
                   context.read<ReturnReceiptRequestOfflineCubit>(),
-                  context);
+                  context, progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewReturnReceiptOfflineSave()).then((e) async =>
@@ -253,10 +249,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<GoodsReceiptOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<GoodsReceiptOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<GoodsReceiptOfflineCubit>().post(
-                    context.read<GoodReceiptFailedOfflineCubit>(),
-                  );
+            onSync: (context, [progressNotifier]) async {
+              await context.read<GoodsReceiptOfflineCubit>().post(context.read<GoodReceiptFailedOfflineCubit>(), progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewGoodsReceiptOfflineSave()).then((e) async => {
@@ -293,10 +287,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             getCount: (context) =>
                 context.read<PutAwayOfflineCubit>().getJsonData().length,
             getLog: (context) => context.read<PutAwayOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<PutAwayOfflineCubit>().post(
-                    context.read<PutAwayFailedOfflineCubit>(),
-                  );
+            onSync: (context, [progressNotifier]) async {
+              await context.read<PutAwayOfflineCubit>().post(context.read<PutAwayFailedOfflineCubit>(), progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewPutAwayOfflineSave()).then((e) async => {
@@ -340,11 +332,10 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             getCount: (context) =>
                 context.read<DeliveryOfflineCubit>().getJsonData().length,
             getLog: (context) => context.read<DeliveryOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<DeliveryOfflineCubit>().post(
-                  context.read<DeliveryFailedOfflineCubit>(),
+            onSync: (context, [progressNotifier]) async {
+              await context.read<DeliveryOfflineCubit>().post(context.read<DeliveryFailedOfflineCubit>(),
                   context.read<SaleOrderOfflineCubit>(),
-                  context);
+                  context, progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewDeiveryOfflineSave()).then((e) async => {
@@ -382,11 +373,10 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<PurchaseReturnOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<PurchaseReturnOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<PurchaseReturnOfflineCubit>().post(
-                  context.read<PurchaseReturnFailedOfflineCubit>(),
+            onSync: (context, [progressNotifier]) async {
+              await context.read<PurchaseReturnOfflineCubit>().post(context.read<PurchaseReturnFailedOfflineCubit>(),
                   context.read<PurchaseReturnRequestOfflineCubit>(),
-                  context);
+                  context, progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewPurchaseReturnOfflineSave()).then((e) async =>
@@ -426,10 +416,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<GoodsIssueOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<GoodsIssueOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<GoodsIssueOfflineCubit>().post(
-                    context.read<GoodIssueFailedOfflineCubit>(),
-                  );
+            onSync: (context, [progressNotifier]) async {
+              await context.read<GoodsIssueOfflineCubit>().post(context.read<GoodIssueFailedOfflineCubit>(), progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewGoodsIssueOfflineSave()).then((e) async => {
@@ -474,10 +462,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<QuickCountOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<QuickCountOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<QuickCountOfflineCubit>().post(
-                    context.read<QuickCountFailedOfflineCubit>(),
-                  );
+            onSync: (context, [progressNotifier]) async {
+              await context.read<QuickCountOfflineCubit>().post(context.read<QuickCountFailedOfflineCubit>(), progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewQuickCountOfflineSave()).then((e) async => {
@@ -515,10 +501,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<CycleCountOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<CycleCountOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<CycleCountOfflineCubit>().post(
-                    context.read<CycleCountFailedOfflineCubit>(),
-                  );
+            onSync: (context, [progressNotifier]) async {
+              await context.read<CycleCountOfflineCubit>().post(context.read<CycleCountFailedOfflineCubit>(), progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewCycleCountOfflineSave()).then((e) async => {
@@ -556,10 +540,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                 context.read<PhysicalCountOfflineCubit>().getJsonData().length,
             getLog: (context) =>
                 context.read<PhysicalCountOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<PhysicalCountOfflineCubit>().post(
-                    context.read<PhysicalCountFailedOfflineCubit>(),
-                  );
+            onSync: (context, [progressNotifier]) async {
+              await context.read<PhysicalCountOfflineCubit>().post(context.read<PhysicalCountFailedOfflineCubit>(), progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewPhysicalCountOfflineSave()).then((e) async =>
@@ -598,10 +580,8 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             getCount: (context) =>
                 context.read<BinCountOfflineCubit>().getJsonData().length,
             getLog: (context) => context.read<BinCountOfflineCubit>().getLog(),
-            onSync: (context) async {
-              await context.read<BinCountOfflineCubit>().post(
-                    context.read<BinCountFailedOfflineCubit>(),
-                  );
+            onSync: (context, [progressNotifier]) async {
+              await context.read<BinCountOfflineCubit>().post(context.read<BinCountFailedOfflineCubit>(), progressNotifier: progressNotifier);
             },
             onGotoReview: (context) {
               goTo(context, ReviewBinCountOfflineSave()).then((e) async => {
@@ -717,7 +697,7 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
             final count = item.getCount(context);
             progressNotifier.value = "Syncing ${item.name}...\n($currentModule of $totalModules)\n$count records";
             print("🔄 Syncing ${item.name} ($count records)...");
-            await item.onSync(context);
+            await item.onSync(context, progressNotifier);
           } catch (e) {
             print("❌ Failed to sync ${item.name}: $e");
           }
@@ -1486,9 +1466,10 @@ class _SyncToSAPScreenState extends State<SyncToSAPScreen> {
                             return;
                           }
                           // 🌀 Show loading dialog
-                          MaterialDialog.loading(context);
+                          final progressNotifier = ValueNotifier<String>("Preparing to sync...");
+                          MaterialDialog.loading(context, progressNotifier: progressNotifier);
                           try {
-                            await item.onSync(context);
+                            await item.onSync(context, progressNotifier);
 
                             if (context.mounted) MaterialDialog.close(context);
                             setState(() {

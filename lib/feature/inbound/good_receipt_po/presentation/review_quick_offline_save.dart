@@ -16,9 +16,14 @@ class ReviewQuickOfflineSave extends StatelessWidget {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Clear Failed Data?",style: TextStyle(fontSize: 19),),
+        title: const Text(
+          "Clear Failed Data?",
+          style: TextStyle(fontSize: 19),
+        ),
         content: const Text(
-            "This will remove all offline data. Are you sure?",style: TextStyle(fontSize: 14),),
+          "This will remove all offline data. Are you sure?",
+          style: TextStyle(fontSize: 14),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -47,11 +52,12 @@ class ReviewQuickOfflineSave extends StatelessWidget {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text("Remove this data ?",
+        title: const Text(
+          "Remove this data ?",
           style: TextStyle(fontSize: 19),
         ),
         content: const Text(
-            "This will remove this offline data. Are you sure?",
+          "This will remove this offline data. Are you sure?",
           style: TextStyle(fontSize: 14),
         ),
         actions: [

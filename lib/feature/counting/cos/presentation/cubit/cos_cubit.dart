@@ -4,7 +4,6 @@ import 'package:wms_mobile/core/error/failure.dart';
 import 'package:wms_mobile/feature/counting/cos/domain/usecase/find_usecase.dart';
 import 'package:wms_mobile/feature/counting/cos/domain/usecase/get_usecase.dart';
 
-
 part 'cos_state.dart';
 
 class CosCubit extends Cubit<CosState> {

@@ -38,11 +38,13 @@ class PutAwayOfflineCubit extends Cubit<List<dynamic>> {
     box.put('data', []);
     emit([]);
   }
+
   void clearCachLog() {
     failedRecords = [];
     successRecords = [];
-  emit(List.from(state));
+    emit(List.from(state));
   }
+
   List<dynamic> getJsonData() {
     final items = box.get('data', defaultValue: []).cast<dynamic>();
     return items;
@@ -92,7 +94,8 @@ class PutAwayOfflineCubit extends Cubit<List<dynamic>> {
     emit(updatedItems);
   }
 
-  Future<void> post(PutAwayFailedOfflineCubit failCubit) async {
+  Future<void> post(PutAwayFailedOfflineCubit failCubit,
+      {ValueNotifier<String>? progressNotifier}) async {
     final items = getJsonData();
     if (items.isEmpty) {
       print("⚠️ No offline records to sync.");
@@ -158,7 +161,12 @@ class PutAwayOfflineCubit extends Cubit<List<dynamic>> {
 
     // 3️⃣ Post each record to SAP
     final currentFailures = <dynamic>[];
+    int _syncIndex = 0;
     for (var item in items) {
+      _syncIndex++;
+      if (progressNotifier != null)
+        progressNotifier.value =
+            "Syncing record $_syncIndex of ${items.length}...";
       final startTime = DateTime.now();
       var id = item["SaveId"];
       item.remove("SaveId"); // ✅ Correct way to remove key from map
@@ -308,9 +316,10 @@ class PutAwayOfflineCubit extends Cubit<List<dynamic>> {
   // }
 
   void removeMemoryLog(String logId) {
-    failedRecords.removeWhere((item) => item['logId'] == logId || item['failId'] == logId);
-    successRecords.removeWhere((item) => item['logId'] == logId || item['failId'] == logId);
+    failedRecords.removeWhere(
+        (item) => item['logId'] == logId || item['failId'] == logId);
+    successRecords.removeWhere(
+        (item) => item['logId'] == logId || item['failId'] == logId);
     emit(List.from(state)); // trigger rebuild
   }
-
 }

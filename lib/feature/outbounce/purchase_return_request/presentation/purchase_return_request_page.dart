@@ -9,8 +9,9 @@ import 'package:wms_mobile/utilies/dialog/dialog.dart';
 import '/constant/style.dart';
 
 class PurchaseReturnRequestPage extends StatefulWidget {
-  const PurchaseReturnRequestPage({super.key,});
-
+  const PurchaseReturnRequestPage({
+    super.key,
+  });
 
   @override
   State<PurchaseReturnRequestPage> createState() =>
@@ -33,7 +34,9 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
     allData = allData.where((doc) {
       final lines = doc['DocumentLines'] as List<dynamic>? ?? [];
       return lines.any((line) {
-        final qty = double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ?? 0.0;
+        final qty =
+            double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ??
+                0.0;
         return line['LineStatus'] == 'bost_Open' && qty > 0;
       });
     }).toList();
@@ -49,7 +52,9 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
       final docNum = getDataFromDynamic(bp['DocNum']).toLowerCase();
 
       // if (searchText.isEmpty) return typeMatch;
-      return (code.contains(searchText) || name.contains(searchText) || docNum.contains(searchText));
+      return (code.contains(searchText) ||
+          name.contains(searchText) ||
+          docNum.contains(searchText));
     }).toList();
 
     setState(() => filteredData = results);
@@ -216,7 +221,8 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text.rich(
                                     TextSpan(
@@ -227,7 +233,8 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
                                           fontSize: 14),
                                       children: [
                                         TextSpan(
-                                          text: getDataFromDynamic(bp['CardCode']),
+                                          text: getDataFromDynamic(
+                                              bp['CardCode']),
                                           style: const TextStyle(
                                               color: Colors.black,
                                               fontWeight: FontWeight.bold),
@@ -244,7 +251,8 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
                               ),
                               const SizedBox(height: 8),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: Text.rich(
@@ -256,7 +264,8 @@ class _PurchaseReturnRequestPageState extends State<PurchaseReturnRequestPage> {
                                             fontSize: 14),
                                         children: [
                                           TextSpan(
-                                            text: getDataFromDynamic(bp['DocNum']),
+                                            text: getDataFromDynamic(
+                                                bp['DocNum']),
                                             style: const TextStyle(
                                                 color: Colors.black,
                                                 fontWeight: FontWeight.bold),

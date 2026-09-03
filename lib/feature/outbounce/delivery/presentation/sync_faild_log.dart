@@ -195,8 +195,8 @@ class SyncFailLogDeliveryScreen extends StatelessWidget {
                                         fontSize: 13, color: Colors.redAccent),
                                   ),
                                   const SizedBox(height: 5),
-                                  _buildRow(
-                                      "Customer Code", record['CardCode'] ?? 'N/A'),
+                                  _buildRow("Customer Code",
+                                      record['CardCode'] ?? 'N/A'),
                                   const SizedBox(height: 5),
                                   _buildRow("Customer Name",
                                       record['CardName'] ?? 'N/A'),

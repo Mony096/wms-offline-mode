@@ -42,7 +42,7 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
   void clearCachLog() {
     failedRecords = [];
     successRecords = [];
-  emit(List.from(state));
+    emit(List.from(state));
   }
 
   List<dynamic> getJsonData() {
@@ -94,7 +94,8 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
     emit(updatedItems);
   }
 
-  Future<void> post(QuickGoodReceiptFailedOfflineCubit failCubit) async {
+  Future<void> post(QuickGoodReceiptFailedOfflineCubit failCubit,
+      {ValueNotifier<String>? progressNotifier}) async {
     final items = getJsonData();
     if (items.isEmpty) {
       print("⚠️ No offline records to sync.");
@@ -160,7 +161,12 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
 
     // 3️⃣ Post each record to SAP
     final currentFailures = <dynamic>[];
+    int _syncIndex = 0;
     for (var item in items) {
+      _syncIndex++;
+      if (progressNotifier != null)
+        progressNotifier.value =
+            "Syncing record $_syncIndex of ${items.length}...";
       final startTime = DateTime.now();
       try {
         await postToSAP(
@@ -206,9 +212,10 @@ class QuickGoodReceiptOfflineCubit extends Cubit<List<dynamic>> {
   }
 
   void removeMemoryLog(String logId) {
-    failedRecords.removeWhere((item) => item['logId'] == logId || item['failId'] == logId);
-    successRecords.removeWhere((item) => item['logId'] == logId || item['failId'] == logId);
+    failedRecords.removeWhere(
+        (item) => item['logId'] == logId || item['failId'] == logId);
+    successRecords.removeWhere(
+        (item) => item['logId'] == logId || item['failId'] == logId);
     emit(List.from(state)); // trigger rebuild
   }
-
 }

@@ -104,7 +104,7 @@ class _DuplicateItemGPOPageState extends State<DuplicateItemGPOPage> {
                             children: [
                               Row(
                                 children: [
-                                   SizedBox(
+                                  SizedBox(
                                     width: 5,
                                   ),
                                   Expanded(
@@ -119,13 +119,16 @@ class _DuplicateItemGPOPageState extends State<DuplicateItemGPOPage> {
                                   Expanded(
                                       child: Text(
                                           getDataFromDynamic(i['UoMCode']))),
-                                  Expanded(child: Text('${getDataFromDynamic(i['TotalQuantity'])}/${i['Quantity']}')),
+                                  Expanded(
+                                      child: Text(
+                                          '${getDataFromDynamic(i['TotalQuantity'])}/${i['Quantity']}')),
                                 ],
                               ),
                               SizedBox(height: 6),
                               Padding(
                                 padding: const EdgeInsets.only(left: 5),
-                                child: Text(getDataFromDynamic(i['ItemDescription'])),
+                                child: Text(
+                                    getDataFromDynamic(i['ItemDescription'])),
                               )
                             ],
                           ),

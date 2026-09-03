@@ -3,7 +3,6 @@ import 'package:equatable/equatable.dart';
 import 'package:wms_mobile/feature/good_isuse_select/domain/entity/grt_entity.dart';
 import 'package:wms_mobile/feature/good_isuse_select/domain/usecase/get_usecase.dart';
 
-
 part 'grt_state.dart';
 
 class GoodIssueSelectCubit extends Cubit<GoodIssueSelectState> {

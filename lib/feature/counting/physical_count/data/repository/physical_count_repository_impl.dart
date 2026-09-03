@@ -19,11 +19,12 @@ class PhysicalCountRepositoryImpl implements PhysicalCountRepository {
       return Left(error);
     }
   }
+
   @override
   Future<Either<Failure, Map<String, dynamic>>> put(
-      Map<String, dynamic> payload,docEntry) async {
+      Map<String, dynamic> payload, docEntry) async {
     try {
-      final Map<String, dynamic> reponse = await remote.put(payload,docEntry);
+      final Map<String, dynamic> reponse = await remote.put(payload, docEntry);
       return Right(reponse);
     } on Failure catch (error) {
       return Left(error);

@@ -62,7 +62,7 @@ class _OutboundState extends State<Outbound> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                SizedBox(
+              SizedBox(
                 height: 10,
               ),
               SizedBox(
@@ -72,10 +72,10 @@ class _OutboundState extends State<Outbound> {
                   itemCount: gridList.length,
                   itemBuilder: (BuildContext context, int index) {
                     return GestureDetector(
-                      onTap: () {
-                        goTo(context, routes[index]);
-                      },
-                      child:  Container(
+                        onTap: () {
+                          goTo(context, routes[index]);
+                        },
+                        child: Container(
                           margin: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           padding: const EdgeInsets.symmetric(
@@ -127,8 +127,7 @@ class _OutboundState extends State<Outbound> {
                               ),
                             ],
                           ),
-                        )
-                    );
+                        ));
                   },
                 ),
               )

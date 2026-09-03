@@ -285,7 +285,9 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
       if (value == null) return;
       if (value is Map) {
         warehouse.text = getDataFromDynamic(value['code']);
-        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty ? getDataFromDynamic(value['name']) : warehouse.text;
+        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty
+            ? getDataFromDynamic(value['name'])
+            : warehouse.text;
       } else {
         warehouse.text = getDataFromDynamic(value);
         warehouseNameUI.text = warehouse.text;
@@ -393,7 +395,8 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
         uoMGroupDefinitionCollection.text = jsonEncode(
           item['UoMGroupDefinitionCollection'],
         );
-        totalQuantity.text = formatQuantity(getDataFromDynamic(item['TotalQuantity']));
+        totalQuantity.text =
+            formatQuantity(getDataFromDynamic(item['TotalQuantity']));
 
         isSerial.text = getDataFromDynamic(item['ManageSerialNumbers']);
         isBatch.text = getDataFromDynamic(item['ManageBatchNumbers']);
@@ -544,7 +547,8 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
             "BaseLine": item['BaseLine'],
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
-            "DocumentLinesBinAllocations": item['BinId'] != "" ?  binAllocations : []
+            "DocumentLinesBinAllocations":
+                item['BinId'] != "" ? binAllocations : []
           };
         }).toList(),
       };
@@ -972,11 +976,6 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
                             readOnly: true,
                             onPressed: onChangeWhs,
                           ),
-                          Input(
-                            label: 'Remark',
-                            placeholder: 'Remark',
-                            controller: remark,
-                          ),
                           Divider(thickness: 1, color: Colors.grey.shade400),
                           Input(
                             label: 'Customer Code',
@@ -1149,9 +1148,11 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
                             label: 'Input Qty',
                             placeholder: 'Quantity',
                             controller: quantity,
-                            
-                inputFormatters: [ThousandsSeparatorInputFormatter()],
-focusNode: _quantity,
+
+                            inputFormatters: [
+                              ThousandsSeparatorInputFormatter()
+                            ],
+                            focusNode: _quantity,
                             onFieldSubmitted: (value) {
                               _handleScanSubmitted(value, _quantity);
                             },
@@ -1179,6 +1180,43 @@ focusNode: _quantity,
                             controller: uom,
                             readOnly: true,
                             onPressed: onChangeUoM,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Remark",
+                          style: TextStyle(
+                            fontSize: 14.3,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 15, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: TextFormField(
+                            controller: remark,
+                            maxLines: 3,
+                            style: const TextStyle(fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: 'Enter remark...',
+                              hintStyle: const TextStyle(
+                                  fontSize: 14, color: Colors.grey),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                            ),
                           ),
                         ),
                       ],
@@ -1471,7 +1509,10 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  formatQuantity(((double.tryParse(item['TotalQuantity'].toString()) ?? 0) - (double.tryParse(item['Quantity'].toString()) ?? 0))),
+                  formatQuantity(
+                      ((double.tryParse(item['TotalQuantity'].toString()) ??
+                              0) -
+                          (double.tryParse(item['Quantity'].toString()) ?? 0))),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),
@@ -1680,7 +1721,10 @@ class ReviewRow extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  formatQuantity(((double.tryParse(item['TotalQuantity'].toString()) ?? 0) - (double.tryParse(item['Quantity'].toString()) ?? 0))),
+                  formatQuantity(
+                      ((double.tryParse(item['TotalQuantity'].toString()) ??
+                              0) -
+                          (double.tryParse(item['Quantity'].toString()) ?? 0))),
                   textAlign: TextAlign.right,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),

@@ -337,7 +337,7 @@ class _BinPageOfflineState extends State<BinPage> {
               ),
             ),
             Container(
-              margin: const EdgeInsets.only(left: 20, top: 25,right: 20),
+              margin: const EdgeInsets.only(left: 20, top: 25, right: 20),
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(12),

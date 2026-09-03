@@ -335,9 +335,8 @@ class _GoodReceiptBatchScreenState extends State<GoodReceiptBatchScreen> {
                     ),
                     Input(
                       controller: quantity,
-                      
-                inputFormatters: [ThousandsSeparatorInputFormatter()],
-label: 'Quantity',
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
+                      label: 'Quantity',
                       placeholder: 'Qty',
                       keyboardType:
                           TextInputType.numberWithOptions(decimal: true),

@@ -187,7 +187,7 @@ class SyncFailLogPutAwayScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                     Text(
+                                  Text(
                                     "Timestamp: $formattedTime",
                                     style: const TextStyle(
                                         fontSize: 13, color: Colors.redAccent),
@@ -447,7 +447,7 @@ class SyncFailLogPutAwayScreen extends StatelessWidget {
                                                   ));
                                             },
                                             child: Ink(
-                                           width: 117,
+                                              width: 117,
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                       horizontal: 8,
@@ -491,7 +491,7 @@ class SyncFailLogPutAwayScreen extends StatelessWidget {
                     ),
 
                     // 🔹 Index Badge
-                   Positioned(
+                    Positioned(
                       top: 8,
                       right: 8,
                       child: Container(

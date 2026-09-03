@@ -14,7 +14,8 @@ class LoginRepositoryImpl implements LoginRepository {
   @override
   Future<Either<Failure, String>> post(LoginEntity entity) async {
     try {
-      final String reponse = await remote.sign(LoginModel.mapFromEntity(entity));
+      final String reponse =
+          await remote.sign(LoginModel.mapFromEntity(entity));
 
       return Right(reponse);
     } on Failure catch (error) {

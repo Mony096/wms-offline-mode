@@ -95,7 +95,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     bool isSelected = _tabController.index == index;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-      margin: const EdgeInsets.only(left:2, top: 5),
+      margin: const EdgeInsets.only(left: 2, top: 5),
       decoration: BoxDecoration(
         color: isSelected ? const Color(0xFF131A3F) : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(10),
@@ -149,7 +149,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               controller: _tabController,
               isScrollable: true,
               tabAlignment: TabAlignment.start,
-              padding: EdgeInsets.only(left:10, right: 10),
+              padding: EdgeInsets.only(left: 10, right: 10),
               indicator: const BoxDecoration(), // Remove default indicator
               dividerColor: Colors.transparent, // Remove underline
               labelPadding: const EdgeInsets.symmetric(horizontal: 4),
@@ -252,7 +252,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             children: [
               if (_images.isEmpty)
                 Center(
-                  child: Icon(Icons.computer, size: 80, color: Colors.grey.shade300),
+                  child: Icon(Icons.computer,
+                      size: 80, color: Colors.grey.shade300),
                 )
               else
                 ClipRRect(
@@ -278,14 +279,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                 top: 12,
                 left: 12,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    _images.isEmpty ? '0/0' : '${_currentImageIndex + 1}/${_images.length}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    _images.isEmpty
+                        ? '0/0'
+                        : '${_currentImageIndex + 1}/${_images.length}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold, fontSize: 12),
                   ),
                 ),
               ),

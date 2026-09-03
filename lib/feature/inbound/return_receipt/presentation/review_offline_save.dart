@@ -484,7 +484,7 @@ class ReviewReturnReceiptOfflineSave extends StatelessWidget {
                     ),
 
                     // 🔹 Index Badge
-                  Positioned(
+                    Positioned(
                       top: 8,
                       right: 8,
                       child: Container(

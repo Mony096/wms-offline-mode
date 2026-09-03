@@ -191,7 +191,7 @@ class SyncFailLogCycleScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                     Text(
+                                  Text(
                                     "Timestamp: $formattedTime",
                                     style: const TextStyle(
                                         fontSize: 13, color: Colors.redAccent),
@@ -199,7 +199,11 @@ class SyncFailLogCycleScreen extends StatelessWidget {
                                   const SizedBox(height: 5),
                                   _buildRow(
                                       "Warehouse",
-                                      getWarehouseName(context, record['InventoryPostingLines'][0]['WarehouseCode'] ?? '')),
+                                      getWarehouseName(
+                                          context,
+                                          record['InventoryPostingLines'][0]
+                                                  ['WarehouseCode'] ??
+                                              '')),
                                   const SizedBox(height: 5),
                                   _buildRow("Remark", record['Remarks'] ?? ''),
                                   const SizedBox(height: 5),

@@ -384,7 +384,8 @@ class _CreatePurchaseReturnScreenState
         binCode.text = getDataFromDynamic(item['BinCode']);
         binId.text = getDataFromDynamic(item['BinId']);
         baseUoM.text = getDataFromDynamic(item['BaseUoM']);
-        totalQty.text = formatQuantity(getDataFromDynamic(item['TotalQuantity']));
+        totalQty.text =
+            formatQuantity(getDataFromDynamic(item['TotalQuantity']));
         refLineNo.text = getDataFromDynamic(item['BaseLine']);
         uoMGroupDefinitionCollection.text = jsonEncode(
           item['UoMGroupDefinitionCollection'],
@@ -537,7 +538,7 @@ class _CreatePurchaseReturnScreenState
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
             "DocumentLinesBinAllocations":
-               item['BinId'] != "" ? binAllocations : []
+                item['BinId'] != "" ? binAllocations : []
           };
         }).toList(),
       };
@@ -720,7 +721,9 @@ class _CreatePurchaseReturnScreenState
       if (value == null) return;
       if (value is Map) {
         warehouse.text = getDataFromDynamic(value['code']);
-        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty ? getDataFromDynamic(value['name']) : warehouse.text;
+        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty
+            ? getDataFromDynamic(value['name'])
+            : warehouse.text;
       } else {
         warehouse.text = getDataFromDynamic(value);
         warehouseNameUI.text = warehouse.text;
@@ -1026,11 +1029,6 @@ class _CreatePurchaseReturnScreenState
                             readOnly: true,
                             onPressed: onChangeWhs,
                           ),
-                          Input(
-                            label: 'Remark',
-                            placeholder: 'Remark',
-                            controller: remark,
-                          ),
                           Divider(thickness: 1, color: Colors.grey.shade400),
                           Input(
                             controller: cardCode,
@@ -1204,9 +1202,11 @@ class _CreatePurchaseReturnScreenState
                             label: 'Input Qty',
                             placeholder: 'Quantity',
                             controller: quantity,
-                            
-                inputFormatters: [ThousandsSeparatorInputFormatter()],
-focusNode: _quantity,
+
+                            inputFormatters: [
+                              ThousandsSeparatorInputFormatter()
+                            ],
+                            focusNode: _quantity,
                             onFieldSubmitted: (value) {
                               _handleScanSubmitted(value, _quantity);
                             },
@@ -1234,6 +1234,43 @@ focusNode: _quantity,
                             controller: uom,
                             readOnly: true,
                             onPressed: onChangeUoM,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Remark",
+                          style: TextStyle(
+                            fontSize: 14.3,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 15, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: TextFormField(
+                            controller: remark,
+                            maxLines: 3,
+                            style: const TextStyle(fontSize: 14),
+                            decoration: InputDecoration(
+                              hintText: 'Enter remark...',
+                              hintStyle: const TextStyle(
+                                  fontSize: 14, color: Colors.grey),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                            ),
                           ),
                         ),
                       ],
@@ -1526,7 +1563,10 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  formatQuantity(((double.tryParse(item['TotalQuantity'].toString()) ?? 0) - (double.tryParse(item['Quantity'].toString()) ?? 0))),
+                  formatQuantity(
+                      ((double.tryParse(item['TotalQuantity'].toString()) ??
+                              0) -
+                          (double.tryParse(item['Quantity'].toString()) ?? 0))),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),
@@ -1735,7 +1775,10 @@ class ReviewRow extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  formatQuantity(((double.tryParse(item['TotalQuantity'].toString()) ?? 0) - (double.tryParse(item['Quantity'].toString()) ?? 0))),
+                  formatQuantity(
+                      ((double.tryParse(item['TotalQuantity'].toString()) ??
+                              0) -
+                          (double.tryParse(item['Quantity'].toString()) ?? 0))),
                   textAlign: TextAlign.right,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),

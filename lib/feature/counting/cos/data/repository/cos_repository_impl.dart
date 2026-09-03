@@ -3,7 +3,6 @@ import 'package:wms_mobile/core/error/failure.dart';
 import 'package:wms_mobile/feature/counting/cos/data/data_source/cos_remote_data_source.dart';
 import 'package:wms_mobile/feature/counting/cos/domain/repository/cos_repository.dart';
 
-
 class CosRepositoryImpl implements CosRepository {
   final CosRemoteDataSource remote;
 

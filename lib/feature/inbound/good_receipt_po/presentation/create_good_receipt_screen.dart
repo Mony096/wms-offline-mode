@@ -261,8 +261,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
     try {
       final whs = await LocalStorageManger.getString('warehouse');
       warehouse.text = whs;
-    final whsName = await LocalStorageManger.getString('warehouseName');
-    warehouseNameUI.text = whsName.isNotEmpty ? whsName : warehouse.text;
+      final whsName = await LocalStorageManger.getString('warehouseName');
+      warehouseNameUI.text = whsName.isNotEmpty ? whsName : warehouse.text;
       if (widget.po != null) {
         // Populate text fields with PO data
         poText.text = getDataFromDynamic(widget.po['DocNum']);
@@ -529,7 +529,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
         );
         baseLine.text = getDataFromDynamic(item['BaseLine']);
         originalQty.text = getDataFromDynamic(item['OriginalQty']);
-        totalQuantity.text = formatQuantity(getDataFromDynamic(item['TotalQuantity']));
+        totalQuantity.text =
+            formatQuantity(getDataFromDynamic(item['TotalQuantity']));
         isSerial.text = getDataFromDynamic(item['ManageSerialNumbers']);
         isBatch.text = getDataFromDynamic(item['ManageBatchNumbers']);
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
@@ -587,7 +588,9 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       if (value == null) return;
       if (value is Map) {
         warehouse.text = getDataFromDynamic(value['code']);
-        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty ? getDataFromDynamic(value['name']) : warehouse.text;
+        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty
+            ? getDataFromDynamic(value['name'])
+            : warehouse.text;
       } else {
         warehouse.text = getDataFromDynamic(value);
         warehouseNameUI.text = warehouse.text;
@@ -1207,11 +1210,6 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
                               readOnly: true,
                               onPressed: onChangeWhs,
                             ),
-                            Input(
-                              label: 'Remark',
-                              placeholder: 'Remark',
-                              controller: remark,
-                            ),
                           ],
                         ),
                       ),
@@ -1375,9 +1373,11 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
                               label: 'Input Qty',
                               placeholder: 'Quantity',
                               controller: quantity,
-                              
-                inputFormatters: [ThousandsSeparatorInputFormatter()],
-focusNode: _quantity,
+
+                              inputFormatters: [
+                                ThousandsSeparatorInputFormatter()
+                              ],
+                              focusNode: _quantity,
                               onFieldSubmitted: (value) {
                                 _handleScanSubmitted(value, _quantity);
                               },
@@ -1418,6 +1418,43 @@ focusNode: _quantity,
                         ],
                       ),
 
+                      const SizedBox(height: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Remark",
+                            style: TextStyle(
+                              fontSize: 14.3,
+                              fontWeight: FontWeight.w400,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 15, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: TextFormField(
+                              controller: remark,
+                              maxLines: 3,
+                              style: const TextStyle(fontSize: 14),
+                              decoration: InputDecoration(
+                                hintText: 'Enter remark...',
+                                hintStyle: const TextStyle(
+                                    fontSize: 14, color: Colors.grey),
+                                border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
                       const SizedBox(height: 20),
                       Container(
                         margin: EdgeInsets.fromLTRB(0, 0, 0, 20),
@@ -1444,7 +1481,9 @@ focusNode: _quantity,
                             final isPhone = constraints.maxWidth < 600;
                             final content = Column(
                               children: [
-                                ContentHeader(hideOpenQty: widget.quickReceipt, isPhone: isPhone),
+                                ContentHeader(
+                                    hideOpenQty: widget.quickReceipt,
+                                    isPhone: isPhone),
                                 items.isEmpty
                                     ? Container(
                                         padding: const EdgeInsets.all(20),
@@ -1461,10 +1500,10 @@ focusNode: _quantity,
                                   return GestureDetector(
                                     onTap: () => onEdit(item, index),
                                     child: ItemRow(
-                                        item: item,
-                                        po: widget.po,
-                                        hideOpenQty: widget.quickReceipt,
-                                        isPhone: isPhone,
+                                      item: item,
+                                      po: widget.po,
+                                      hideOpenQty: widget.quickReceipt,
+                                      isPhone: isPhone,
                                     ),
                                   );
                                 }).toList(),
@@ -1641,7 +1680,12 @@ class ContentHeader extends StatelessWidget {
 }
 
 class ItemRow extends StatelessWidget {
-  const ItemRow({super.key, required this.item, this.po, this.hideOpenQty, this.isPhone = false});
+  const ItemRow(
+      {super.key,
+      required this.item,
+      this.po,
+      this.hideOpenQty,
+      this.isPhone = false});
   final dynamic po;
   final dynamic item;
   final dynamic hideOpenQty;
@@ -1715,7 +1759,11 @@ class ItemRow extends StatelessWidget {
               !hideOpenQty
                   ? _buildColumn(
                       Text(
-                        formatQuantity(((double.tryParse(item['TotalQuantity'].toString()) ?? 0) - (double.tryParse(item['Quantity'].toString()) ?? 0))),
+                        formatQuantity(((double.tryParse(
+                                    item['TotalQuantity'].toString()) ??
+                                0) -
+                            (double.tryParse(item['Quantity'].toString()) ??
+                                0))),
                         textAlign: TextAlign.center,
                         style: const TextStyle(fontSize: 13),
                       ),
@@ -1925,7 +1973,10 @@ class ReviewRow extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  formatQuantity(((double.tryParse(item['TotalQuantity'].toString()) ?? 0) - (double.tryParse(item['Quantity'].toString()) ?? 0))),
+                  formatQuantity(
+                      ((double.tryParse(item['TotalQuantity'].toString()) ??
+                              0) -
+                          (double.tryParse(item['Quantity'].toString()) ?? 0))),
                   textAlign: TextAlign.right,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),

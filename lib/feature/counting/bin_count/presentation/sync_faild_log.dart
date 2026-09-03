@@ -200,7 +200,11 @@ class SyncFailLogBinCountScreen extends StatelessWidget {
                                   const SizedBox(height: 5),
                                   _buildRow(
                                       "Warehouse",
-                                      getWarehouseName(context, record['InventoryCountingLines'][0]['WarehouseCode'] ?? '')),
+                                      getWarehouseName(
+                                          context,
+                                          record['InventoryCountingLines'][0]
+                                                  ['WarehouseCode'] ??
+                                              '')),
                                   const SizedBox(height: 5),
                                   _buildRow("Remark", record['Remarks'] ?? ''),
                                   const Padding(

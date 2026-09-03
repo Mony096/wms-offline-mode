@@ -894,7 +894,8 @@ class _BatchListPageState extends State<BatchListPage> {
                               Expanded(
                                 flex: 1,
                                 child: Text(
-                                  formatQuantity(getDataFromDynamic(batch["Quantity"])),
+                                  formatQuantity(
+                                      getDataFromDynamic(batch["Quantity"])),
                                   style: TextStyle(
                                     fontSize:
                                         MediaQuery.of(context).size.width *

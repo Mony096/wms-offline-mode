@@ -274,7 +274,9 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
       if (value == null) return;
       if (value is Map) {
         warehouse.text = getDataFromDynamic(value['code']);
-        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty ? getDataFromDynamic(value['name']) : warehouse.text;
+        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty
+            ? getDataFromDynamic(value['name'])
+            : warehouse.text;
       } else {
         warehouse.text = getDataFromDynamic(value);
         warehouseNameUI.text = warehouse.text;
@@ -822,9 +824,9 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
 
   void onCompleteQuantiyInput() {
     FocusScope.of(context).requestFocus(FocusNode());
-    variance.text = (parseQuantity(quantity.text) -
-            parseQuantity(inWhsQty.text))
-        .toString();
+    variance.text =
+        (parseQuantity(quantity.text) - parseQuantity(inWhsQty.text))
+            .toString();
     // onNavigateSerialOrBatch();
   }
 
@@ -908,11 +910,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                       readOnly: true,
                       onPressed: onChangeWhs,
                     ),
-                    Input(
-                      label: 'Remark',
-                      placeholder: 'Remark',
-                      controller: remark,
-                    ),
+
                     // Divider(thickness: 1, color: Colors.grey.shade400),
                   ],
                 ),
@@ -1067,9 +1065,9 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
                 label: 'Input Qty',
                 placeholder: 'Quantity',
                 controller: quantity,
-                
+
                 inputFormatters: [ThousandsSeparatorInputFormatter()],
-focusNode: _quantity,
+                focusNode: _quantity,
                 onFieldSubmitted: (value) {
                   _handleScanSubmitted(value, _quantity);
                 },
@@ -1133,6 +1131,43 @@ focusNode: _quantity,
                 readOnly: true,
                 onPressed: onChangeUoM,
               ),
+              const SizedBox(height: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Remark",
+                    style: TextStyle(
+                      fontSize: 14.3,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TextFormField(
+                      controller: remark,
+                      maxLines: 3,
+                      style: const TextStyle(fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Enter remark...',
+                        hintStyle:
+                            const TextStyle(fontSize: 14, color: Colors.grey),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 20),
               Container(
                 margin: EdgeInsets.fromLTRB(0, 0, 0, 20),
@@ -1164,8 +1199,8 @@ focusNode: _quantity,
                                 padding: EdgeInsets.all(20),
                                 child: Text(
                                   "No Item available",
-                                  style:
-                                      TextStyle(fontSize: 15, color: Colors.grey),
+                                  style: TextStyle(
+                                      fontSize: 15, color: Colors.grey),
                                 ),
                               )
                             : Container(),
@@ -1371,7 +1406,12 @@ class ContentHeader extends StatelessWidget {
 }
 
 class ItemRow extends StatelessWidget {
-  const ItemRow({super.key, required this.item, this.po, this.hideOpenQty, this.isPhone = false});
+  const ItemRow(
+      {super.key,
+      required this.item,
+      this.po,
+      this.hideOpenQty,
+      this.isPhone = false});
   final dynamic po;
   final dynamic item;
   final dynamic hideOpenQty;

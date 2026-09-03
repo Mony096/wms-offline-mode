@@ -7,7 +7,8 @@ abstract class GoodIssueSelectRemoteDataSource {
   Future<List<GoodIssueSelect>> get(String query);
 }
 
-class GoodIssueSelectRemoteDataSourceImpl implements GoodIssueSelectRemoteDataSource {
+class GoodIssueSelectRemoteDataSourceImpl
+    implements GoodIssueSelectRemoteDataSource {
   final DioClient dio;
 
   GoodIssueSelectRemoteDataSourceImpl(this.dio);

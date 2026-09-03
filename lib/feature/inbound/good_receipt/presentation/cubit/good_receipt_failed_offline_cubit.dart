@@ -42,6 +42,7 @@ class GoodReceiptFailedOfflineCubit extends Cubit<List<dynamic>> {
     final items = box.get('data', defaultValue: []).cast<dynamic>();
     return items.length;
   }
+
 // 🔹 Remove record by failId
   void removeByFailId(dynamic failId) {
     final List<dynamic> items =
@@ -57,6 +58,7 @@ class GoodReceiptFailedOfflineCubit extends Cubit<List<dynamic>> {
     box.put('data', updatedItems);
     emit(updatedItems);
   }
+
   void updateBySaveId(dynamic failId, Map<String, dynamic> newData) {
     final List<dynamic> items =
         box.get('data', defaultValue: []).cast<dynamic>();
@@ -73,5 +75,4 @@ class GoodReceiptFailedOfflineCubit extends Cubit<List<dynamic>> {
     box.put('data', updatedItems);
     emit(updatedItems);
   }
-
 }

@@ -589,9 +589,8 @@ class _CreateWarehouseTransferScreenState
                 ),
                 Input(
                   controller: quantity,
-                  
-                inputFormatters: [ThousandsSeparatorInputFormatter()],
-label: 'Quantity.',
+                  inputFormatters: [ThousandsSeparatorInputFormatter()],
+                  label: 'Quantity.',
                   placeholder: 'Quantity',
                   keyboardType: TextInputType.numberWithOptions(decimal: true),
                   onEditingComplete: onCompleteQuantiyInput,

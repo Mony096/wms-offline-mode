@@ -5,8 +5,7 @@ import '../../../../../core/error/failure.dart';
 
 abstract class BinCountRemoteDataSource {
   Future<Map<String, dynamic>> post(Map<String, dynamic> payload);
-    Future<Map<String, dynamic>> put(Map<String, dynamic> payload, docEntry);
-
+  Future<Map<String, dynamic>> put(Map<String, dynamic> payload, docEntry);
 }
 
 class BinCountRemoteDataSourceImpl implements BinCountRemoteDataSource {
@@ -23,6 +22,7 @@ class BinCountRemoteDataSourceImpl implements BinCountRemoteDataSource {
       rethrow;
     }
   }
+
   @override
   Future<Map<String, dynamic>> put(
       Map<String, dynamic> payload, docEntry) async {

@@ -29,7 +29,9 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
     allData = allData.where((doc) {
       final lines = doc['DocumentLines'] as List<dynamic>? ?? [];
       return lines.any((line) {
-        final qty = double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ?? 0.0;
+        final qty =
+            double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ??
+                0.0;
         return line['LineStatus'] == 'bost_Open' && qty > 0;
       });
     }).toList();
@@ -45,12 +47,13 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
       final docNum = getDataFromDynamic(bp['DocNum']).toLowerCase();
 
       // if (searchText.isEmpty) return typeMatch;
-      return (code.contains(searchText) || name.contains(searchText) || docNum.contains(searchText));
+      return (code.contains(searchText) ||
+          name.contains(searchText) ||
+          docNum.contains(searchText));
     }).toList();
 
     setState(() => filteredData = results);
-    debugPrint(
-        "🔎 Filter: '$searchText', → ${filteredData.length} results");
+    debugPrint("🔎 Filter: '$searchText', → ${filteredData.length} results");
   }
 
   // Map enum to SAP CardType
@@ -121,7 +124,7 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
                       controller: filter,
                       decoration: InputDecoration(
                         hintText: 'Customer Code or SO No.',
-                         hintStyle: const TextStyle(
+                        hintStyle: const TextStyle(
                           fontSize: 13.5,
                           color: Colors.grey,
                         ),
@@ -212,7 +215,8 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text.rich(
                                     TextSpan(
@@ -223,7 +227,8 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
                                           fontSize: 14),
                                       children: [
                                         TextSpan(
-                                          text: getDataFromDynamic(bp['CardCode']),
+                                          text: getDataFromDynamic(
+                                              bp['CardCode']),
                                           style: const TextStyle(
                                               color: Colors.black,
                                               fontWeight: FontWeight.bold),
@@ -240,7 +245,8 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
                               ),
                               const SizedBox(height: 8),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: Text.rich(
@@ -252,7 +258,8 @@ class _SaleOrderPageState extends State<SaleOrderPage> {
                                             fontSize: 14),
                                         children: [
                                           TextSpan(
-                                            text: getDataFromDynamic(bp['DocNum']),
+                                            text: getDataFromDynamic(
+                                                bp['DocNum']),
                                             style: const TextStyle(
                                                 color: Colors.black,
                                                 fontWeight: FontWeight.bold),

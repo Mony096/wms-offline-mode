@@ -44,26 +44,30 @@ class SyncLogCycleCountScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep, color: Colors.white),
-            onPressed: () { showDialog(
-              context: context,
-              builder: (context) => AlertDialog(
-                title: const Text('Clear All Logs'),
-                content: const Text('Are you sure you want to clear all sync logs?'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      cubit.clearCachLog(); 
-                    },
-                    child: const Text('Clear', style: TextStyle(color: Colors.red)),
-                  ),
-                ],
-              ),
-            ); },
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Clear All Logs'),
+                  content: const Text(
+                      'Are you sure you want to clear all sync logs?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        cubit.clearCachLog();
+                      },
+                      child: const Text('Clear',
+                          style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -197,43 +201,45 @@ class SyncLogCycleCountScreen extends StatelessWidget {
                                     IconButton(
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
-                                      icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                                      icon: const Icon(Icons.close,
+                                          color: Colors.grey, size: 20),
                                       onPressed: () {
                                         showDialog(
-                                        context: context,
-                                        builder: (context) => AlertDialog(
-                                          title: const Text('Remove Log'),
-                                          content: const Text('Are you sure you want to remove this log?'),
-                                          actions: [
-                                            TextButton(
-                                              onPressed: () => Navigator.pop(context),
-                                              child: const Text('Cancel'),
-                                            ),
-                                            TextButton(
-                                              onPressed: () {
-                                                Navigator.pop(context);
-                                                if (record['logId'] != null) {
-                                          cubit.removeMemoryLog(record['logId']);
-                                        }
-                                              },
-                                              child: const Text('Remove', style: TextStyle(color: Colors.red)),
-                                            ),
-                                          ],
-                                        ),
-                                      );
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text('Remove Log'),
+                                            content: const Text(
+                                                'Are you sure you want to remove this log?'),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () =>
+                                                    Navigator.pop(context),
+                                                child: const Text('Cancel'),
+                                              ),
+                                              TextButton(
+                                                onPressed: () {
+                                                  Navigator.pop(context);
+                                                  if (record['logId'] != null) {
+                                                    cubit.removeMemoryLog(
+                                                        record['logId']);
+                                                  }
+                                                },
+                                                child: const Text('Remove',
+                                                    style: TextStyle(
+                                                        color: Colors.red)),
+                                              ),
+                                            ],
+                                          ),
+                                        );
                                       },
                                     ),
                                     const SizedBox(width: 8),
                                     GestureDetector(
-                                  onTap: () {
-
-                                    showJsonDialog(context, record);
-
-                                  },
-
-                                  child: Icon(icon, color: color, size: 20),
-
-                                ),
+                                      onTap: () {
+                                        showJsonDialog(context, record);
+                                      },
+                                      child: Icon(icon, color: color, size: 20),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -263,7 +269,11 @@ class SyncLogCycleCountScreen extends StatelessWidget {
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
-                                    getWarehouseName(context, record['InventoryPostingLines'][0]['WarehouseCode'] ?? ''),
+                                    getWarehouseName(
+                                        context,
+                                        record['InventoryPostingLines'][0]
+                                                ['WarehouseCode'] ??
+                                            ''),
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
                                       fontSize: 12,
@@ -299,7 +309,10 @@ class SyncLogCycleCountScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              "Remark : ${record['Remarks'] ?? '-'}",   style: const TextStyle(fontSize: 13, color: Colors.black54), ), 
+                              "Remark : ${record['Remarks'] ?? '-'}",
+                              style: const TextStyle(
+                                  fontSize: 13, color: Colors.black54),
+                            ),
                             const SizedBox(height: 10),
                             // --- Items list
                             const Text(

@@ -217,7 +217,7 @@ class _CycleCountListsState extends State<CycleCountLists> {
                         width: 7,
                       ),
                       Text(
-                         "Data Listing",
+                        "Data Listing",
                         style: TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold),
                       ),
@@ -332,14 +332,28 @@ class _CycleCountListsState extends State<CycleCountLists> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           (() {
-                                            final code = record['InventoryPostingLines']?[0]?["WarehouseCode"] ?? '';
-                                            final whsList = context.read<WarehouseOfflineCubit>().state;
+                                            final code =
+                                                record['InventoryPostingLines']
+                                                            ?[0]
+                                                        ?["WarehouseCode"] ??
+                                                    '';
+                                            final whsList = context
+                                                .read<WarehouseOfflineCubit>()
+                                                .state;
                                             final whs = whsList.firstWhere(
                                               (w) => w['WarehouseCode'] == code,
                                               orElse: () => null,
                                             );
-                                            final name = (whs != null && whs['WarehouseName'] != null && whs['WarehouseName'].toString().trim().isNotEmpty)
-                                                ? whs['WarehouseName'].toString().trim()
+                                            final name = (whs != null &&
+                                                    whs['WarehouseName'] !=
+                                                        null &&
+                                                    whs['WarehouseName']
+                                                        .toString()
+                                                        .trim()
+                                                        .isNotEmpty)
+                                                ? whs['WarehouseName']
+                                                    .toString()
+                                                    .trim()
                                                 : code;
                                             return _buildRow("Warehouse", name);
                                           })(),

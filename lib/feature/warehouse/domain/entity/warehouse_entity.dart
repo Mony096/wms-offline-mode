@@ -3,5 +3,5 @@ class WarehouseEntity {
   final String name;
   final dynamic defBin;
 
-  WarehouseEntity({required this.code, required this.name,this.defBin});
+  WarehouseEntity({required this.code, required this.name, this.defBin});
 }

@@ -40,6 +40,7 @@ class SyncFailLogQuickScreen extends StatelessWidget {
     if (confirm != true) return;
     context.read<QuickGoodReceiptFailedOfflineCubit>().clearData();
   }
+
   Future<void> _removeById(BuildContext context, dynamic id) async {
     // 1️⃣ Clear all Cubits
     final confirm = await showDialog<bool>(
@@ -75,6 +76,7 @@ class SyncFailLogQuickScreen extends StatelessWidget {
     if (confirm != true) return;
     context.read<QuickGoodReceiptFailedOfflineCubit>().removeByFailId(id);
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -411,7 +413,8 @@ class SyncFailLogQuickScreen extends StatelessWidget {
                                                           context,
                                                           CreateGoodReceiptPOScreen(
                                                               isEdit: record,
-                                                              isEditFaildQGR: true,
+                                                              isEditFaildQGR:
+                                                                  true,
                                                               quickReceipt:
                                                                   true));
                                                     },

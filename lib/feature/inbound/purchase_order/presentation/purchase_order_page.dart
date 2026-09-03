@@ -61,7 +61,9 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
     final allData = rawData.where((doc) {
       final lines = doc['DocumentLines'] as List<dynamic>? ?? [];
       return lines.any((line) {
-        final qty = double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ?? 0.0;
+        final qty =
+            double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ??
+                0.0;
         return line['LineStatus'] == 'bost_Open' && qty > 0;
       });
     }).toList();
@@ -159,7 +161,15 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
           final displayList = filteredData.isEmpty &&
                   filter.text.isEmpty &&
                   filterInput.text.isEmpty
-              ? state.where((doc) { final lines = doc['DocumentLines'] as List<dynamic>? ?? []; return lines.any((line) { final qty = double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ?? 0.0; return line['LineStatus'] == 'bost_Open' && qty > 0; }); }).toList()
+              ? state.where((doc) {
+                  final lines = doc['DocumentLines'] as List<dynamic>? ?? [];
+                  return lines.any((line) {
+                    final qty = double.tryParse(
+                            line['RemainingOpenQuantity']?.toString() ?? '0') ??
+                        0.0;
+                    return line['LineStatus'] == 'bost_Open' && qty > 0;
+                  });
+                }).toList()
               : filteredData;
 
           // if (displayList.isEmpty) {

@@ -100,7 +100,7 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
       MaterialDialog.loading(context);
 
       // Add a smooth 2 second loading delay for better UX
-      await Future.delayed(const Duration(seconds: 2));
+      await Future.delayed(const Duration(seconds: 1));
 
       final itemCubit = context.read<ItemFindStockOfflineCubit>();
       final binCubit = context.read<BinOfflineCubit>();
@@ -367,7 +367,7 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
               items.isEmpty
                   ? Container()
                   : Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 35, 0, 0),
+                      padding: const EdgeInsets.fromLTRB(10, 35, 0, 0),
                       child: Row(
                         children: [
                           Expanded(
@@ -399,7 +399,7 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
               items.isEmpty
                   ? Container()
                   : Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 15, 0, 0),
+                      padding: const EdgeInsets.fromLTRB(10, 15, 0, 0),
                       child: Row(
                         children: [
                           Expanded(
@@ -430,7 +430,7 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
               items.isEmpty
                   ? Container()
                   : Padding(
-                      padding: const EdgeInsets.fromLTRB(0, 15, 0, 0),
+                      padding: const EdgeInsets.fromLTRB(10, 15, 0, 0),
                       child: Row(
                         children: [
                           Expanded(
@@ -571,7 +571,7 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
                                                 item['ItemCode']),
                                             style: TextStyle(
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 15,
+                                                fontSize: 14,
                                                 color: Colors.black87),
                                           ),
                                         ),
@@ -588,7 +588,7 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
                                             formatQuantity(item['OnHandQty']),
                                             style: TextStyle(
                                                 color: PRIMARY_COLOR,
-                                                fontSize: 13,
+                                                fontSize: 12,
                                                 fontWeight: FontWeight.bold),
                                           ),
                                         ),
@@ -687,7 +687,8 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
                                                     flex: 2,
                                                     child: Text(
                                                       "Qty",
-                                                      textAlign: TextAlign.right,
+                                                      textAlign:
+                                                          TextAlign.right,
                                                       style: TextStyle(
                                                           color: Colors
                                                               .grey.shade700,
@@ -736,17 +737,24 @@ class _CreateBinLookUpScreenState extends State<CreateBinLookUpScreen> {
                                                                       'ExpDate']),
                                                                   style: TextStyle(
                                                                       color: Colors
-                                                                          .red.shade400,
+                                                                          .red
+                                                                          .shade400,
                                                                       fontSize:
                                                                           13))),
                                                           Expanded(
                                                               flex: 2,
                                                               child: Padding(
-                                                                padding: const EdgeInsets.only(right: 9.0),
+                                                                padding:
+                                                                    const EdgeInsets
+                                                                        .only(
+                                                                        right:
+                                                                            9.0),
                                                                 child: Text(
-                                                                  formatQuantity(e[
-                                                                      'Quantity']),
-                                                                  textAlign: TextAlign.right,
+                                                                  formatQuantity(
+                                                                      e['Quantity']),
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .right,
                                                                   style: TextStyle(
                                                                       fontSize:
                                                                           13,

@@ -199,7 +199,11 @@ class ReviewBinCountOfflineSave extends StatelessWidget {
                                 children: [
                                   _buildRow(
                                       "Warehouse",
-                                      getWarehouseName(context, record['InventoryCountingLines'][0]['WarehouseCode'] ?? '')),
+                                      getWarehouseName(
+                                          context,
+                                          record['InventoryCountingLines'][0]
+                                                  ['WarehouseCode'] ??
+                                              '')),
                                   const SizedBox(height: 5),
                                   _buildRow("Remark", record['Remarks'] ?? ''),
                                   const Padding(

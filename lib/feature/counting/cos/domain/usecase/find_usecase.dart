@@ -3,7 +3,6 @@ import 'package:wms_mobile/core/error/failure.dart';
 import 'package:wms_mobile/core/usecase/usecase.dart';
 import 'package:wms_mobile/feature/counting/cos/domain/repository/cos_repository.dart';
 
-
 class FindCosUseCase implements UseCase<dynamic, String> {
   final CosRepository repository;
 

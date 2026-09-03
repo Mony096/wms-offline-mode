@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/core/enum/global.dart';
@@ -117,10 +116,10 @@ class _BusinessPartnerPageState extends State<BusinessPartnerPage> {
                       controller: filter,
                       decoration: InputDecoration(
                         hintText: 'BP Name or BP Code',
-                         hintStyle: const TextStyle(
-                            fontSize: 13.5,
-                            color: Colors.grey,
-                          ),
+                        hintStyle: const TextStyle(
+                          fontSize: 13.5,
+                          color: Colors.grey,
+                        ),
                         filled: true,
                         fillColor: const Color.fromARGB(255, 243, 243, 243),
                         prefixIcon: Icon(Icons.search, color: PRIMARY_COLOR),
@@ -208,7 +207,8 @@ class _BusinessPartnerPageState extends State<BusinessPartnerPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text.rich(
                                     TextSpan(
@@ -220,7 +220,8 @@ class _BusinessPartnerPageState extends State<BusinessPartnerPage> {
                                       ),
                                       children: [
                                         TextSpan(
-                                          text: getDataFromDynamic(bp['CardCode']),
+                                          text: getDataFromDynamic(
+                                              bp['CardCode']),
                                           style: const TextStyle(
                                             color: Colors.black,
                                             fontWeight: FontWeight.bold,
@@ -239,7 +240,8 @@ class _BusinessPartnerPageState extends State<BusinessPartnerPage> {
                                       ),
                                       children: [
                                         TextSpan(
-                                          text: formatBalance(bp['CurrentAccountBalance']),
+                                          text: formatBalance(
+                                              bp['CurrentAccountBalance']),
                                           style: const TextStyle(
                                             color: Colors.black,
                                             fontWeight: FontWeight.bold,

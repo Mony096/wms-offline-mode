@@ -17,7 +17,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<dynamic> _allData = [];
   List<dynamic> _filteredData = [];
-  
+
   String _selectedCategoryName = 'All';
   int? _selectedCategoryNumber;
   List<dynamic> _categories = [];
@@ -32,7 +32,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
   void _loadData() {
     final offlineData = context.read<ItemOfflineCubit>().state;
     final itemGroups = context.read<ItemsGroupOfflineCubit>().state;
-    
+
     // Set categories dynamically
     _categories = [
       {'Number': -1, 'GroupName': 'All'},
@@ -42,11 +42,23 @@ class _ProductListScreenState extends State<ProductListScreen> {
     // We add some mock items if the list is empty for demo purposes based on prototype
     if (offlineData.isEmpty) {
       _allData = [
-        {"ItemCode": "IT0001", "ItemName": "17-Inch Laptop, 16GB RAM", "Stock": 52},
+        {
+          "ItemCode": "IT0001",
+          "ItemName": "17-Inch Laptop, 16GB RAM",
+          "Stock": 52
+        },
         {"ItemCode": "IT0002", "ItemName": "Dell 27\" Monitor", "Stock": 40},
-        {"ItemCode": "IT0003", "ItemName": "Logitech MX Master 3S", "Stock": 38},
+        {
+          "ItemCode": "IT0003",
+          "ItemName": "Logitech MX Master 3S",
+          "Stock": 38
+        },
         {"ItemCode": "IT0004", "ItemName": "Keychron K8 Keyboard", "Stock": 36},
-        {"ItemCode": "IT0005", "ItemName": "Kingston DDR5 16GB RAM", "Stock": 34},
+        {
+          "ItemCode": "IT0005",
+          "ItemName": "Kingston DDR5 16GB RAM",
+          "Stock": 34
+        },
       ];
     } else {
       _allData = offlineData;
@@ -65,12 +77,13 @@ class _ProductListScreenState extends State<ProductListScreen> {
         final code = (item['ItemCode'] ?? '').toString().toLowerCase();
         final name = (item['ItemName'] ?? '').toString().toLowerCase();
         final matchesSearch = code.contains(text) || name.contains(text);
-        
+
         bool matchesCategory = true;
         if (_selectedCategoryName != 'All' && _selectedCategoryNumber != null) {
-          matchesCategory = item['ItemsGroupCode']?.toString() == _selectedCategoryNumber?.toString();
+          matchesCategory = item['ItemsGroupCode']?.toString() ==
+              _selectedCategoryNumber?.toString();
         }
-        
+
         return matchesSearch && matchesCategory;
       }).toList();
     });
@@ -124,7 +137,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ),
             ),
           ),
-          
+
           // Categories list
           SizedBox(
             height: 40,
@@ -146,9 +159,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
                   },
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFF131A3F) : Colors.grey.shade100,
+                      color: isSelected
+                          ? const Color(0xFF131A3F)
+                          : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Center(
@@ -156,7 +172,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
                         categoryName,
                         style: TextStyle(
                           color: isSelected ? Colors.white : Colors.black87,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
                           fontSize: 14,
                         ),
                       ),
@@ -166,7 +183,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               },
             ),
           ),
-          
+
           // Results Header
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -175,7 +192,8 @@ class _ProductListScreenState extends State<ProductListScreen> {
               children: [
                 Text(
                   _filteredData.length.toString().padLeft(2, '0'),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const Text(
                   'Results',
@@ -184,7 +202,7 @@ class _ProductListScreenState extends State<ProductListScreen> {
               ],
             ),
           ),
-          
+
           // List View
           Expanded(
             child: ListView.builder(
@@ -193,10 +211,12 @@ class _ProductListScreenState extends State<ProductListScreen> {
               itemBuilder: (context, index) {
                 final item = _filteredData[index];
                 final stock = item['QuantityOnStock'] ?? item['Stock'] ?? 0;
-                final stockDisplay = stock is num 
-                    ? (stock % 1 == 0 ? stock.toInt().toString() : stock.toString()) 
+                final stockDisplay = stock is num
+                    ? (stock % 1 == 0
+                        ? stock.toInt().toString()
+                        : stock.toString())
                     : stock.toString();
-                
+
                 return GestureDetector(
                   onTap: () {
                     goTo(context, ProductDetailScreen(item: item));

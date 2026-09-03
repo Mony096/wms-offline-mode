@@ -4,7 +4,6 @@ import 'package:wms_mobile/core/usecase/usecase.dart';
 import 'package:wms_mobile/feature/counting/physical_count/domain/repository/physical_count_repository.dart';
 import 'package:wms_mobile/feature/counting/physical_count/domain/usecase/param.dart';
 
-
 class PutPhysicalCountUseCase
     implements UseCase<Map<String, dynamic>, PutPhysicalCountParams> {
   final PhysicalCountRepository repository;

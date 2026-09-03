@@ -294,9 +294,8 @@ class _GoodReceiptSerialScreenState extends State<GoodReceiptSerialScreen> {
                     ),
                     Input(
                       controller: quantity,
-                      
-                inputFormatters: [ThousandsSeparatorInputFormatter()],
-label: 'Quantity',
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
+                      label: 'Quantity',
                       placeholder: 'Qty',
                       keyboardType:
                           TextInputType.numberWithOptions(decimal: true),

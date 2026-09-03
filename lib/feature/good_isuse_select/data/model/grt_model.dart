@@ -13,7 +13,8 @@ class GoodIssueSelect extends GoodIssueSelectEntity {
           name: name,
         );
 
-  factory GoodIssueSelect.fromJson(Map<String, dynamic> json) => GoodIssueSelect(
+  factory GoodIssueSelect.fromJson(Map<String, dynamic> json) =>
+      GoodIssueSelect(
         code: json["Code"],
         name: getDataFromDynamic(json["Name"]),
       );

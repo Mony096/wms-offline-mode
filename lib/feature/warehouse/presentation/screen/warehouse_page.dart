@@ -322,7 +322,6 @@ class _WarehousePageState extends State<WarehousePage> {
     _offlineCubit = context.read<WarehouseOfflineCubit>();
     _offlineCubit.loadData();
     // If offline cubit has no data, insert mock data
-    
   }
 
   void onFilterPressed(List<dynamic> allData) {

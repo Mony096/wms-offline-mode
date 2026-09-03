@@ -10,8 +10,7 @@ class PhysicalCountCubit extends Cubit<PhysicalCountState> {
 
   PhysicalCountCubit(this.useCase) : super(PhysicalCountInitial());
 
-  Future<Map<String, dynamic>> put(
-      dynamic query, int docEntry) async {
+  Future<Map<String, dynamic>> put(dynamic query, int docEntry) async {
     emit(RequestingPhysicalCount());
     final params = PutPhysicalCountParams(query: query, docEntry: docEntry);
     final response = await useCase.call(params);

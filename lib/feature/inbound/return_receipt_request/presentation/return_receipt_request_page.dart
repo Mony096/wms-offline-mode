@@ -33,7 +33,9 @@ class _ReturnReceiptRequestPageState extends State<ReturnReceiptRequestPage> {
     allData = allData.where((doc) {
       final lines = doc['DocumentLines'] as List<dynamic>? ?? [];
       return lines.any((line) {
-        final qty = double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ?? 0.0;
+        final qty =
+            double.tryParse(line['RemainingOpenQuantity']?.toString() ?? '0') ??
+                0.0;
         return line['LineStatus'] == 'bost_Open' && qty > 0;
       });
     }).toList();
@@ -247,7 +249,8 @@ class _ReturnReceiptRequestPageState extends State<ReturnReceiptRequestPage> {
                               ),
                               const SizedBox(height: 8),
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: Text.rich(
@@ -259,7 +262,8 @@ class _ReturnReceiptRequestPageState extends State<ReturnReceiptRequestPage> {
                                             fontSize: 14),
                                         children: [
                                           TextSpan(
-                                            text: getDataFromDynamic(bp['DocNum']),
+                                            text: getDataFromDynamic(
+                                                bp['DocNum']),
                                             style: const TextStyle(
                                                 color: Colors.black,
                                                 fontWeight: FontWeight.bold),
