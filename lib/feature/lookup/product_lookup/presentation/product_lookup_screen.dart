@@ -526,14 +526,9 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                   child: Column(
                     children: items
                         .where((f) => f["OnHandQty"] > 0)
-                        .map(
-                          (item) => GestureDetector(
-                            // onTap: () => onEdit(item),
-                            child: Container(
-                              margin: EdgeInsets.only(
-                                  bottom: 8), // tightened card margin
-                              padding:
-                                  EdgeInsets.all(14), // tightened card padding
+                        .map((item) => Container(
+                              margin: EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(12),
@@ -541,7 +536,7 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.04),
                                     blurRadius: 8,
-                                    offset: Offset(0, 4),
+                                    offset: Offset(0, 2),
                                   ),
                                 ],
                                 border: Border.all(color: Colors.grey.shade100),
@@ -549,18 +544,20 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // ── Header: ItemCode + Qty badge ──
                                   Row(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                        CrossAxisAlignment.center,
                                     children: [
                                       Expanded(
                                         child: Text(
                                           getDataFromDynamic(item['ItemCode']),
                                           style: TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 14,
-                                              color: PRIMARY_COLOR,
-                                              letterSpacing: 0.2),
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: PRIMARY_COLOR,
+                                            letterSpacing: 0.2,
+                                          ),
                                         ),
                                       ),
                                       Container(
@@ -574,94 +571,85 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                         child: Text(
                                           formatQuantity(item['OnHandQty']),
                                           style: TextStyle(
-                                              color: PRIMARY_COLOR,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold),
+                                            color: PRIMARY_COLOR,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                  SizedBox(height: 6),
+                                  SizedBox(height: 4),
+                                  // ── Item Name ──
                                   Text(
                                     getDataFromDynamic(item['ItemName']),
                                     style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                        fontSize: 13,
-                                        height: 1.3),
+                                      color: Colors.grey.shade600,
+                                      fontSize: 13,
+                                      height: 1.3,
+                                    ),
                                   ),
-                                  SizedBox(height: 12),
+                                  SizedBox(height: 10),
                                   Divider(
-                                      height: 1, color: Colors.grey.shade100),
-                                  SizedBox(height: 12),
+                                      height: 1, color: Colors.grey.shade200),
+                                  SizedBox(height: 10),
+                                  // ── Info row: Bin + UoM ──
                                   Row(
                                     children: [
-                                      if (item['BinCode'] == null ||
-                                          item['BinCode']
-                                              .toString()
-                                              .trim()
-                                              .isEmpty)
-                                        Row(
-                                          children: [
-                                            Icon(Icons.layers_outlined,
-                                                size: 16,
-                                                color: Colors.grey.shade400),
-                                            SizedBox(width: 4),
-                                            Text('No Bin Location',
-                                                style: TextStyle(
-                                                    color: Colors.grey.shade400,
-                                                    fontSize: 13)),
-                                          ],
-                                        )
-                                      else
-                                        Expanded(
-                                          child: Row(
-                                            children: [
-                                              Icon(Icons.location_on_outlined,
-                                                  size: 16,
-                                                  color: PRIMARY_COLOR),
-                                              SizedBox(width: 4),
-                                              Expanded(
-                                                child: RichText(
-                                                  text: TextSpan(
-                                                    children: [
-                                                      TextSpan(
-                                                        text: 'Bin Location : ',
-                                                        style: TextStyle(
-                                                            color: Colors
-                                                                .grey.shade500,
-                                                            fontSize: 13),
-                                                      ),
-                                                      TextSpan(
-                                                        text:
-                                                            getDataFromDynamicBin(
-                                                                item[
-                                                                    'BinCode']),
-                                                        style: TextStyle(
-                                                            color:
-                                                                Colors.black87,
-                                                            fontSize: 13,
-                                                            fontWeight:
-                                                                FontWeight
-                                                                    .w600),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
+                                      Icon(
+                                        (item['BinCode'] == null ||
+                                                item['BinCode']
+                                                    .toString()
+                                                    .trim()
+                                                    .isEmpty)
+                                            ? Icons.layers_outlined
+                                            : Icons.location_on_outlined,
+                                        size: 15,
+                                        color: (item['BinCode'] == null ||
+                                                item['BinCode']
+                                                    .toString()
+                                                    .trim()
+                                                    .isEmpty)
+                                            ? Colors.grey.shade400
+                                            : PRIMARY_COLOR,
+                                      ),
+                                      SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          (item['BinCode'] == null ||
+                                                  item['BinCode']
+                                                      .toString()
+                                                      .trim()
+                                                      .isEmpty)
+                                              ? 'No Bin Location'
+                                              : getDataFromDynamicBin(
+                                                  item['BinCode']),
+                                          style: TextStyle(
+                                            color: (item['BinCode'] == null ||
+                                                    item['BinCode']
+                                                        .toString()
+                                                        .trim()
+                                                        .isEmpty)
+                                                ? Colors.grey.shade400
+                                                : Colors.black87,
+                                            fontSize: 13,
+                                            fontWeight:
+                                                (item['BinCode'] == null ||
+                                                        item['BinCode']
+                                                            .toString()
+                                                            .trim()
+                                                            .isEmpty)
+                                                    ? FontWeight.normal
+                                                    : FontWeight.w600,
                                           ),
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      if (item['BinCode'] == null ||
-                                          item['BinCode']
-                                              .toString()
-                                              .trim()
-                                              .isEmpty)
-                                        Spacer(),
+                                      ),
                                       if (getDataFromDynamic(item['InvntryUom'])
                                           .isNotEmpty)
                                         Container(
                                           padding: EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 4),
+                                              horizontal: 8, vertical: 3),
                                           decoration: BoxDecoration(
                                             color: Colors.grey.shade100,
                                             borderRadius:
@@ -671,336 +659,71 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
                                             getDataFromDynamic(
                                                 item['InvntryUom']),
                                             style: TextStyle(
-                                                color: Colors.grey.shade700,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500),
+                                              color: Colors.grey.shade600,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                           ),
                                         ),
                                     ],
                                   ),
-                                  // SizedBox(
-                                  //   height: 15,
-                                  // ),
-                                  //Serial///////////////////////////
-                                  item["IsSerial"] == "Y"
-                                      ? Row(
-                                          children: [
-                                            Expanded(
-                                              flex: 1,
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 7),
-                                                child: SvgPicture.asset(
-                                                  color: Color.fromARGB(
-                                                      235, 183, 184, 186),
-                                                  "images/svg/down_right.svg",
-                                                  width: size(context).width *
-                                                      0.06,
-                                                  height: size(context).width *
-                                                      0.06,
+                                  // ── Batch / Serial link ──
+                                  if (item["IsSerial"] == "Y" ||
+                                      item["IsBatch"] == "Y")
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 10.0),
+                                      child: Align(
+                                        alignment: Alignment.centerRight,
+                                        child: InkWell(
+                                          onTap: () {
+                                            try {
+                                              final isBatch =
+                                                  item["IsBatch"] == "Y";
+                                              final list = serialOrBatchList
+                                                  .where((e) =>
+                                                      e["AbsEntry"] ==
+                                                      item["BinID"])
+                                                  .toList();
+                                              _showBatchSerialDialog(
+                                                  context, item, list, isBatch);
+                                            } catch (e) {
+                                              ScaffoldMessenger.of(context)
+                                                  .showSnackBar(SnackBar(
+                                                      content:
+                                                          Text("Error: $e")));
+                                            }
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 4),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Text(
+                                                  item["IsBatch"] == "Y"
+                                                      ? "Batch Info"
+                                                      : "Serial Info",
+                                                  style: TextStyle(
+                                                    color: PRIMARY_COLOR,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
                                                 ),
-                                              ),
+                                                const SizedBox(width: 4),
+                                                Icon(
+                                                  Icons.arrow_forward_ios,
+                                                  size: 11,
+                                                  color: PRIMARY_COLOR,
+                                                ),
+                                              ],
                                             ),
-                                            Expanded(
-                                              flex: 11,
-                                              child: Container(
-                                                margin:
-                                                    EdgeInsets.only(top: 13),
-                                                padding: EdgeInsets.fromLTRB(
-                                                    5, 5, 5, 5),
-                                                decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          5.0),
-                                                  color: Color.fromARGB(
-                                                      255, 243, 243, 244),
-                                                  // border: Border(
-                                                  //   bottom: BorderSide(
-                                                  //     color: Color.fromARGB(255, 226, 229,
-                                                  //         233), // Change the color as needed
-                                                  //     width: 1.0, // Change the width as needed
-                                                  //   ),
-                                                  // ),
-                                                ),
-                                                child: Row(
-                                                  children: const [
-                                                    Expanded(
-                                                      flex: 4,
-                                                      child: Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                                left: 5),
-                                                        child: Text(
-                                                          "Serial Info.",
-                                                          style: TextStyle(
-                                                              fontSize: 13),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      flex: 3,
-                                                      child: Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                                left: 25),
-                                                        child: Text(
-                                                          "Qty.",
-                                                          style: TextStyle(
-                                                              fontSize: 13),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : Container(),
-                                  item["IsSerial"] == "Y"
-                                      ? Column(
-                                          children: serialOrBatchList
-                                              .where((e) =>
-                                                  e["AbsEntry"] ==
-                                                  item["BinID"])
-                                              .map((e) => Row(
-                                                    children: [
-                                                      Expanded(
-                                                          flex: 1,
-                                                          child: Text("")),
-                                                      Expanded(
-                                                          flex: 11,
-                                                          child: Container(
-                                                            padding: EdgeInsets
-                                                                .fromLTRB(5, 7,
-                                                                    5, 10),
-                                                            // color: Colors
-                                                            //     .grey.shade50,
-                                                            child: Column(
-                                                              children: [
-                                                                Row(
-                                                                  children: [
-                                                                    Expanded(
-                                                                        flex: 4,
-                                                                        child:
-                                                                            Padding(
-                                                                          padding: const EdgeInsets
-                                                                              .only(
-                                                                              left: 5.0),
-                                                                          child:
-                                                                              Text(
-                                                                            getDataFromDynamic(e["Batch_Serial"]),
-                                                                            style:
-                                                                                TextStyle(fontSize: 13),
-                                                                          ),
-                                                                        )),
-                                                                    Expanded(
-                                                                        flex: 3,
-                                                                        child:
-                                                                            Padding(
-                                                                          padding: const EdgeInsets
-                                                                              .only(
-                                                                              left: 30.0),
-                                                                          child: Text(
-                                                                              "1",
-                                                                              style: TextStyle(fontSize: 14)),
-                                                                        ))
-                                                                  ],
-                                                                ),
-                                                              
-                                                              ],
-                                                            ),
-                                                          )),
-                                                    ],
-                                                  ))
-                                              .toList(),
-                                        )
-                                      : Container(),
-                                  //Batch1111111111
-                                  item["IsBatch"] == "Y"
-                                      ? Row(
-                                          children: [
-                                            Expanded(
-                                              flex: 1,
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                    top: 7),
-                                                child: SvgPicture.asset(
-                                                  color: Color.fromARGB(
-                                                      235, 183, 184, 186),
-                                                  "images/svg/down_right.svg",
-                                                  width: size(context).width *
-                                                      0.06,
-                                                  height: size(context).width *
-                                                      0.06,
-                                                ),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              flex: 11,
-                                              child: Container(
-                                                margin:
-                                                    EdgeInsets.only(top: 13),
-                                                padding: EdgeInsets.fromLTRB(
-                                                    5, 5, 5, 5),
-                                                decoration: BoxDecoration(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                          5.0),
-                                                  color: Color.fromARGB(
-                                                      255, 243, 243, 244),
-                                                  // border: Border(
-                                                  //   bottom: BorderSide(
-                                                  //     color: Color.fromARGB(255, 226, 229,
-                                                  //         233), // Change the color as needed
-                                                  //     width: 1.0, // Change the width as needed
-                                                  //   ),
-                                                  // ),
-                                                ),
-                                                child: Row(
-                                                  children: const [
-                                                    Expanded(
-                                                      flex: 4,
-                                                      child: Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                                left: 5.0),
-                                                        child: Text(
-                                                          "Batch Info.",
-                                                          style: TextStyle(
-                                                              fontSize: 13),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      flex: 3,
-                                                      child: Text(
-                                                        "Expiry",
-                                                        style: TextStyle(
-                                                            fontSize: 13),
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      flex: 2,
-                                                      child: Padding(
-                                                        padding:
-                                                            EdgeInsets.only(
-                                                                right: 9.0),
-                                                        child: Text(
-                                                          "Qty",
-                                                          textAlign:
-                                                              TextAlign.right,
-                                                          style: TextStyle(
-                                                              fontSize: 13),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        )
-                                      : Container(),
-                                  item["IsBatch"] == "Y"
-                                      ? Column(
-                                          children: serialOrBatchList
-                                              .where((e) =>
-                                                  e["AbsEntry"] ==
-                                                  item["BinID"])
-                                              .map((e) => Row(
-                                                    children: [
-                                                      Expanded(
-                                                          flex: 1,
-                                                          child: Text("")),
-                                                      Expanded(
-                                                          flex: 11,
-                                                          child: Container(
-                                                            padding: EdgeInsets
-                                                                .fromLTRB(5, 10,
-                                                                    5, 10),
-                                                            // color: Colors
-                                                            //     .grey.shade50,
-                                                            child: Column(
-                                                              children: [
-                                                                Row(
-                                                                  children: [
-                                                                    Expanded(
-                                                                        flex: 4,
-                                                                        child:
-                                                                            Padding(
-                                                                          padding: const EdgeInsets
-                                                                              .only(
-                                                                              left: 5.0),
-                                                                          child:
-                                                                              Text(
-                                                                            getDataFromDynamic(e["Batch_Serial"]), // Use null-aware operator to handle null
-                                                                            style:
-                                                                                TextStyle(fontSize: 13),
-                                                                          ),
-                                                                        )),
-                                                                    Expanded(
-                                                                        flex: 3,
-                                                                        child: Text(
-                                                                            getDataFromDynamic(e[
-                                                                                'ExpDate']),
-                                                                            style:
-                                                                                TextStyle(color: Colors.red, fontSize: 14))),
-                                                                    Expanded(
-                                                                        flex: 2,
-                                                                        child:
-                                                                            Padding(
-                                                                          padding: const EdgeInsets
-                                                                              .only(
-                                                                              right: 15.0),
-                                                                          child:
-                                                                              Text(
-                                                                            formatQuantity(e['Quantity']),
-                                                                            textAlign:
-                                                                                TextAlign.right,
-                                                                            style:
-                                                                                TextStyle(fontSize: 14),
-                                                                          ),
-                                                                        ))
-                                                                  ],
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          )),
-                                                    ],
-                                                  ))
-                                              .toList(),
-                                        )
-                                      : Container(),
-                                  // //End11111111111111
+                                          ),
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
-                            ),
-                          ),
-                          //           children: [
-                          //             Row(
-                          //               children: [
-                          //                 Expanded(
-                          //                   flex: 3,
-                          //                   child: Text(
-                          //                     getDataFromDynamic(item['BinCode']),
-                          //                     style: TextStyle(
-                          //                       fontWeight: FontWeight.w600,
-                          //                     ),
-                          //                   ),
-                          //                 ),
-                          //                 Expanded(
-                          //                     child: Text(getDataFromDynamic(
-                          //                         item['UoMCode']))),
-                          //                 Expanded(
-                          //                     child: Text('${item['OnHandQty']}')),
-                          //               ],
-                          //             ),
-                          //           ],
-                          //         ),
-                          //       ),
-                          //     )
-                        )
+                            ))
                         .toList(),
                   ),
                 ),
@@ -1021,6 +744,210 @@ class _CreateProductLookUpScreenState extends State<CreateProductLookUpScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  void _showBatchSerialDialog(
+      BuildContext context, dynamic item, List<dynamic> list, bool isBatch) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.6,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // ── Drag handle ──
+              Container(
+                margin: EdgeInsets.only(top: 10),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // ── Header ──
+              Padding(
+                padding: EdgeInsets.fromLTRB(16, 14, 8, 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: PRIMARY_COLOR.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        isBatch
+                            ? Icons.inventory_2_outlined
+                            : Icons.qr_code_2_outlined,
+                        color: PRIMARY_COLOR,
+                        size: 20,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isBatch ? "Batch Details" : "Serial Details",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            getDataFromDynamic(item['ItemCode']),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: "Total : ",
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 13,
+                            ),
+                          ),
+                          TextSpan(
+                            text: "${list.length}",
+                            style: TextStyle(
+                              color: PRIMARY_COLOR,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    IconButton(
+                      icon: Icon(Icons.close,
+                          size: 20, color: Colors.grey.shade500),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              Divider(height: 1, color: Colors.grey.shade200),
+              // ── List ──
+              Expanded(
+                child: list.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isBatch
+                                  ? Icons.inventory_2_outlined
+                                  : Icons.qr_code_2_outlined,
+                              size: 48,
+                              color: Colors.grey.shade300,
+                            ),
+                            SizedBox(height: 12),
+                            Text("No data found.",
+                                style: TextStyle(
+                                    color: Colors.grey.shade400, fontSize: 14)),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: EdgeInsets.fromLTRB(16, 12, 8, 12),
+                        itemCount: list.length,
+                        separatorBuilder: (_, __) =>
+                            Divider(height: 24, color: Colors.grey.shade100),
+                        itemBuilder: (context, index) {
+                          final e = list[index];
+                          return Row(
+                            children: [
+                              // ── Index number ──
+                              Container(
+                                width: 28,
+                                height: 28,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade100,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  "${index + 1}",
+                                  style: TextStyle(
+                                    // fontWeight: FontWeight.w500,
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      getDataFromDynamic(e["Batch_Serial"]),
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14),
+                                    ),
+                                    if (isBatch &&
+                                        getDataFromDynamic(e['ExpDate'])
+                                            .isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 3),
+                                        child: Text(
+                                          "Exp: ${getDataFromDynamic(e['ExpDate'])}",
+                                          style: TextStyle(
+                                              color: Colors.red.shade400,
+                                              fontSize: 12),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: PRIMARY_COLOR.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  formatQuantity(isBatch ? e['Quantity'] : 1),
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: PRIMARY_COLOR),
+                                ),
+                              ),
+                              // Spacer to align with header close button
+                              SizedBox(width: 4),
+                              SizedBox(width: 48),
+                            ],
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

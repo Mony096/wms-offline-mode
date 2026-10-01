@@ -315,7 +315,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
         "ItemCode": itemCode.text,
         "ItemDescription": itemName.text,
         "Quantity": quantity.text.replaceAll(',', ''),
-        "TotalQuantity": totalQuantity.text,
+        "TotalQuantity": totalQuantity.text.replaceAll(',', ''),
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "UoMCode": uom.text,
@@ -333,7 +333,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
             serialsInput.text == "" ? [] : jsonDecode(serialsInput.text) ?? [],
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
-        "OriginalQty": originalQty.text
+        "OriginalQty": originalQty.text.replaceAll(',', '')
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -1509,10 +1509,12 @@ class ItemRow extends StatelessWidget {
               ),
               _buildColumn(
                 Text(
-                  formatQuantity(
-                      ((double.tryParse(item['TotalQuantity'].toString()) ??
-                              0) -
-                          (double.tryParse(item['Quantity'].toString()) ?? 0))),
+                  formatQuantity(() {
+                    final total = double.tryParse(item['TotalQuantity'].toString()) ?? 0;
+                    final qty = double.tryParse(item['Quantity'].toString()) ?? 0;
+                    final open = total - qty;
+                    return open < 0 ? 0 : open;
+                  }()),
                   textAlign: TextAlign.center,
                   style: const TextStyle(fontSize: 13),
                 ),
@@ -1721,10 +1723,12 @@ class ReviewRow extends StatelessWidget {
               ),
               Expanded(
                 child: Text(
-                  formatQuantity(
-                      ((double.tryParse(item['TotalQuantity'].toString()) ??
-                              0) -
-                          (double.tryParse(item['Quantity'].toString()) ?? 0))),
+                  formatQuantity(() {
+                    final total = double.tryParse(item['TotalQuantity'].toString()) ?? 0;
+                    final qty = double.tryParse(item['Quantity'].toString()) ?? 0;
+                    final open = total - qty;
+                    return open < 0 ? 0 : open;
+                  }()),
                   textAlign: TextAlign.right,
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
