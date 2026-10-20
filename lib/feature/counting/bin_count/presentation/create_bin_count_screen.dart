@@ -314,6 +314,7 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
   }
 
   void onAddItem({bool force = false}) {
+    FocusScope.of(context).unfocus();
     try {
       List<dynamic> data = [...items];
 

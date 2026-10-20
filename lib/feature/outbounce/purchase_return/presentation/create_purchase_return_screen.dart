@@ -292,6 +292,7 @@ class _CreatePurchaseReturnScreenState
   }
 
   void onAddItem({bool force = false}) {
+    FocusScope.of(context).unfocus();
     try {
       List<dynamic> data = [...items];
 
@@ -806,6 +807,7 @@ class _CreatePurchaseReturnScreenState
         rawItems.add({
           "DocEntry": element['DocEntry'],
           "BaseEntry": element['DocEntry'],
+          "BaseLine": element['LineNum'],
           "ItemCode": element['ItemCode'],
           "ItemDescription": element['ItemName'] ?? element['ItemDescription'],
           "Quantity": "0",
@@ -827,8 +829,8 @@ class _CreatePurchaseReturnScreenState
         });
         itemCodeFilter.add(element['ItemCode']);
       }
-      // Combine items with the same ItemCode and UoMCode
-      items = combineItems(rawItems);
+      // List all items directly without grouping
+      items = rawItems;
       // Close loading indicator
       if (mounted) MaterialDialog.close(context);
       // Update state with combined items
@@ -897,16 +899,18 @@ class _CreatePurchaseReturnScreenState
               items: duplicateItem,
             )).then((item) {
           if (item == null) return;
-          final index = items.indexWhere((e) =>
-              e['BarCode'] == item['BarCode'] &&
-              e['ItemCode'] == item['ItemCode']);
+          final index = items.contains(item)
+              ? items.indexOf(item)
+              : items.indexWhere((e) =>
+                  e['BarCode'] == item['BarCode'] &&
+                  e['ItemCode'] == item['ItemCode']);
           onEdit(item, index);
         });
         return;
       }
       // Continue processing if there is only one matching item
-      final item = await items.firstWhere((e) => e["BarCode"] == barCode.text);
-      final index = items.indexWhere((e) => e['BarCode'] == item['BarCode']);
+      final item = duplicateItem.first;
+      final index = items.indexOf(item);
       onEdit(item, index);
     } catch (e) {
       if (mounted) {

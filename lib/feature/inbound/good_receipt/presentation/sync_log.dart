@@ -349,6 +349,29 @@ class SyncLogGoodsReceiptScreen extends StatelessWidget {
                                             Row(
                                               children: [
                                                 Text(
+                                                  "Account        :",
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black54),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    line['AccountCode'] ?? '-',
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            Row(
+                                              children: [
+                                                Text(
                                                   "UoM Code     :",
                                                   style: const TextStyle(
                                                       fontSize: 13,

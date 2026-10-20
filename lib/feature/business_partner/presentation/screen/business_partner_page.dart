@@ -84,84 +84,78 @@ class _BusinessPartnerPageState extends State<BusinessPartnerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: PRIMARY_COLOR,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Center(
-          child: Padding(
-            padding: EdgeInsets.only(right: 70),
-            child: Text(
-              "Business Partner Lists",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.white,
-              ),
-            ),
-          ),
-        ),
-      ),
+      backgroundColor: Colors.white,
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         color: Colors.white,
         child: Column(
           children: [
-            const SizedBox(height: 10),
-            // 🔍 Search Bar
+            const SizedBox(height: 50),
+            // 🔹 Header Row with Back Button
             Container(
-              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(left: 9),
+              padding: const EdgeInsets.fromLTRB(15, 0, 0, 0),
               child: Row(
                 children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: filter,
-                      decoration: InputDecoration(
-                        hintText: 'BP Name or BP Code',
-                        hintStyle: const TextStyle(
-                          fontSize: 13.5,
-                          color: Colors.grey,
-                        ),
-                        filled: true,
-                        fillColor: const Color.fromARGB(255, 243, 243, 243),
-                        prefixIcon: Icon(Icons.search, color: PRIMARY_COLOR),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              BorderSide(color: Colors.grey.shade300, width: 1),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              BorderSide(color: Colors.grey.shade300, width: 1),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              BorderSide(color: PRIMARY_COLOR, width: 0.2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 14, horizontal: 10),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade200,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.all(8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Icon(Icons.arrow_back, size: 20),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    height: 48,
-                    width: 48,
-                    decoration: BoxDecoration(
-                      color: PRIMARY_COLOR,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: IconButton(
-                      icon:
-                          const Icon(Icons.arrow_forward, color: Colors.white),
-                      onPressed: onFilterPressed,
+                  const SizedBox(width: 20),
+                  const Text(
+                    "Business Partner Lists",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.black,
                     ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 10),
+            
+            // 🔹 Search Bar
+            Container(
+              margin: const EdgeInsets.only(left: 20, top: 25, right: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: TextField(
+                controller: filter,
+                onChanged: (val) {
+                  onFilterPressed();
+                },
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search...',
+                  suffixIcon: filter.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            filter.clear();
+                            onFilterPressed();
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+              ),
+            ),
+            const SizedBox(height: 15),
 
             // 🧾 Offline Business Partner List
             Expanded(

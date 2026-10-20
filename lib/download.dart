@@ -25,6 +25,7 @@ import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline
 import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/utilies/dialog/dialog.dart';
 import 'package:wms_mobile/utilies/storage/locale_storage.dart';
+import 'package:wms_mobile/feature/lk_act/presentation/cubit/lk_act_offline_cubit.dart';
 import '/helper/helper.dart';
 
 class DownloadItem {
@@ -224,6 +225,13 @@ class _DownloadScreenState extends State<DownloadScreen> {
       onClear: (context) => context.read<BinOfflineCubit>().clearData(),
       onSave: (context, data) async =>
           context.read<BinOfflineCubit>().addData(data),
+    ),
+    DownloadItem(
+      name: 'Account',
+      url: 'LK_ACT',
+      onClear: (context) => context.read<LkActOfflineCubit>().clearData(),
+      onSave: (context, data) async =>
+          context.read<LkActOfflineCubit>().addData(data),
     ),
     // DownloadItem(
     //   name: 'Goods Issue Type',

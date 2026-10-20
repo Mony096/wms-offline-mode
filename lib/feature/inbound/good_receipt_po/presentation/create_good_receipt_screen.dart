@@ -328,8 +328,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
           itemCodeFilter.add(element['ItemCode']);
         }
 
-        // Combine items with the same ItemCode and UoMCode
-        items = combineItems(rawItems);
+        // List all items directly without grouping
+        items = rawItems;
 
         // Close loading indicator
         if (mounted) MaterialDialog.close(context);
@@ -435,6 +435,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
   }
 
   void onAddItem({bool force = false}) {
+    FocusScope.of(context).unfocus();
     try {
       List<dynamic> data = [...items];
 
@@ -613,7 +614,7 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
       var uuid = Uuid();
 
       final filteredItems = items.where((item) {
-        final qty = int.tryParse(item["Quantity"].toString()) ?? 0;
+        final qty = double.tryParse(item["Quantity"].toString()) ?? 0.0;
         return qty != 0;
       }).toList();
       Map<String, dynamic> data = {
@@ -633,7 +634,9 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
               item["UoMGroupDefinitionCollection"] ?? [];
 
           final alternativeUoM = uomCollections.firstWhere(
-            (row) => row['AlternateUoM'] == int.parse(item['UoMEntry']),
+            (row) =>
+                row['AlternateUoM']?.toString() ==
+                item['UoMEntry']?.toString(),
             orElse: () => null, // Provide a default value if not found
           );
 
@@ -641,18 +644,26 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
             throw Exception(
                 "No matching UoM found for item ${item['ItemCode']}");
           }
-          int baseType = -1;
           dynamic baseEntry = null;
           dynamic baseLine = null;
           if (widget.po != null) {
             final lines = (widget.po['DocumentLines'] ?? []) as List<dynamic>;
-            final ele =
-                lines.singleWhere((row) => row['ItemCode'] == item['ItemCode']);
+            final ele = lines.firstWhere(
+              (row) =>
+                  (item['BaseLine'] != null &&
+                      row['LineNum']?.toString() ==
+                          item['BaseLine']?.toString()) ||
+                  (row['ItemCode']?.toString() ==
+                      item['ItemCode']?.toString()),
+              orElse: () => null,
+            );
 
             if (ele != null) {
-              baseType = 22;
-              baseEntry = ele['DocEntry'];
-              baseLine = ele['LineNum'];
+              baseEntry = ele['DocEntry'] ?? widget.po['DocEntry'];
+              baseLine = ele['LineNum'] ?? item['BaseLine'];
+            } else {
+              baseEntry = widget.po['DocEntry'];
+              baseLine = item['BaseLine'];
             }
           }
           dynamic qty = 0;
@@ -712,8 +723,8 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
             "BaseType": !widget.quickReceipt ? 22 : -1,
             "BaseEntry": widget.isEdit != null && !widget.quickReceipt
                 ? item["DocEntry"]
-                : baseEntry,
-            "BaseLine": item["BaseLine"],
+                : (baseEntry ?? widget.po?['DocEntry']),
+            "BaseLine": item["BaseLine"] ?? baseLine,
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
             "DocumentLinesBinAllocations":
@@ -969,17 +980,18 @@ class _CreateGoodReceiptPOScreenState extends State<CreateGoodReceiptPOScreen> {
                 items: duplicateItem,
               )).then((item) {
             if (item == null) return;
-            final index = items.indexWhere((e) =>
-                e['BarCode'] == item['BarCode'] &&
-                e['ItemCode'] == item['ItemCode']);
+            final index = items.contains(item)
+                ? items.indexOf(item)
+                : items.indexWhere((e) =>
+                    e['BarCode'] == item['BarCode'] &&
+                    e['ItemCode'] == item['ItemCode']);
             onEdit(item, index);
           });
           return;
         }
         // Continue processing if there is only one matching item
-        final item =
-            await items.firstWhere((e) => e["BarCode"] == barCode.text);
-        final index = items.indexWhere((e) => e['BarCode'] == item['BarCode']);
+        final item = duplicateItem.first;
+        final index = items.indexOf(item);
         onEdit(item, index);
       } else {
         quantity.text = '';

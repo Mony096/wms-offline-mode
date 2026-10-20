@@ -296,6 +296,7 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
   }
 
   void onAddItem({bool force = false}) {
+    FocusScope.of(context).unfocus();
     try {
       List<dynamic> data = [...items];
 
@@ -829,16 +830,18 @@ class _CreateReturnReceiptScreenState extends State<CreateReturnReceiptScreen> {
               items: duplicateItem,
             )).then((item) {
           if (item == null) return;
-          final index = items.indexWhere((e) =>
-              e['BarCode'] == item['BarCode'] &&
-              e['ItemCode'] == item['ItemCode']);
+          final index = items.contains(item)
+              ? items.indexOf(item)
+              : items.indexWhere((e) =>
+                  e['BarCode'] == item['BarCode'] &&
+                  e['ItemCode'] == item['ItemCode']);
           onEdit(item, index);
         });
         return;
       }
       // Continue processing if there is only one matching item
-      final item = await items.firstWhere((e) => e["BarCode"] == barCode.text);
-      final index = items.indexWhere((e) => e['BarCode'] == item['BarCode']);
+      final item = duplicateItem.first;
+      final index = items.indexOf(item);
       onEdit(item, index);
     } catch (e) {
       if (mounted) {

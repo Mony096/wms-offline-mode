@@ -273,6 +273,33 @@ class SyncFailLogGoodIssueScreen extends StatelessWidget {
                                               ),
                                             ],
                                           ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                                top: 2, left: 2),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  "Account        :",
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.black54),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Expanded(
+                                                  child: Text(
+                                                    line['AccountCode'] ?? '-',
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                           if (line['UoMCode'] != null &&
                                               line['UoMCode']
                                                   .toString()

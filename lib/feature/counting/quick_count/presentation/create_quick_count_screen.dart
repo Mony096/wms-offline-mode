@@ -329,7 +329,8 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
         }
       }
 
-      items = combineItems(rawItems);
+      // List all items directly without grouping
+      items = rawItems;
 
       if (mounted) MaterialDialog.close(context);
 
@@ -443,6 +444,7 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
   }
 
   void onAddItem({bool force = false}) {
+    FocusScope.of(context).unfocus();
     final binList = context.read<BinOfflineCubit>().state;
     final filteredBin =
         binList.where((b) => b['Warehouse'] == warehouse.text).toList();
@@ -1109,17 +1111,18 @@ class _CreateQuickCountScreenState extends State<CreateQuickCountScreen> {
                 items: duplicateItem,
               )).then((item) {
             if (item == null) return;
-            final index = items.indexWhere((e) =>
-                e['BarCode'] == item['BarCode'] &&
-                e['ItemCode'] == item['ItemCode']);
+            final index = items.contains(item)
+                ? items.indexOf(item)
+                : items.indexWhere((e) =>
+                    e['BarCode'] == item['BarCode'] &&
+                    e['ItemCode'] == item['ItemCode']);
             onEdit(item, index);
           });
           return;
         }
         // Continue processing if there is only one matching item
-        final item =
-            await items.firstWhere((e) => e["BarCode"] == barCode.text);
-        final index = items.indexWhere((e) => e['BarCode'] == item['BarCode']);
+        final item = duplicateItem.first;
+        final index = items.indexOf(item);
         onEdit(item, index);
       } else {
         quantity.text = '';

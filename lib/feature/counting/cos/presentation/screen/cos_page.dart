@@ -72,29 +72,7 @@ class _CosPageState extends State<CosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: PRIMARY_COLOR,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          'Counting Sheet Lists',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Colors.white,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            tooltip: "Reload Offline Data",
-            onPressed: () {
-              final cubit = context.read<COSOfflineCubit>();
-              cubit.loadData();
-              setState(() => filteredData = cubit.state);
-            },
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
       body: BlocBuilder<COSOfflineCubit, List<dynamic>>(
         builder: (context, state) {
           final cubit = context.read<COSOfflineCubit>();
@@ -110,62 +88,77 @@ class _CosPageState extends State<CosPage> {
             );
           }
 
-          return Column(
-            children: [
-              const SizedBox(height: 4),
-              // 🔍 Search Bar
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
+          return Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: Colors.white,
+            child: Column(
+              children: [
+                const SizedBox(height: 50),
+                // 🔹 Header Row with Back Button
+                Container(
+                  margin: const EdgeInsets.only(left: 9),
+                  padding: const EdgeInsets.fromLTRB(15, 0, 0, 0),
                   child: Row(
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 12.0),
-                        child: Icon(Icons.search,
-                            color: PRIMARY_COLOR.withOpacity(0.8)),
-                      ),
-                      Expanded(
-                        child: TextFormField(
-                          controller: filter,
-                          decoration: const InputDecoration(
-                            hintText: 'Search Document Number...',
-                            hintStyle: const TextStyle(
-                              fontSize: 13.5,
-                              color: Colors.grey,
-                            ),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 14, horizontal: 10),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade200,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.all(8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          onChanged: (_) => onFilter(),
                         ),
+                        onPressed: () {
+                          Navigator.pop(context);
+                        },
+                        child: const Icon(Icons.arrow_back, size: 20),
                       ),
-                      Container(
-                        height: 45,
-                        width: 45,
-                        margin: const EdgeInsets.only(right: 6),
-                        decoration: BoxDecoration(
-                          color: PRIMARY_COLOR,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: IconButton(
-                          icon: const Icon(Icons.arrow_forward_ios_rounded,
-                              size: 18, color: Colors.white),
-                          onPressed: onFilter,
+                      const SizedBox(width: 20),
+                      const Text(
+                        "Counting Sheet Lists",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: Colors.black,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
+                
+                // 🔹 Search Bar
+                Container(
+                  margin: const EdgeInsets.only(left: 20, top: 25, right: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey[300]!),
+                  ),
+                  child: TextField(
+                    controller: filter,
+                    onChanged: (_) => onFilter(),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'Search Document Number...',
+                      suffixIcon: filter.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                filter.clear();
+                                onFilter();
+                              },
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 15),
 
-              // 🧾 Offline List
+                // 🧾 Offline List
               Expanded(
                 child: ListView.builder(
                   itemCount: filteredData.length,
@@ -286,8 +279,9 @@ class _CosPageState extends State<CosPage> {
                 ),
               ),
             ],
-          );
-        },
+          ),
+        );
+      },
       ),
     );
   }

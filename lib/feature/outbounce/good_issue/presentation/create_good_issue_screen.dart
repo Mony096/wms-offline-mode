@@ -8,6 +8,7 @@ import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dar
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/good_isuse_select/domain/entity/grt_entity.dart';
 import 'package:wms_mobile/feature/good_isuse_select/presentation/screen/grt_page.dart';
+import 'package:wms_mobile/feature/lk_act/presentation/screen/lk_act_page.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
@@ -70,6 +71,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
   final batchesInput = TextEditingController();
   final docEntry = TextEditingController();
   final refLineNo = TextEditingController();
+  final accountCode = TextEditingController();
   final giType = TextEditingController();
   final giTypeName = TextEditingController();
   List<dynamic> isBin = [{}];
@@ -181,6 +183,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
           "ManageBatchNumbers": itemMapped["ManageBatchNumbers"],
           "Serials": element["SerialNumbers"] ?? [],
           "Batches": element["BatchNumbers"] ?? [],
+          "AccountCode": getDataFromDynamic(element["AccountCode"]),
           if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
         });
 
@@ -248,10 +251,30 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
 
       giType.text = getDataFromDynamic(value["Code"]);
       giTypeName.text = getDataFromDynamic(value["Name"]);
+
+      accountCode.clear();
+      
+      setState(() {
+        items.clear();
+      });
+    });
+  }
+
+  void onChangeAccount() async {
+    if (giType.text.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Warning', body: "Please select Goods Issue Type first.");
+      return;
+    }
+
+    goTo(context, LkActPage(typeCode: giType.text)).then((value) {
+      if (value == null) return;
+      accountCode.text = getDataFromDynamic(value['U_LK_Acct']);
     });
   }
 
   void onAddItem({bool force = false}) {
+    FocusScope.of(context).unfocus();
     try {
       List<dynamic> data = [...items];
 
@@ -287,6 +310,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
             serialsInput.text == "" ? [] : jsonDecode(serialsInput.text) ?? [],
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
+        "AccountCode": accountCode.text,
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -350,6 +374,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
         isBatch.text = getDataFromDynamic(item['ManageBatchNumbers']);
         batchesInput.text = jsonEncode(item['Batches'] ?? []);
         serialsInput.text = jsonEncode(item['Serials'] ?? []);
+        accountCode.text = getDataFromDynamic(item['AccountCode']);
 
         setState(() {
           isEdit = index;
@@ -481,6 +506,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
             // "BaseLine": item['BaseLine'],
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
+            "AccountCode": item['AccountCode'],
             "DocumentLinesBinAllocations":
                 item['BinId'] != "" ? binAllocations : []
           };
@@ -532,6 +558,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
     uomAbEntry.text = '';
     isBatch.text = '';
     isSerial.text = '';
+    accountCode.text = '';
     docEntry.text = '';
     refLineNo.text = '';
     isEdit = -1;
@@ -1038,6 +1065,17 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
                 ],
               ),
 
+              const SizedBox(height: 7),
+
+              // ====== Account ======
+              InputCol(
+                label: 'Account',
+                placeholder: 'Account',
+                controller: accountCode,
+                readOnly: true,
+                onPressed: onChangeAccount,
+              ),
+
               const SizedBox(height: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1242,6 +1280,19 @@ class ContentHeader extends StatelessWidget {
           ),
           _buildColumn(
             const Text(
+              'Account',
+              style: TextStyle(
+                color: Colors.black54,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            1,
+            70,
+          ),
+          _buildColumn(
+            const Text(
               'QTY',
               style: TextStyle(
                 color: Colors.black54,
@@ -1326,6 +1377,15 @@ class ItemRow extends StatelessWidget {
                 ),
                 1,
                 60,
+              ),
+              _buildColumn(
+                Text(
+                  getDataFromDynamic(item['AccountCode']),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13),
+                ),
+                1,
+                70,
               ),
               _buildColumn(
                 Text(

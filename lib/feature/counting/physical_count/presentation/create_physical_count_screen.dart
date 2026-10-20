@@ -285,6 +285,7 @@ class _CreatePhysicalCountScreenState extends State<CreatePhysicalCountScreen> {
   }
 
   void onAddItem({bool force = false}) {
+    FocusScope.of(context).unfocus();
     try {
       List<dynamic> data = [...items];
 

@@ -341,71 +341,78 @@ class _ItemPageState extends State<ItemByCodePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: PRIMARY_COLOR,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: const Text(
-          'Item Lists',
-          style: TextStyle(
-              fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
-        ),
-      ),
+      backgroundColor: Colors.white,
       body: Container(
         width: double.infinity,
         height: double.infinity,
         color: Colors.white,
         child: Column(
           children: [
-            SizedBox(
-              height: 4,
-            ),
-            // 🔍 Modern Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Row(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12.0),
-                      child: Icon(Icons.search,
-                          color: PRIMARY_COLOR.withOpacity(0.8)),
-                    ),
-                    Expanded(
-                      child: TextFormField(
-                        controller: filter,
-                        decoration: const InputDecoration(
-                          hintText: 'Search Item Code...',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                              vertical: 14, horizontal: 10),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      height: 45,
-                      width: 45,
-                      margin: const EdgeInsets.only(right: 6),
-                      decoration: BoxDecoration(
-                        color: PRIMARY_COLOR,
+            const SizedBox(height: 50),
+            // 🔹 Header Row with Back Button
+            Container(
+              margin: const EdgeInsets.only(left: 9),
+              padding: const EdgeInsets.fromLTRB(15, 0, 0, 0),
+              child: Row(
+                children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade200,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.all(8),
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_forward_ios_rounded,
-                            size: 18, color: Colors.white),
-                        onPressed: onFilter,
-                      ),
                     ),
-                  ],
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Icon(Icons.arrow_back, size: 20),
+                  ),
+                  const SizedBox(width: 20),
+                  const Text(
+                    "Item Lists",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // 🔹 Search Bar
+            Container(
+              margin: const EdgeInsets.only(left: 20, top: 25, right: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: TextField(
+                controller: filter,
+                onChanged: (val) {
+                  onFilter();
+                },
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search Item Code...',
+                  suffixIcon: filter.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            filter.clear();
+                            onFilter();
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
                 ),
               ),
             ),
-
-            // const Divider(thickness: 0.1, height: 10),
+            const SizedBox(height: 15),
 
             Expanded(
               child: BlocConsumer<ItemByCodeCubit, ItemByCodeState>(

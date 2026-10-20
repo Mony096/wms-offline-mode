@@ -248,52 +248,68 @@ class _UnitOfMeasurementPageState extends State<UnitOfMeasurementPage> {
           children: [
             const SizedBox(height: 50),
 
-            // 🔹 Header with Search
-            Padding(
-              padding: const EdgeInsets.fromLTRB(15, 0, 15, 0),
+            // 🔹 Header Row with Back Button
+            Container(
+              margin: const EdgeInsets.only(left: 9),
+              padding: const EdgeInsets.fromLTRB(15, 0, 0, 0),
               child: Row(
                 children: [
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade200,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.all(8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Icon(Icons.arrow_back, size: 20),
+                  ),
+                  const SizedBox(width: 20),
                   const Text(
                     "Unit of Measurement",
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: TextField(
-                        controller: _filter,
-                        decoration: InputDecoration(
-                          prefixIcon: const Icon(Icons.search),
-                          hintText: 'Search...',
-                          suffixIcon: _filter.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _filter.clear();
-                                    setState(() {
-                                      filteredData = data
-                                          .where((uom) => widget.ids
-                                              .contains(uom['AbsEntry']))
-                                          .toList();
-                                    });
-                                  },
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 13),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
+            
+            // 🔹 Search Bar
+            Container(
+              margin: const EdgeInsets.only(left: 20, top: 25, right: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: TextField(
+                controller: _filter,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Search...',
+                  suffixIcon: _filter.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _filter.clear();
+                            setState(() {
+                              filteredData = data
+                                  .where((uom) => widget.ids
+                                      .contains(uom['AbsEntry']))
+                                  .toList();
+                            });
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+              ),
+            ),
+            const SizedBox(height: 15),
 
             // 🔹 Offline Data List
             Expanded(

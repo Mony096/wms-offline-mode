@@ -122,6 +122,7 @@ class _CreateBinTransferScreenState extends State<CreateBinTransferScreen> {
   }
 
   void onAddItem({bool force = false}) {
+    FocusScope.of(context).unfocus();
     try {
       List<dynamic> data = [...items];
 

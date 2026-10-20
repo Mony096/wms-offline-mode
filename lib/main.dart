@@ -13,6 +13,7 @@ import 'package:wms_mobile/feature/counting/cos/presentation/cubit/cos_offline_c
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/physical_count/presentation/cubit/physical_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/lk_act/presentation/cubit/lk_act_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_cubit.dart';
@@ -132,6 +133,7 @@ void main() async {
   await Hive.openBox("failed_quick_count");
   await Hive.openBox("failed_physical_count");
   await Hive.openBox("failed_bin_count");
+  await Hive.openBox("lk_act");
 
   // (Optional) Only print directory AFTER Hive init
   // final dir = await getApplicationDocumentsDirectory();
@@ -234,6 +236,7 @@ class _MyMainAppState extends State<MyMainApp> {
         BlocProvider(create: (_) => CycleCountFailedOfflineCubit()),
         BlocProvider(create: (_) => PhysicalCountFailedOfflineCubit()),
            BlocProvider(create: (_) => BinCountFailedOfflineCubit()),
+           BlocProvider(create: (_) => LkActOfflineCubit()),
       ],
       child: const MainScreen(),
     );
