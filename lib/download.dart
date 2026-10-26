@@ -233,6 +233,23 @@ class _DownloadScreenState extends State<DownloadScreen> {
       onSave: (context, data) async =>
           context.read<LkActOfflineCubit>().addData(data),
     ),
+    DownloadItem(
+      name: 'Distribution Rules',
+      url: 'DistributionRules',
+      queryParams: {
+        '\$filter': "Active eq 'tYES'",
+        '\$select':
+            "FactorCode,FactorDescription,TotalFactor,Direct,InWhichDimension,Active,IsFixedAmount,DistributionRuleLines"
+      },
+      onClear: (context) {
+        LocalStorageManger.setString('distribution_rules', '');
+        LocalStorageManger.setString('dimension_v2', '');
+      },
+      onSave: (context, data) async {
+        await LocalStorageManger.setString(
+            'distribution_rules', jsonEncode(data));
+      },
+    ),
     // DownloadItem(
     //   name: 'Goods Issue Type',
     //   url: 'LK_OIGE',
@@ -573,6 +590,80 @@ class _DownloadScreenState extends State<DownloadScreen> {
         // Optionally also call item.onSave if needed
         item.onClear?.call(context);
         await item.onSave(context, detailedList);
+      } else if (item.url == "DistributionRules") {
+        List<dynamic> rawDims = [];
+        try {
+          final dimsRes = await getFromSAP(
+            host: host,
+            port: port,
+            token: token,
+            endpoint: "Dimensions",
+            queryParams: {
+              '\$filter': "IsActive eq 'tYES'",
+              '\$select': "DimensionCode,DimensionDescription,IsActive",
+            },
+          );
+          rawDims = dimsRes['value'] ?? [];
+        } catch (_) {
+          try {
+            final allDimsRes = await getFromSAP(
+              host: host,
+              port: port,
+              token: token,
+              endpoint: "Dimensions",
+            );
+            rawDims = (allDimsRes['value'] as List? ?? []).where((d) {
+              final active = d['IsActive'] ?? d['Active'];
+              return active == 'tYES' || active == 'Y' || active == true;
+            }).toList();
+          } catch (_) {}
+        }
+
+        final List<Map<String, dynamic>> parsedDims = [];
+        final Set<int> allDimCodes = {};
+        if (rawDims.isNotEmpty) {
+          for (var d in rawDims) {
+            final code = int.tryParse(d['DimensionCode']?.toString() ?? '') ?? 0;
+            if (code >= 1 && code <= 5) allDimCodes.add(code);
+          }
+        } else {
+          for (var r in allValues) {
+            final code = int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
+            if (code >= 1 && code <= 5) allDimCodes.add(code);
+          }
+        }
+
+        final sortedCodes = allDimCodes.toList()..sort();
+        for (var dimCode in sortedCodes) {
+          final matchedDim = rawDims.firstWhere(
+            (d) => (int.tryParse(d['DimensionCode']?.toString() ?? '') ?? 0) == dimCode,
+            orElse: () => null,
+          );
+
+          final dimDesc = matchedDim?['DimensionDescription'] ??
+              (dimCode == 1 ? 'Cost Center' : 'Dimension $dimCode');
+
+          final dimRules = allValues.where((r) {
+            final ruleDim = int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
+            return ruleDim == dimCode;
+          }).toList();
+
+          if (dimRules.isNotEmpty || matchedDim != null) {
+            parsedDims.add({
+              'DimensionCode': dimCode,
+              'DimensionDescription': dimDesc,
+              'IsActive': matchedDim?['IsActive'] ?? 'tYES',
+              'rules': dimRules,
+            });
+          }
+        }
+
+        await LocalStorageManger.setString(
+            'distribution_rules', jsonEncode(allValues));
+        await LocalStorageManger.setString(
+            'dimension_v2', jsonEncode(parsedDims));
+        item.onClear?.call(context);
+        await item.onSave(context, allValues);
       } else {
         // Normal behavior for other endpoints
         item.onClear?.call(context);
@@ -661,6 +752,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
     await LocalStorageManger.setString('isDownloaded', 'false');
     await LocalStorageManger.setString('warehouse', "");
     await LocalStorageManger.setString('warehouseName', "No Warehouse");
+    await LocalStorageManger.setString('distribution_rules', "");
+    await LocalStorageManger.setString('dimension_v2', "");
 
     setState(() {
       isDownloadedString = "false";
@@ -713,6 +806,8 @@ class _DownloadScreenState extends State<DownloadScreen> {
     await LocalStorageManger.setString('isDownloaded', 'false');
     await LocalStorageManger.setString('warehouse', "");
     await LocalStorageManger.setString('warehouseName', "No Warehouse");
+    await LocalStorageManger.setString('distribution_rules', "");
+    await LocalStorageManger.setString('dimension_v2', "");
 
     // 6️⃣ Update UI
     setState(() {
