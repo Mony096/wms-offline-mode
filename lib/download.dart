@@ -250,6 +250,17 @@ class _DownloadScreenState extends State<DownloadScreen> {
             'distribution_rules', jsonEncode(data));
       },
     ),
+    DownloadItem(
+      name: 'Dimensions',
+      url: 'Dimensions',
+      onClear: (context) {
+        LocalStorageManger.setString('dimensions_meta', '');
+        LocalStorageManger.setString('dimension_v2', '');
+      },
+      onSave: (context, data) async {
+        await LocalStorageManger.setString('dimensions_meta', jsonEncode(data));
+      },
+    ),
     // DownloadItem(
     //   name: 'Goods Issue Type',
     //   url: 'LK_OIGE',
@@ -593,66 +604,85 @@ class _DownloadScreenState extends State<DownloadScreen> {
       } else if (item.url == "DistributionRules") {
         List<dynamic> rawDims = [];
         try {
-          final dimsRes = await getFromSAP(
+          final allDimsRes = await getFromSAP(
             host: host,
             port: port,
             token: token,
             endpoint: "Dimensions",
-            queryParams: {
-              '\$filter': "IsActive eq 'tYES'",
-              '\$select': "DimensionCode,DimensionDescription,IsActive",
-            },
           );
-          rawDims = dimsRes['value'] ?? [];
+          rawDims = allDimsRes['value'] ?? [];
+          if (rawDims.isNotEmpty) {
+            await LocalStorageManger.setString(
+                'dimensions_meta', jsonEncode(rawDims));
+          }
         } catch (_) {
           try {
-            final allDimsRes = await getFromSAP(
-              host: host,
-              port: port,
-              token: token,
-              endpoint: "Dimensions",
-            );
-            rawDims = (allDimsRes['value'] as List? ?? []).where((d) {
-              final active = d['IsActive'] ?? d['Active'];
-              return active == 'tYES' || active == 'Y' || active == true;
-            }).toList();
+            final cachedMetaStr =
+                await LocalStorageManger.getString('dimensions_meta');
+            if (cachedMetaStr.isNotEmpty) {
+              rawDims = jsonDecode(cachedMetaStr) as List<dynamic>;
+            }
           } catch (_) {}
         }
 
+        final activeDims = rawDims.where((d) {
+          final active = d['IsActive']?.toString();
+          return active == 'tYES' || active == 'Y' || active == 'true';
+        }).toList();
+
         final List<Map<String, dynamic>> parsedDims = [];
         final Set<int> allDimCodes = {};
-        if (rawDims.isNotEmpty) {
-          for (var d in rawDims) {
-            final code = int.tryParse(d['DimensionCode']?.toString() ?? '') ?? 0;
+        if (activeDims.isNotEmpty) {
+          for (var d in activeDims) {
+            final code =
+                int.tryParse(d['DimensionCode']?.toString() ?? '') ?? 0;
             if (code >= 1 && code <= 5) allDimCodes.add(code);
           }
         } else {
           for (var r in allValues) {
-            final code = int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
-            if (code >= 1 && code <= 5) allDimCodes.add(code);
+            final code =
+                int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
+            if (code >= 1 && code <= 3) allDimCodes.add(code);
           }
         }
 
         final sortedCodes = allDimCodes.toList()..sort();
         for (var dimCode in sortedCodes) {
-          final matchedDim = rawDims.firstWhere(
-            (d) => (int.tryParse(d['DimensionCode']?.toString() ?? '') ?? 0) == dimCode,
+          final matchedDim = activeDims.firstWhere(
+            (d) =>
+                (int.tryParse(d['DimensionCode']?.toString() ?? '') ?? 0) ==
+                dimCode,
             orElse: () => null,
           );
 
-          final dimDesc = matchedDim?['DimensionDescription'] ??
-              (dimCode == 1 ? 'Cost Center' : 'Dimension $dimCode');
+          String defaultDesc = 'Dimension $dimCode';
+          if (dimCode == 1) defaultDesc = 'Line of Business';
+          if (dimCode == 2) defaultDesc = 'Department';
+          if (dimCode == 3) defaultDesc = 'Region';
+
+          final dimDesc = (matchedDim?['DimensionDescription']
+                      ?.toString()
+                      .trim()
+                      .isNotEmpty ??
+                  false)
+              ? matchedDim!['DimensionDescription'].toString()
+              : ((matchedDim?['DimensionName']?.toString().trim().isNotEmpty ??
+                      false)
+                  ? matchedDim!['DimensionName'].toString()
+                  : defaultDesc);
 
           final dimRules = allValues.where((r) {
-            final ruleDim = int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
+            final ruleDim =
+                int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
             return ruleDim == dimCode;
           }).toList();
 
           if (dimRules.isNotEmpty || matchedDim != null) {
             parsedDims.add({
               'DimensionCode': dimCode,
+              'DimensionName': matchedDim?['DimensionName'] ?? dimDesc,
               'DimensionDescription': dimDesc,
-              'IsActive': matchedDim?['IsActive'] ?? 'tYES',
+              'IsActive': 'tYES',
               'rules': dimRules,
             });
           }

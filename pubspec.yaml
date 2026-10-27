@@ -58,6 +58,7 @@ dependencies:
   connectivity_plus: ^7.0.0
   uuid: ^4.5.1
   image_picker: ^1.2.3
+  responsive_sizer: ^3.3.1
   # iscan_data_plugin: ^0.0.2
 
   # flutter_barcode_scanner: ^2.0.0

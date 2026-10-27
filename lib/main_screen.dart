@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:responsive_sizer/responsive_sizer.dart';
 import 'package:wms_mobile/download.dart';
-import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
 import 'package:wms_mobile/feature/middleware/presentation/login_screen.dart';
 import 'package:wms_mobile/feature/middleware/presentation/bloc/authorization_bloc.dart';
 import 'package:wms_mobile/mobile_function/dashboard.dart';
@@ -71,41 +71,50 @@ class _MainScreenState extends State<MainScreen> {
           );
         }
       },
-      child: MaterialApp(
-        navigatorKey: _navigatorKey,
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          colorScheme: const ColorScheme.light(
-            primary: PRIMARY_COLOR,
-            onPrimary: Colors.white,
-          ),
-        ),
-        title: 'Flutter layout demo',
-        home: isLoading
-            ? const Scaffold(
-                body: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(),
-                      SizedBox(height: 20,),
-                      Text("Waiting Initializing App",style: TextStyle(fontSize: 15),)
-                    ],
-                  ), // 👈 Loader while init
-                ),
-              )
-            : BlocBuilder<AuthorizationBloc, AuthorizationState>(
-                builder: (context, state) {
-                  if (hasCredentials) {
-                    return const Dashboard();
-                  } else if (state is AuthorizationSuccess) {
-                    return DownloadScreen(fromDashboard: false);
-                  } else {
-                    return const LoginScreen();
-                  }
-                },
+      child: ResponsiveSizer(
+        builder: (context, orientation, screenType) {
+          return MaterialApp(
+            navigatorKey: _navigatorKey,
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData(
+              colorScheme: const ColorScheme.light(
+                primary: PRIMARY_COLOR,
+                onPrimary: Colors.white,
               ),
+            ),
+            title: 'Flutter layout demo',
+            home: isLoading
+                ? const Scaffold(
+                    body: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(
+                            height: 20,
+                          ),
+                          Text(
+                            "Waiting Initializing App",
+                            style: TextStyle(fontSize: 15),
+                          )
+                        ],
+                      ), // 👈 Loader while init
+                    ),
+                  )
+                : BlocBuilder<AuthorizationBloc, AuthorizationState>(
+                    builder: (context, state) {
+                      if (hasCredentials) {
+                        return const Dashboard();
+                      } else if (state is AuthorizationSuccess) {
+                        return DownloadScreen(fromDashboard: false);
+                      } else {
+                        return const LoginScreen();
+                      }
+                    },
+                  ),
+          );
+        },
       ),
     );
   }

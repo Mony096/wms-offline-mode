@@ -1,28 +1,27 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/good_receipt_type/presentation/screen/grt_page.dart';
-import 'package:wms_mobile/feature/lk_act/presentation/screen/lk_act_page.dart';
+import 'package:wms_mobile/feature/good_receipt_type/presentation/cubit/receipt_type_offline_cubit.dart';
+import 'package:wms_mobile/feature/lk_act/presentation/cubit/lk_act_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/good_receipt_failed_offline_cubit.dart';
 import 'package:wms_mobile/feature/inbound/good_receipt/presentation/cubit/goods_receipt_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
-import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_offline_cubit.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
 import '/feature/batch/good_receip_batch_screen.dart';
 import '/feature/serial/good_receip_serial_screen.dart';
-import '/feature/bin_location/domain/entity/bin_entity.dart';
-import '/feature/bin_location/presentation/screen/bin_page.dart';
 import '/feature/business_partner/presentation/screen/business_partner_page.dart';
 import '../../../../core/error/failure.dart';
 import '/component/button/button.dart';
 import '/core/enum/global.dart';
 import '/feature/item/presentation/screen/item_page.dart';
-import '/feature/unit_of_measurement/presentation/screen/unit_of_measurement_page.dart';
 import '/helper/helper.dart';
 import '/utilies/dialog/dialog.dart';
 import '/utilies/storage/locale_storage.dart';
@@ -51,6 +50,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
   final warehouseNameUI = TextEditingController();
   final uom = TextEditingController();
   final uomAbEntry = TextEditingController();
+  final uomName = TextEditingController();
   final itemCode = TextEditingController();
   final itemName = TextEditingController();
   final baseUoM = TextEditingController();
@@ -74,6 +74,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
   List<dynamic> isBin = [{}];
   int isEdit = -1;
   bool isSerialOrBatch = false;
+  bool _isHeaderCollapsed = false;
+  bool _isLineItemCollapsed = false;
   List<dynamic> items = [];
   bool loading = false;
   final barCode = TextEditingController();
@@ -101,14 +103,14 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     4: TextEditingController(),
     5: TextEditingController(),
   };
-  final Map<int, TextEditingController> _costingCodes = {
+  final Map<int, TextEditingController> _lineCostingCodes = {
     1: TextEditingController(),
     2: TextEditingController(),
     3: TextEditingController(),
     4: TextEditingController(),
     5: TextEditingController(),
   };
-  final Map<int, TextEditingController> _costingCodeNames = {
+  final Map<int, TextEditingController> _lineCostingCodeNames = {
     1: TextEditingController(),
     2: TextEditingController(),
     3: TextEditingController(),
@@ -119,16 +121,17 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    uomName.dispose();
     for (var ctrl in _headerCostingCodes.values) {
       ctrl.dispose();
     }
     for (var ctrl in _headerCostingCodeNames.values) {
       ctrl.dispose();
     }
-    for (var ctrl in _costingCodes.values) {
+    for (var ctrl in _lineCostingCodes.values) {
       ctrl.dispose();
     }
-    for (var ctrl in _costingCodeNames.values) {
+    for (var ctrl in _lineCostingCodeNames.values) {
       ctrl.dispose();
     }
     super.dispose();
@@ -281,159 +284,131 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
 
   Future<void> _loadDimensions() async {
     try {
-      // 1. Try local cache first for instant offline responsiveness
+      // 1. Try local cache from master data storage
+      final cachedMetaStr =
+          await LocalStorageManger.getString('dimensions_meta');
+      List<dynamic> cachedMeta = [];
+      if (cachedMetaStr.isNotEmpty) {
+        try {
+          cachedMeta = jsonDecode(cachedMetaStr) as List<dynamic>;
+        } catch (_) {}
+      }
+
       final cachedStr = await LocalStorageManger.getString('dimension_v2');
       if (cachedStr.isNotEmpty) {
         try {
           final decoded = jsonDecode(cachedStr) as List<dynamic>;
-          if (decoded.isNotEmpty && mounted) {
-            setState(() {
-              activeDimensions = List<Map<String, dynamic>>.from(
-                decoded.map((e) => Map<String, dynamic>.from(e)),
+          if (decoded.isNotEmpty) {
+            final list = List<Map<String, dynamic>>.from(
+              decoded.map((e) => Map<String, dynamic>.from(e)),
+            );
+
+            // Repair cached descriptions if metadata is present
+            for (var d in list) {
+              final code =
+                  int.tryParse(d['DimensionCode']?.toString() ?? '') ?? 0;
+              final metaMatch = cachedMeta.firstWhere(
+                (m) =>
+                    (int.tryParse(m['DimensionCode']?.toString() ?? '') ?? 0) ==
+                    code,
+                orElse: () => null,
               );
+              if (metaMatch != null) {
+                final mDesc = metaMatch['DimensionDescription']?.toString();
+                if (mDesc != null && mDesc.trim().isNotEmpty) {
+                  d['DimensionDescription'] = mDesc.trim();
+                  d['DimensionName'] =
+                      metaMatch['DimensionName'] ?? d['DimensionDescription'];
+                  d['IsActive'] = metaMatch['IsActive'] ?? 'tYES';
+                }
+              } else {
+                if (d['DimensionDescription'] == 'Cost Center' ||
+                    d['DimensionDescription'] == 'Dimension $code') {
+                  if (code == 1) d['DimensionDescription'] = 'Line of Business';
+                  if (code == 2) d['DimensionDescription'] = 'Department';
+                  if (code == 3) d['DimensionDescription'] = 'Region';
+                }
+              }
+            }
+
+            // Filter to only active dimensions
+            final activeOnly = list.where((d) {
+              final active = d['IsActive']?.toString();
+              return active == null ||
+                  active == 'tYES' ||
+                  active == 'Y' ||
+                  active == 'true';
+            }).toList();
+
+            if (activeOnly.isNotEmpty && mounted) {
+              setState(() {
+                activeDimensions = activeOnly;
+              });
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 2. If dimension_v2 is empty, construct from distribution_rules
+      final rulesCachedStr =
+          await LocalStorageManger.getString('distribution_rules');
+      if (rulesCachedStr.isNotEmpty) {
+        try {
+          final decodedRules = jsonDecode(rulesCachedStr) as List<dynamic>;
+          final List<Map<String, dynamic>> fallbackDims = [];
+          final Set<int> dimCodes = {};
+          for (var r in decodedRules) {
+            final code =
+                int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
+            if (code >= 1 && code <= 5) dimCodes.add(code);
+          }
+          final sortedCodes = dimCodes.toList()..sort();
+          for (var dimCode in sortedCodes) {
+            final dimRules = decodedRules.where((r) {
+              final ruleDim =
+                  int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
+              return ruleDim == dimCode;
+            }).toList();
+
+            final matchedMeta = cachedMeta.firstWhere(
+              (m) =>
+                  (int.tryParse(m['DimensionCode']?.toString() ?? '') ?? 0) ==
+                  dimCode,
+              orElse: () => null,
+            );
+
+            String desc = 'Dimension $dimCode';
+            if (matchedMeta != null &&
+                matchedMeta['DimensionDescription']
+                        ?.toString()
+                        .trim()
+                        .isNotEmpty ==
+                    true) {
+              desc = matchedMeta['DimensionDescription'].toString().trim();
+            } else {
+              if (dimCode == 1) desc = 'Line of Business';
+              if (dimCode == 2) desc = 'Department';
+              if (dimCode == 3) desc = 'Region';
+            }
+
+            fallbackDims.add({
+              'DimensionCode': dimCode,
+              'DimensionName': matchedMeta?['DimensionName'] ?? desc,
+              'DimensionDescription': desc,
+              'IsActive': 'tYES',
+              'rules': dimRules,
+            });
+          }
+          if (fallbackDims.isNotEmpty && mounted) {
+            setState(() {
+              activeDimensions = fallbackDims;
             });
           }
         } catch (_) {}
       }
-
-      // If dimension_v2 not found, try reading cached distribution_rules from initial download
-      if (activeDimensions.isEmpty) {
-        final rulesCachedStr =
-            await LocalStorageManger.getString('distribution_rules');
-        if (rulesCachedStr.isNotEmpty) {
-          try {
-            final decodedRules = jsonDecode(rulesCachedStr) as List<dynamic>;
-            final List<Map<String, dynamic>> fallbackDims = [];
-            final Set<int> dimCodes = {};
-            for (var r in decodedRules) {
-              final code =
-                  int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
-              if (code >= 1 && code <= 5) dimCodes.add(code);
-            }
-            final sortedCodes = dimCodes.toList()..sort();
-            for (var dimCode in sortedCodes) {
-              final dimRules = decodedRules.where((r) {
-                final ruleDim =
-                    int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
-                return ruleDim == dimCode;
-              }).toList();
-              fallbackDims.add({
-                'DimensionCode': dimCode,
-                'DimensionDescription':
-                    dimCode == 1 ? 'Cost Center' : 'Dimension $dimCode',
-                'IsActive': 'tYES',
-                'rules': dimRules,
-              });
-            }
-            if (fallbackDims.isNotEmpty && mounted) {
-              setState(() {
-                activeDimensions = fallbackDims;
-              });
-            }
-          } catch (_) {}
-        }
-      }
-
-      // 2. Fetch fresh active distribution rules from SAP
-      List<dynamic> rawRules = [];
-      try {
-        final rulesResponse = await dio.get(
-          "DistributionRules?\$filter=Active eq 'tYES'&\$select=FactorCode,FactorDescription,TotalFactor,Direct,InWhichDimension,Active,IsFixedAmount,DistributionRuleLines&\$top=5000",
-        );
-        if (rulesResponse.statusCode == 200 && rulesResponse.data != null) {
-          rawRules = rulesResponse.data['value'] ?? [];
-        }
-      } catch (e) {
-        try {
-          final allRulesRes = await dio.get("DistributionRules?\$top=5000");
-          if (allRulesRes.statusCode == 200 && allRulesRes.data != null) {
-            rawRules = (allRulesRes.data['value'] as List? ?? []).where((r) {
-              final active = r['Active'];
-              return active == 'tYES' || active == 'Y' || active == true;
-            }).toList();
-          }
-        } catch (_) {}
-      }
-
-      // 3. Try to fetch dimension descriptions from SAP
-      List<dynamic> rawDims = [];
-      try {
-        final dimsResponse = await dio.get(
-          "Dimensions?\$filter=IsActive eq 'tYES'&\$select=DimensionCode,DimensionDescription,IsActive",
-        );
-        if (dimsResponse.statusCode == 200 && dimsResponse.data != null) {
-          rawDims = dimsResponse.data['value'] ?? [];
-        }
-      } catch (_) {
-        try {
-          final allDimsRes = await dio.get("Dimensions");
-          if (allDimsRes.statusCode == 200 && allDimsRes.data != null) {
-            rawDims = (allDimsRes.data['value'] as List? ?? []).where((d) {
-              final active = d['IsActive'] ?? d['Active'];
-              return active == 'tYES' || active == 'Y' || active == true;
-            }).toList();
-          }
-        } catch (_) {}
-      }
-
-      final List<Map<String, dynamic>> parsedDims = [];
-      final Set<int> allDimCodes = {};
-      if (rawDims.isNotEmpty) {
-        for (var d in rawDims) {
-          final code = int.tryParse(d['DimensionCode']?.toString() ?? '') ?? 0;
-          if (code >= 1 && code <= 5) allDimCodes.add(code);
-        }
-      } else {
-        for (var r in rawRules) {
-          final code =
-              int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
-          if (code >= 1 && code <= 5) allDimCodes.add(code);
-        }
-      }
-
-      final sortedCodes = allDimCodes.toList()..sort();
-      for (var dimCode in sortedCodes) {
-        final matchedDim = rawDims.firstWhere(
-          (d) =>
-              (int.tryParse(d['DimensionCode']?.toString() ?? '') ?? 0) ==
-              dimCode,
-          orElse: () => null,
-        );
-
-        final dimDesc = matchedDim?['DimensionDescription'] ??
-            (dimCode == 1 ? 'Cost Center' : 'Dimension $dimCode');
-
-        final dimRules = rawRules.where((r) {
-          final ruleDim =
-              int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
-          return ruleDim == dimCode;
-        }).toList();
-
-        if (dimRules.isNotEmpty || matchedDim != null) {
-          parsedDims.add({
-            'DimensionCode': dimCode,
-            'DimensionDescription': dimDesc,
-            'IsActive': matchedDim?['IsActive'] ?? 'tYES',
-            'rules': dimRules,
-          });
-        }
-      }
-
-      if (parsedDims.isNotEmpty) {
-        await LocalStorageManger.setString(
-            'dimension_v2', jsonEncode(parsedDims));
-        if (rawRules.isNotEmpty) {
-          await LocalStorageManger.setString(
-              'distribution_rules', jsonEncode(rawRules));
-        }
-        if (mounted) {
-          setState(() {
-            activeDimensions = parsedDims;
-          });
-        }
-      }
     } catch (e) {
-      debugPrint("Error loading dimensions: $e");
+      debugPrint("Error loading dimensions from local storage: $e");
     }
   }
 
@@ -449,22 +424,66 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
   }
 
   void onChangeUoM() async {
+    _unfocusAll();
+    if (itemCode.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Please select an item first to choose its Unit of Measure.'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     try {
-      final data =
-          jsonDecode(uoMGroupDefinitionCollection.text) as List<dynamic>;
+      List<int> validUomIds = [];
+      if (uoMGroupDefinitionCollection.text.isNotEmpty) {
+        try {
+          final data =
+              jsonDecode(uoMGroupDefinitionCollection.text) as List<dynamic>;
+          validUomIds = data
+              .map((e) =>
+                  int.tryParse(e['AlternateUoM']?.toString() ?? '') ?? -1)
+              .where((id) => id > 0)
+              .toList();
+        } catch (_) {}
+      }
 
-      goTo(
-              context,
-              UnitOfMeasurementPage(
-                  ids: data.map((e) => e['AlternateUoM'] as int).toList()))
-          .then((value) {
-        if (value == null) return;
+      final offlineUoms = context.read<UOMOfflineCubit>().state;
+      List<dynamic> itemsToSelect = [];
+      if (validUomIds.isNotEmpty) {
+        itemsToSelect = offlineUoms
+            .where((u) => validUomIds.contains(u['AbsEntry']))
+            .toList();
+      }
+      if (itemsToSelect.isEmpty) {
+        itemsToSelect = offlineUoms;
+      }
 
-        uom.text = value["Code"];
-        uomAbEntry.text = value["AbsEntry"].toString();
-      });
+      _openGenericPickerModal<dynamic>(
+        title: 'Select Unit of Measure',
+        subtitle: 'Item: ${itemCode.text}',
+        icon: Icons.straighten_rounded,
+        items: itemsToSelect,
+        currentCode: uom.text,
+        getCode: (item) => getDataFromDynamic(item['Code']),
+        getName: (item) => getDataFromDynamic(item['Name']),
+        showCode: true,
+        allowClear: false,
+        onSelected: (selected) {
+          if (selected == null) return;
+          setState(() {
+            uom.text = getDataFromDynamic(selected['Code']);
+            uomAbEntry.text = getDataFromDynamic(selected['AbsEntry']);
+            final name = getDataFromDynamic(selected['Name']);
+            uomName.text = name.isNotEmpty ? name : uom.text;
+          });
+        },
+      );
     } catch (e) {
-      print(e);
+      debugPrint("Error selecting UoM: $e");
     }
   }
 
@@ -492,6 +511,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "UoMCode": uom.text,
+        "UoMName": uomName.text,
         "BaseEntry": docEntry.text,
         "BaseLine": refLineNo.text,
         "UoMGroupDefinitionCollection":
@@ -506,16 +526,36 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
         "AccountCode": accountCode.text,
-        "CostingCode": _costingCodes[1]?.text ?? '',
-        "CostingCode2": _costingCodes[2]?.text ?? '',
-        "CostingCode3": _costingCodes[3]?.text ?? '',
-        "CostingCode4": _costingCodes[4]?.text ?? '',
-        "CostingCode5": _costingCodes[5]?.text ?? '',
-        "CostingCodeName": _costingCodeNames[1]?.text ?? '',
-        "CostingCode2Name": _costingCodeNames[2]?.text ?? '',
-        "CostingCode3Name": _costingCodeNames[3]?.text ?? '',
-        "CostingCode4Name": _costingCodeNames[4]?.text ?? '',
-        "CostingCode5Name": _costingCodeNames[5]?.text ?? '',
+        "CostingCode": isEdit != -1
+            ? (_lineCostingCodes[1]?.text ?? '')
+            : (_headerCostingCodes[1]?.text ?? ''),
+        "CostingCode2": isEdit != -1
+            ? (_lineCostingCodes[2]?.text ?? '')
+            : (_headerCostingCodes[2]?.text ?? ''),
+        "CostingCode3": isEdit != -1
+            ? (_lineCostingCodes[3]?.text ?? '')
+            : (_headerCostingCodes[3]?.text ?? ''),
+        "CostingCode4": isEdit != -1
+            ? (_lineCostingCodes[4]?.text ?? '')
+            : (_headerCostingCodes[4]?.text ?? ''),
+        "CostingCode5": isEdit != -1
+            ? (_lineCostingCodes[5]?.text ?? '')
+            : (_headerCostingCodes[5]?.text ?? ''),
+        "CostingCodeName": isEdit != -1
+            ? (_lineCostingCodeNames[1]?.text ?? '')
+            : (_headerCostingCodeNames[1]?.text ?? ''),
+        "CostingCode2Name": isEdit != -1
+            ? (_lineCostingCodeNames[2]?.text ?? '')
+            : (_headerCostingCodeNames[2]?.text ?? ''),
+        "CostingCode3Name": isEdit != -1
+            ? (_lineCostingCodeNames[3]?.text ?? '')
+            : (_headerCostingCodeNames[3]?.text ?? ''),
+        "CostingCode4Name": isEdit != -1
+            ? (_lineCostingCodeNames[4]?.text ?? '')
+            : (_headerCostingCodeNames[4]?.text ?? ''),
+        "CostingCode5Name": isEdit != -1
+            ? (_lineCostingCodeNames[5]?.text ?? '')
+            : (_headerCostingCodeNames[5]?.text ?? ''),
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -577,6 +617,26 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
     uom.text = getDataFromDynamic(item['UoMCode']);
     uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
+    uomName.text = getDataFromDynamic(item['UoMName']);
+    if (uomName.text.isEmpty && uom.text.isNotEmpty) {
+      try {
+        final offlineUoms = context.read<UOMOfflineCubit>().state;
+        final matchedUom = offlineUoms.firstWhere(
+          (u) =>
+              getDataFromDynamic(u['Code']) == uom.text ||
+              getDataFromDynamic(u['AbsEntry']) == uomAbEntry.text,
+          orElse: () => null,
+        );
+        if (matchedUom != null) {
+          final name = getDataFromDynamic(matchedUom['Name']);
+          uomName.text = name.isNotEmpty ? name : uom.text;
+        } else {
+          uomName.text = uom.text;
+        }
+      } catch (_) {
+        uomName.text = uom.text;
+      }
+    }
     binCode.text = getDataFromDynamic(item['BinCode']);
     binId.text = getDataFromDynamic(item['BinId']);
     baseUoM.text = getDataFromDynamic(item['BaseUoM']);
@@ -590,38 +650,39 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     batchesInput.text = jsonEncode(item['Batches'] ?? []);
     serialsInput.text = jsonEncode(item['Serials'] ?? []);
     accountCode.text = getDataFromDynamic(item['AccountCode']);
-    _costingCodes[1]?.text = getDataFromDynamic(item['CostingCode']);
-    _costingCodes[2]?.text = getDataFromDynamic(item['CostingCode2']);
-    _costingCodes[3]?.text = getDataFromDynamic(item['CostingCode3']);
-    _costingCodes[4]?.text = getDataFromDynamic(item['CostingCode4']);
-    _costingCodes[5]?.text = getDataFromDynamic(item['CostingCode5']);
 
+    // Pre-populate line item dimensions from item (or fallback to header)
     for (int d = 1; d <= 5; d++) {
       final codeKey = d == 1 ? 'CostingCode' : 'CostingCode$d';
       final nameKey = d == 1 ? 'CostingCodeName' : 'CostingCode${d}Name';
+      String code = getDataFromDynamic(item[codeKey]);
       String name = getDataFromDynamic(item[nameKey]);
-      final code = getDataFromDynamic(item[codeKey]);
+      if (code.isEmpty) {
+        code = _headerCostingCodes[d]?.text ?? '';
+        name = _headerCostingCodeNames[d]?.text ?? '';
+      }
       if (name.isEmpty && code.isNotEmpty) {
         final dim = activeDimensions.firstWhere(
-          (element) => element['DimensionCode'] == d,
+          (ad) =>
+              (int.tryParse(ad['DimensionCode']?.toString() ?? '') ?? 0) == d,
           orElse: () => {},
         );
         final rules = (dim['rules'] as List<dynamic>?) ?? [];
-        final rule = rules.firstWhere(
+        final matchedRule = rules.firstWhere(
           (r) => r['FactorCode']?.toString() == code,
           orElse: () => null,
         );
-        if (rule != null) {
-          name = rule['FactorDescription']?.toString() ?? code;
-        } else {
-          name = code;
+        if (matchedRule != null) {
+          name = matchedRule['FactorDescription']?.toString() ?? '';
         }
       }
-      _costingCodeNames[d]?.text = name;
+      _lineCostingCodes[d]?.text = code;
+      _lineCostingCodeNames[d]?.text = name;
     }
 
     setState(() {
       isEdit = targetIndex;
+      _isLineItemCollapsed = false;
 
       if (getDataFromDynamic(item['ManageSerialNumbers']) == 'tYES' ||
           getDataFromDynamic(item['ManageBatchNumbers']) == 'tYES') {
@@ -653,14 +714,18 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Row(
           children: [
-            Icon(Icons.delete_outline_rounded, color: Colors.red.shade600, size: 24),
+            Icon(Icons.delete_outline_rounded,
+                color: Colors.red.shade600, size: 24),
             const SizedBox(width: 8),
-            const Text('Remove Item', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            Text('Remove Item',
+                style: TextStyle(
+                    fontSize: AppFontSize.dialogTitle,
+                    fontWeight: FontWeight.bold)),
           ],
         ),
         content: Text(
           'Are you sure you want to remove "$itemCodeStr" from receipt list?',
-          style: const TextStyle(fontSize: 14),
+          style: TextStyle(fontSize: AppFontSize.base),
         ),
         actions: [
           TextButton(
@@ -668,14 +733,18 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
               Navigator.of(ctx).pop();
               _unfocusAll();
             },
-            child: Text('Cancel', style: TextStyle(color: Colors.grey.shade700)),
+            child: Text('Cancel',
+                style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: AppFontSize.buttonSmall)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade600,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () {
               Navigator.of(ctx).pop();
@@ -691,7 +760,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 }
               });
             },
-            child: const Text('Remove'),
+            child: Text('Remove',
+                style: TextStyle(fontSize: AppFontSize.button)),
           ),
         ],
       ),
@@ -702,6 +772,43 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     }
   }
 
+  Widget _buildModalDetailRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 120,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: AppFontSize.detailItemLabel,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ),
+        Text(
+          ' :  ',
+          style: TextStyle(
+            fontSize: AppFontSize.detailItemLabel,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade500,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: AppFontSize.detailItemValue,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   void _showItemActionDialog(dynamic item, int index) async {
     _unfocusAll();
 
@@ -709,6 +816,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     final itemDescStr = getDataFromDynamic(item['ItemDescription']);
     final qtyStr = formatQuantity(getDataFromDynamic(item['Quantity']));
     final uomStr = getDataFromDynamic(item['UoMCode']);
+    final accountStr = getDataFromDynamic(item['AccountCode']);
+    final binCodeStr = getDataFromDynamic(item['BinCode']);
 
     await showDialog(
       context: context,
@@ -724,7 +833,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 color: PRIMARY_COLOR.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.inventory_2_outlined, size: 20, color: PRIMARY_COLOR),
+              child: const Icon(Icons.inventory_2_outlined,
+                  size: 20, color: PRIMARY_COLOR),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -733,10 +843,10 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 children: [
                   Text(
                     itemCodeStr.isEmpty ? 'Item Details' : itemCodeStr,
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: AppFontSize.dialogTitle,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
+                      color: const Color(0xFF0F172A),
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -744,7 +854,9 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                   if (itemDescStr.isNotEmpty)
                     Text(
                       itemDescStr,
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      style: TextStyle(
+                          fontSize: AppFontSize.md,
+                          color: Colors.grey.shade600),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -758,79 +870,119 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Quantity: $qtyStr ${uomStr.isNotEmpty ? uomStr : ''}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF334155),
-                    ),
-                  ),
-                  Text(
-                    'Row #${index + 1}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Builder(
-              builder: (_) {
-                final List<Widget> dimChips = [];
-                for (int d = 1; d <= 5; d++) {
-                  final codeKey = d == 1 ? 'CostingCode' : 'CostingCode$d';
-                  final nameKey = d == 1 ? 'CostingCodeName' : 'CostingCode${d}Name';
-                  final code = getDataFromDynamic(item[codeKey]);
-                  if (code.isNotEmpty) {
-                    final dim = activeDimensions.firstWhere(
-                      (e) => e['DimensionCode'] == d,
-                      orElse: () => {},
-                    );
-                    final dimLabel = dim['DimensionDescription'] ?? 'Dim $d';
-                    final name = getDataFromDynamic(item[nameKey]);
-                    final display = name.isNotEmpty && name != code ? '$code ($name)' : code;
-                    dimChips.add(
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.format_list_bulleted_rounded,
+                              size: 15, color: PRIMARY_COLOR),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Item Details',
+                            style: TextStyle(
+                              fontSize: AppFontSize.sectionTitle,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
+                          color: PRIMARY_COLOR.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFCBD5E1)),
                         ),
                         child: Text(
-                          '$dimLabel: $display',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF334155),
+                          'Row #${index + 1}',
+                          style: TextStyle(
+                            fontSize: AppFontSize.badge,
+                            fontWeight: FontWeight.w700,
+                            color: PRIMARY_COLOR,
                           ),
                         ),
                       ),
-                    );
-                  }
-                }
-                if (dimChips.isEmpty) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: dimChips,
+                    ],
                   ),
-                );
-              },
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Divider(
+                      height: 1,
+                      thickness: 0.6,
+                      color: Color(0xFFCBD5E1),
+                    ),
+                  ),
+                  _buildModalDetailRow(
+                      'Quantity', '$qtyStr ${uomStr.isNotEmpty ? uomStr : ''}'),
+                  if (accountStr.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _buildModalDetailRow('Account', accountStr),
+                  ],
+                  if (binCodeStr.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _buildModalDetailRow('Bin Location', binCodeStr),
+                  ],
+                  ...List.generate(5, (i) {
+                    final d = i + 1;
+                    final codeKey = d == 1 ? 'CostingCode' : 'CostingCode$d';
+                    final nameKey =
+                        d == 1 ? 'CostingCodeName' : 'CostingCode${d}Name';
+                    final code = getDataFromDynamic(item[codeKey]);
+                    if (code.isEmpty) return const SizedBox.shrink();
+
+                    final dim = activeDimensions.firstWhere(
+                      (e) =>
+                          (int.tryParse(e['DimensionCode']?.toString() ?? '') ??
+                              0) ==
+                          d,
+                      orElse: () => {},
+                    );
+                    final dimLabel = (dim['DimensionDescription']
+                                ?.toString()
+                                .trim()
+                                .isNotEmpty ??
+                            false)
+                        ? dim['DimensionDescription'].toString()
+                        : ((dim['DimensionName']
+                                    ?.toString()
+                                    .trim()
+                                    .isNotEmpty ??
+                                false)
+                            ? dim['DimensionName'].toString()
+                            : 'Dimension $d');
+                    String name = getDataFromDynamic(item[nameKey]);
+                    if (name.isEmpty && code.isNotEmpty) {
+                      final rules = (dim['rules'] as List<dynamic>?) ?? [];
+                      final matchedRule = rules.firstWhere(
+                        (r) => r['FactorCode']?.toString() == code,
+                        orElse: () => null,
+                      );
+                      if (matchedRule != null) {
+                        name =
+                            matchedRule['FactorDescription']?.toString() ?? '';
+                      }
+                    }
+                    final display = name.isNotEmpty ? name : code;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: _buildModalDetailRow(dimLabel, display),
+                    );
+                  }),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
@@ -839,7 +991,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () {
                 Navigator.of(ctx).pop();
@@ -847,9 +1000,11 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 _startEditItem(index);
               },
               icon: const Icon(Icons.edit_outlined, size: 18),
-              label: const Text(
+              label: Text(
                 'Edit Item',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: AppFontSize.button,
+                    fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 8),
@@ -858,7 +1013,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 foregroundColor: Colors.red.shade700,
                 side: BorderSide(color: Colors.red.shade300),
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
               onPressed: () {
                 Navigator.of(ctx).pop();
@@ -866,9 +1022,11 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 _deleteItem(index);
               },
               icon: const Icon(Icons.delete_outline_rounded, size: 18),
-              label: const Text(
+              label: Text(
                 'Delete Item',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                    fontSize: AppFontSize.button,
+                    fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(height: 4),
@@ -879,7 +1037,9 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
               },
               child: Text(
                 'Cancel',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: AppFontSize.buttonSmall),
               ),
             ),
           ],
@@ -908,57 +1068,228 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     });
   }
 
-  void onChangeBin() async {
-    goTo(context, BinPage(warehouse: warehouse.text, itemCode: itemCode.text))
-        .then((value) {
-      if (value == null) return;
+  void onChangeBin() {
+    List<dynamic> allBins = [];
+    try {
+      allBins = context.read<BinOfflineCubit>().state;
+    } catch (_) {}
+    if (allBins.isEmpty) {
+      try {
+        final box = Hive.box('bin');
+        allBins = box.get('data', defaultValue: []).cast<dynamic>();
+      } catch (_) {}
+    }
 
-      binId.text = getDataFromDynamic((value as BinEntity).id);
-      binCode.text = getDataFromDynamic(value.code);
-    });
+    final filteredBins = warehouse.text.isNotEmpty
+        ? allBins
+            .where((b) => getDataFromDynamic(b['Warehouse']) == warehouse.text)
+            .toList()
+        : allBins;
+
+    _openGenericPickerModal<dynamic>(
+      title: 'Select Bin Location',
+      subtitle: warehouse.text.isNotEmpty
+          ? 'Warehouse: ${warehouseNameUI.text.isNotEmpty ? warehouseNameUI.text : warehouse.text}'
+          : 'All Bins',
+      icon: Icons.grid_view_rounded,
+      items: filteredBins,
+      currentCode: binCode.text,
+      getCode: (item) => getDataFromDynamic(item['BinCode']),
+      getName: (item) {
+        final sub = getDataFromDynamic(item['Sublevel1']);
+        return sub.isNotEmpty
+            ? 'Sublevel: $sub'
+            : getDataFromDynamic(item['BinCode']);
+      },
+      getExtraInfo: (item) {
+        final wh = getDataFromDynamic(item['Warehouse']);
+        return wh.isNotEmpty ? 'Whs: $wh' : '';
+      },
+      allowClear: true,
+      clearLabel: 'None (Clear Bin Location)',
+      onSelected: (item) {
+        if (item == null) {
+          binCode.clear();
+          binId.clear();
+        } else {
+          binCode.text = getDataFromDynamic(item['BinCode']);
+          binId.text = getDataFromDynamic(item['AbsEntry']);
+        }
+        setState(() {});
+      },
+    );
   }
 
-  void onChangeGrt() async {
-    goTo(context, GrtPage()).then((value) {
-      if (value == null) return;
+  void onChangeGrt() {
+    List<dynamic> grtItems = [];
+    try {
+      grtItems = context.read<ReceiptTypeOfflineCubit>().state;
+    } catch (_) {}
+    if (grtItems.isEmpty) {
+      grtItems = const [
+        {'Code': 'SA', 'Name': 'Stock Adjustment'},
+        {'Code': 'RB', 'Name': 'Receipt from Borrowing Stock'},
+        {'Code': 'PE', 'Name': 'Product Exchange'},
+        {'Code': 'PM', 'Name': 'Promotion'},
+      ];
+    }
 
-      grType.text = getDataFromDynamic(value["Code"]);
-      grTypeName.text = getDataFromDynamic(value["Name"]);
-
-      accountCode.clear();
-      
-      setState(() {
-        items.clear();
-      });
-    });
+    _openGenericPickerModal<dynamic>(
+      title: 'Select Goods Receipt Type',
+      subtitle: 'Transaction classification',
+      icon: Icons.category_outlined,
+      items: grtItems,
+      currentCode: grType.text,
+      getCode: (item) => getDataFromDynamic(item['Code']),
+      getName: (item) => getDataFromDynamic(item['Name']),
+      allowClear: false,
+      onSelected: (item) {
+        if (item == null) return;
+        final newCode = getDataFromDynamic(item['Code']);
+        final newName = getDataFromDynamic(item['Name']);
+        if (grType.text != newCode) {
+          grType.text = newCode;
+          grTypeName.text = newName;
+          accountCode.clear();
+          setState(() {
+            items.clear();
+          });
+        }
+      },
+    );
   }
 
-  void onChangeAccount() async {
+  void onChangeAccount() {
     if (grType.text.isEmpty) {
       MaterialDialog.warning(context,
           title: 'Warning', body: "Please select Goods Receipt Type first.");
       return;
     }
 
-    goTo(context, LkActPage(typeCode: grType.text)).then((value) {
-      if (value == null) return;
-      accountCode.text = getDataFromDynamic(value['U_LK_Acct']);
-    });
+    List<dynamic> lkActs = [];
+    try {
+      final cubit = context.read<LkActOfflineCubit>();
+      cubit.loadData();
+      lkActs = cubit.state;
+    } catch (_) {}
+    if (lkActs.isEmpty) {
+      try {
+        final box = Hive.box('lk_act');
+        lkActs = box.get('data', defaultValue: []).cast<dynamic>();
+      } catch (_) {}
+    }
+
+    final lkAct = lkActs.firstWhere(
+      (element) => getDataFromDynamic(element['Code']) == grType.text,
+      orElse: () => null,
+    );
+
+    List<dynamic> accounts = [];
+    if (lkAct != null) {
+      final collectionKey = (lkAct as Map).keys.firstWhere(
+            (key) =>
+                key.toString().contains('Collection') && lkAct[key] is List,
+            orElse: () => '',
+          );
+      if (collectionKey.isNotEmpty) {
+        accounts = lkAct[collectionKey] as List<dynamic>;
+      } else {
+        for (var value in lkAct.values) {
+          if (value is List) {
+            accounts = value;
+            break;
+          }
+        }
+      }
+    }
+
+    _openGenericPickerModal<dynamic>(
+      title: 'Select G/L Account',
+      subtitle:
+          'Type: ${grTypeName.text.isNotEmpty ? grTypeName.text : grType.text}',
+      icon: Icons.account_balance_outlined,
+      items: accounts,
+      currentCode: accountCode.text,
+      getCode: (item) {
+        if (item is Map) {
+          final a = getDataFromDynamic(item['U_LK_Acct']);
+          if (a.isNotEmpty) return a;
+          final c = getDataFromDynamic(item['AcctCode']);
+          if (c.isNotEmpty) return c;
+        }
+        return item.toString();
+      },
+      getName: (item) {
+        if (item is Map) {
+          final n = getDataFromDynamic(item['AcctName']);
+          if (n.isNotEmpty) return n;
+          final a = getDataFromDynamic(item['U_LK_Acct']);
+          if (a.isNotEmpty) return a;
+        }
+        return item.toString();
+      },
+      allowClear: true,
+      clearLabel: 'None (Clear Account)',
+      onSelected: (item) {
+        if (item == null) {
+          accountCode.clear();
+        } else {
+          String code = '';
+          if (item is Map) {
+            code = getDataFromDynamic(item['U_LK_Acct']).isNotEmpty
+                ? getDataFromDynamic(item['U_LK_Acct'])
+                : getDataFromDynamic(item['AcctCode']);
+          }
+          if (code.isEmpty) code = item.toString();
+          accountCode.text = code;
+        }
+        setState(() {});
+      },
+    );
   }
 
-  void onChangeWhs() async {
-    goTo(context, WarehousePage()).then((value) {
-      if (value == null) return;
-      if (value is Map) {
-        warehouse.text = getDataFromDynamic(value['code']);
-        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty
-            ? getDataFromDynamic(value['name'])
-            : warehouse.text;
-      } else {
-        warehouse.text = getDataFromDynamic(value);
-        warehouseNameUI.text = warehouse.text;
-      }
-    });
+  void onChangeWhs() {
+    List<dynamic> whs = [];
+    try {
+      final cubit = context.read<WarehouseOfflineCubit>();
+      cubit.loadData();
+      whs = cubit.state;
+    } catch (_) {}
+    if (whs.isEmpty) {
+      try {
+        final box = Hive.box('warehouse');
+        whs = box.get('data', defaultValue: []).cast<dynamic>();
+      } catch (_) {}
+    }
+
+    _openGenericPickerModal<dynamic>(
+      title: 'Select Warehouse',
+      subtitle: 'Destination warehouse',
+      icon: Icons.warehouse_outlined,
+      items: whs,
+      currentCode: warehouse.text,
+      getCode: (item) {
+        final c = getDataFromDynamic(item['WarehouseCode']);
+        return c.isNotEmpty ? c : getDataFromDynamic(item['code']);
+      },
+      getName: (item) {
+        final n = getDataFromDynamic(item['WarehouseName']);
+        return n.isNotEmpty ? n : getDataFromDynamic(item['name']);
+      },
+      allowClear: false,
+      onSelected: (item) {
+        if (item == null) return;
+        final code = getDataFromDynamic(item['WarehouseCode']).isNotEmpty
+            ? getDataFromDynamic(item['WarehouseCode'])
+            : getDataFromDynamic(item['code']);
+        final name = getDataFromDynamic(item['WarehouseName']).isNotEmpty
+            ? getDataFromDynamic(item['WarehouseName'])
+            : getDataFromDynamic(item['name']);
+        warehouse.text = code;
+        warehouseNameUI.text = name.isNotEmpty ? name : code;
+        setState(() {});
+      },
+    );
   }
 
   void onPostToSAP() async {
@@ -1053,15 +1384,20 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
             "AccountCode": item['AccountCode'],
-            if (item['CostingCode'] != null && item['CostingCode'].toString().isNotEmpty)
+            if (item['CostingCode'] != null &&
+                item['CostingCode'].toString().isNotEmpty)
               "CostingCode": item['CostingCode'],
-            if (item['CostingCode2'] != null && item['CostingCode2'].toString().isNotEmpty)
+            if (item['CostingCode2'] != null &&
+                item['CostingCode2'].toString().isNotEmpty)
               "CostingCode2": item['CostingCode2'],
-            if (item['CostingCode3'] != null && item['CostingCode3'].toString().isNotEmpty)
+            if (item['CostingCode3'] != null &&
+                item['CostingCode3'].toString().isNotEmpty)
               "CostingCode3": item['CostingCode3'],
-            if (item['CostingCode4'] != null && item['CostingCode4'].toString().isNotEmpty)
+            if (item['CostingCode4'] != null &&
+                item['CostingCode4'].toString().isNotEmpty)
               "CostingCode4": item['CostingCode4'],
-            if (item['CostingCode5'] != null && item['CostingCode5'].toString().isNotEmpty)
+            if (item['CostingCode5'] != null &&
+                item['CostingCode5'].toString().isNotEmpty)
               "CostingCode5": item['CostingCode5'],
             "DocumentLinesBinAllocations":
                 item['BinId'] != "" ? binAllocations : []
@@ -1114,16 +1450,19 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     binCode.text = '';
     uom.text = '';
     uomAbEntry.text = '';
+    uomName.text = '';
     isBatch.text = '';
     isSerial.text = '';
     accountCode.text = '';
     docEntry.text = '';
     refLineNo.text = '';
-    isEdit = -1;
-    for (int d = 1; d <= 5; d++) {
-      _costingCodes[d]?.text = _headerCostingCodes[d]?.text ?? '';
-      _costingCodeNames[d]?.text = _headerCostingCodeNames[d]?.text ?? '';
+    for (var ctrl in _lineCostingCodes.values) {
+      ctrl.clear();
     }
+    for (var ctrl in _lineCostingCodeNames.values) {
+      ctrl.clear();
+    }
+    isEdit = -1;
   }
 
   void onSetItemTemp(dynamic value) async {
@@ -1150,6 +1489,23 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
       uom.text = getDataFromDynamic(value['InventoryUOM'] ?? 'Manual');
       uomAbEntry.text = getDataFromDynamic(value['InventoryUoMEntry'] ?? '-1');
       baseUoM.text = jsonEncode(getDataFromDynamic(value['BaseUoM'] ?? '-1'));
+      try {
+        final offlineUoms = context.read<UOMOfflineCubit>().state;
+        final matchedUom = offlineUoms.firstWhere(
+          (u) =>
+              getDataFromDynamic(u['Code']) == uom.text ||
+              getDataFromDynamic(u['AbsEntry']) == uomAbEntry.text,
+          orElse: () => null,
+        );
+        if (matchedUom != null) {
+          final name = getDataFromDynamic(matchedUom['Name']);
+          uomName.text = name.isNotEmpty ? name : uom.text;
+        } else {
+          uomName.text = uom.text;
+        }
+      } catch (_) {
+        uomName.text = uom.text;
+      }
       // log(value.toString());
       uoMGroupDefinitionCollection.text = jsonEncode(
         value['UoMGroupDefinitionCollection'] ?? [],
@@ -1394,7 +1750,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     required String label,
     required String value,
     required bool isEmpty,
-    required IconData icon,
+    IconData? icon,
     required VoidCallback onTap,
   }) {
     return Column(
@@ -1403,7 +1759,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
         Text(
           label,
           style: TextStyle(
-            fontSize: 13,
+            fontSize: AppFontSize.label,
             fontWeight: FontWeight.w600,
             color: Colors.grey.shade700,
           ),
@@ -1424,15 +1780,16 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(icon, size: 18, color: PRIMARY_COLOR),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       value,
                       style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: isEmpty ? FontWeight.normal : FontWeight.w600,
-                        color: isEmpty ? Colors.grey.shade400 : const Color(0xFF0F172A),
+                        fontSize: AppFontSize.value,
+                        fontWeight:
+                            isEmpty ? FontWeight.normal : FontWeight.w600,
+                        color: isEmpty
+                            ? Colors.grey.shade400
+                            : const Color(0xFF0F172A),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1460,6 +1817,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     required FocusNode focusNode,
     required bool isScanning,
     required VoidCallback onStartScan,
+    VoidCallback? onCancelScan,
     required VoidCallback onManualPick,
     required Function(String) onSubmitted,
     VoidCallback? onTapField,
@@ -1473,40 +1831,65 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: AppFontSize.label,
                 fontWeight: FontWeight.w600,
                 color: Colors.grey.shade700,
               ),
             ),
             if (isScanning)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.green.shade400, width: 0.5),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade700,
-                        shape: BoxShape.circle,
-                      ),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onCancelScan,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.only(
+                        left: 8, right: 4, top: 2, bottom: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(12),
+                      border:
+                          Border.all(color: Colors.green.shade400, width: 0.5),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Ready to Scan',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.green.shade800,
-                      ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade700,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Ready to Scan',
+                          style: TextStyle(
+                            fontSize: AppFontSize.badge,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green.shade800,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color:
+                                Colors.green.shade800.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 11,
+                            color: Colors.green.shade900,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
           ],
@@ -1522,7 +1905,9 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                   color: const Color(0xFFF8FAFC),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isScanning ? Colors.green.shade600 : Colors.grey.shade300,
+                    color: isScanning
+                        ? Colors.green.shade600
+                        : Colors.grey.shade300,
                     width: isScanning ? 1.5 : 1.0,
                   ),
                 ),
@@ -1533,19 +1918,20 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                         controller: controller,
                         focusNode: focusNode,
                         keyboardType: TextInputType.none,
-                        style: const TextStyle(
-                          fontSize: 13.5,
+                        style: TextStyle(
+                          fontSize: AppFontSize.input,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF0F172A),
+                          color: const Color(0xFF0F172A),
                         ),
                         onTap: onTapField,
                         onFieldSubmitted: onSubmitted,
                         decoration: InputDecoration(
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 12),
                           hintText: placeholder,
                           hintStyle: TextStyle(
-                            fontSize: 13,
+                            fontSize: AppFontSize.hint,
                             color: Colors.grey.shade400,
                             fontWeight: FontWeight.normal,
                           ),
@@ -1573,18 +1959,22 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
             ),
             const SizedBox(width: 8),
             Material(
-              color: isScanning ? const Color(0xFFE8F5E9) : const Color(0xFFF1F5F9),
+              color: isScanning
+                  ? const Color(0xFFE8F5E9)
+                  : const Color(0xFFF1F5F9),
               borderRadius: BorderRadius.circular(8),
               child: InkWell(
                 borderRadius: BorderRadius.circular(8),
-                onTap: onStartScan,
+                onTap: isScanning ? (onCancelScan ?? onStartScan) : onStartScan,
                 child: Container(
                   height: 48,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isScanning ? Colors.green.shade600 : Colors.grey.shade300,
+                      color: isScanning
+                          ? Colors.green.shade600
+                          : Colors.grey.shade300,
                       width: isScanning ? 1.5 : 1.0,
                     ),
                   ),
@@ -1593,7 +1983,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                     children: [
                       Icon(
                         Icons.qr_code_scanner_rounded,
-                        color: isScanning ? Colors.green.shade700 : PRIMARY_COLOR,
+                        color:
+                            isScanning ? Colors.green.shade700 : PRIMARY_COLOR,
                         size: 22,
                       ),
                     ],
@@ -1619,7 +2010,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
               Text(
                 'Quantity',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: AppFontSize.label,
                   fontWeight: FontWeight.w600,
                   color: Colors.grey.shade700,
                 ),
@@ -1640,21 +2031,28 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                         controller: quantity,
                         focusNode: _quantity,
                         readOnly: isSerialOrBatch,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         inputFormatters: [ThousandsSeparatorInputFormatter()],
-                        style: const TextStyle(
-                          fontSize: 14,
+                        style: TextStyle(
+                          fontSize: AppFontSize.input,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF0F172A),
+                          color: const Color(0xFF0F172A),
                         ),
-                        onTap: isSerialOrBatch ? () => onNavigateSerialOrBatch(force: true) : null,
+                        onTap: isSerialOrBatch
+                            ? () => onNavigateSerialOrBatch(force: true)
+                            : null,
                         onEditingComplete: onCompleteQuantiyInput,
-                        onFieldSubmitted: (value) => _handleScanSubmitted(value, _quantity),
+                        onFieldSubmitted: (value) =>
+                            _handleScanSubmitted(value, _quantity),
                         decoration: InputDecoration(
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 12),
                           hintText: '0.00',
-                          hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                          hintStyle: TextStyle(
+                              fontSize: AppFontSize.hint,
+                              color: Colors.grey.shade400),
                           border: InputBorder.none,
                           enabledBorder: InputBorder.none,
                           focusedBorder: InputBorder.none,
@@ -1666,20 +2064,22 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                         onTap: () => onNavigateSerialOrBatch(force: true),
                         borderRadius: BorderRadius.circular(4),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
                           decoration: BoxDecoration(
                             color: PRIMARY_COLOR.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.format_list_bulleted_rounded, size: 14, color: PRIMARY_COLOR),
-                              SizedBox(width: 4),
+                              const Icon(Icons.format_list_bulleted_rounded,
+                                  size: 14, color: PRIMARY_COLOR),
+                              const SizedBox(width: 4),
                               Text(
                                 'Manage',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: AppFontSize.badgeSmall,
                                   fontWeight: FontWeight.w600,
                                   color: PRIMARY_COLOR,
                                 ),
@@ -1704,7 +2104,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
               Text(
                 'Unit of Measure',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: AppFontSize.label,
                   fontWeight: FontWeight.w600,
                   color: Colors.grey.shade700,
                 ),
@@ -1727,11 +2127,19 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                       children: [
                         Expanded(
                           child: Text(
-                            uom.text.isEmpty ? 'Select UoM' : uom.text,
+                            uom.text.isEmpty
+                                ? 'Select UoM'
+                                : (uomName.text.isNotEmpty
+                                    ? uomName.text
+                                    : uom.text),
                             style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: uom.text.isEmpty ? FontWeight.normal : FontWeight.w600,
-                              color: uom.text.isEmpty ? Colors.grey.shade400 : const Color(0xFF0F172A),
+                              fontSize: AppFontSize.value,
+                              fontWeight: uom.text.isEmpty
+                                  ? FontWeight.normal
+                                  : FontWeight.w600,
+                              color: uom.text.isEmpty
+                                  ? Colors.grey.shade400
+                                  : const Color(0xFF0F172A),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1761,7 +2169,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
         Text(
           'Account',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: AppFontSize.label,
             fontWeight: FontWeight.w600,
             color: Colors.grey.shade700,
           ),
@@ -1782,15 +2190,19 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.account_balance_wallet_outlined, size: 18, color: PRIMARY_COLOR),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      accountCode.text.isEmpty ? 'Select Account' : accountCode.text,
+                      accountCode.text.isEmpty
+                          ? 'Select Account'
+                          : accountCode.text,
                       style: TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: accountCode.text.isEmpty ? FontWeight.normal : FontWeight.w600,
-                        color: accountCode.text.isEmpty ? Colors.grey.shade400 : const Color(0xFF0F172A),
+                        fontSize: AppFontSize.value,
+                        fontWeight: accountCode.text.isEmpty
+                            ? FontWeight.normal
+                            : FontWeight.w600,
+                        color: accountCode.text.isEmpty
+                            ? Colors.grey.shade400
+                            : const Color(0xFF0F172A),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1815,13 +2227,10 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
       _headerCostingCodes[dimCode]?.text = code;
       _headerCostingCodeNames[dimCode]?.text = name;
 
-      // Set default for current line item entry
-      _costingCodes[dimCode]?.text = code;
-      _costingCodeNames[dimCode]?.text = name;
-
-      // Update all existing items in items list (matching Form.controller.js)
+      // Update all existing items in items list based on header
       final key = dimCode == 1 ? 'CostingCode' : 'CostingCode$dimCode';
-      final nameKey = dimCode == 1 ? 'CostingCodeName' : 'CostingCode${dimCode}Name';
+      final nameKey =
+          dimCode == 1 ? 'CostingCodeName' : 'CostingCode${dimCode}Name';
       for (var item in items) {
         item[key] = code;
         item[nameKey] = name;
@@ -1833,16 +2242,30 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
     if (dimCode < 1 || dimCode > 5) return const SizedBox.shrink();
 
-    final dimName = dim['DimensionDescription']?.toString() ?? 'Dimension $dimCode';
+    final dimName =
+        (dim['DimensionDescription']?.toString().trim().isNotEmpty ?? false)
+            ? dim['DimensionDescription'].toString()
+            : ((dim['DimensionName']?.toString().trim().isNotEmpty ?? false)
+                ? dim['DimensionName'].toString()
+                : 'Dimension $dimCode');
     final selectedCode = _headerCostingCodes[dimCode]?.text ?? '';
-    final selectedName = _headerCostingCodeNames[dimCode]?.text ?? '';
+    String selectedName = _headerCostingCodeNames[dimCode]?.text ?? '';
+    if (selectedName.isEmpty && selectedCode.isNotEmpty) {
+      final rules = (dim['rules'] as List<dynamic>?) ?? [];
+      final matchedRule = rules.firstWhere(
+        (r) => r['FactorCode']?.toString() == selectedCode,
+        orElse: () => null,
+      );
+      if (matchedRule != null) {
+        selectedName = matchedRule['FactorDescription']?.toString() ?? '';
+        _headerCostingCodeNames[dimCode]?.text = selectedName;
+      }
+    }
 
     String displayText = 'Select $dimName';
     final bool isEmpty = selectedCode.isEmpty;
     if (!isEmpty) {
-      displayText = selectedName.isNotEmpty && selectedName != selectedCode
-          ? '$selectedCode - $selectedName'
-          : selectedCode;
+      displayText = selectedName.isNotEmpty ? selectedName : selectedCode;
     }
 
     return Padding(
@@ -1853,7 +2276,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
           Text(
             dimName,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: AppFontSize.label,
               fontWeight: FontWeight.w600,
               color: Colors.grey.shade700,
             ),
@@ -1870,52 +2293,30 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: !isEmpty
-                        ? PRIMARY_COLOR.withValues(alpha: 0.5)
-                        : Colors.grey.shade300,
-                  ),
+                  border: Border.all(color: Colors.grey.shade300),
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.account_tree_outlined,
-                      size: 18,
-                      color: !isEmpty ? PRIMARY_COLOR : Colors.grey.shade500,
-                    ),
-                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         displayText,
                         style: TextStyle(
-                          fontSize: 13.5,
-                          fontWeight: isEmpty ? FontWeight.normal : FontWeight.w600,
-                          color: isEmpty ? Colors.grey.shade400 : const Color(0xFF0F172A),
+                          fontSize: AppFontSize.value,
+                          fontWeight:
+                              isEmpty ? FontWeight.normal : FontWeight.w600,
+                          color: isEmpty
+                              ? Colors.grey.shade400
+                              : const Color(0xFF0F172A),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (!isEmpty)
-                      GestureDetector(
-                        onTap: () {
-                          onHeaderDimensionChange(dimCode, '', '');
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(4.0),
-                          child: Icon(
-                            Icons.close_rounded,
-                            size: 16,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      )
-                    else
-                      Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 14,
-                        color: Colors.grey.shade400,
-                      ),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: Colors.grey.shade400,
+                    ),
                   ],
                 ),
               ),
@@ -1926,125 +2327,137 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
     );
   }
 
-  Widget _buildDimensionFields() {
-    if (activeDimensions.isEmpty) return const SizedBox.shrink();
+  Widget _buildLineDimensionTile(Map<String, dynamic> dim) {
+    final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
+    if (dimCode < 1 || dimCode > 5) return const SizedBox.shrink();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: activeDimensions.map((dim) {
-        final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
-        if (dimCode < 1 || dimCode > 5) return const SizedBox.shrink();
+    final dimName =
+        (dim['DimensionDescription']?.toString().trim().isNotEmpty ?? false)
+            ? dim['DimensionDescription'].toString()
+            : ((dim['DimensionName']?.toString().trim().isNotEmpty ?? false)
+                ? dim['DimensionName'].toString()
+                : 'Dimension $dimCode');
+    final selectedCode = _lineCostingCodes[dimCode]?.text ?? '';
+    String selectedName = _lineCostingCodeNames[dimCode]?.text ?? '';
+    if (selectedName.isEmpty && selectedCode.isNotEmpty) {
+      final rules = (dim['rules'] as List<dynamic>?) ?? [];
+      final matchedRule = rules.firstWhere(
+        (r) => r['FactorCode']?.toString() == selectedCode,
+        orElse: () => null,
+      );
+      if (matchedRule != null) {
+        selectedName = matchedRule['FactorDescription']?.toString() ?? '';
+        _lineCostingCodeNames[dimCode]?.text = selectedName;
+      }
+    }
 
-        final dimName = dim['DimensionDescription']?.toString() ?? 'Dimension $dimCode';
-        final selectedCode = _costingCodes[dimCode]?.text ?? '';
-        final selectedName = _costingCodeNames[dimCode]?.text ?? '';
+    String displayText = 'Select $dimName';
+    final bool isEmpty = selectedCode.isEmpty;
+    if (!isEmpty) {
+      displayText = selectedName.isNotEmpty ? selectedName : selectedCode;
+    }
 
-        String displayText = 'Select $dimName';
-        if (selectedCode.isNotEmpty) {
-          displayText = selectedName.isNotEmpty && selectedName != selectedCode
-              ? '$selectedCode - $selectedName'
-              : selectedCode;
-        }
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                dimName,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Material(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
-                child: InkWell(
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            dimName,
+            style: TextStyle(
+              fontSize: AppFontSize.label,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Material(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _openLineDimensionPicker(dim),
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  onTap: () => _openDimensionPicker(dim),
-                  child: Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: selectedCode.isNotEmpty
-                            ? PRIMARY_COLOR.withValues(alpha: 0.5)
-                            : Colors.grey.shade300,
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        displayText,
+                        style: TextStyle(
+                          fontSize: AppFontSize.value,
+                          fontWeight:
+                              isEmpty ? FontWeight.normal : FontWeight.w600,
+                          color: isEmpty
+                              ? Colors.grey.shade400
+                              : const Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.pie_chart_outline_rounded,
-                          size: 18,
-                          color: selectedCode.isNotEmpty ? PRIMARY_COLOR : Colors.grey.shade500,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            displayText,
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: selectedCode.isEmpty ? FontWeight.normal : FontWeight.w600,
-                              color: selectedCode.isEmpty ? Colors.grey.shade400 : const Color(0xFF0F172A),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (selectedCode.isNotEmpty)
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _costingCodes[dimCode]?.text = '';
-                                _costingCodeNames[dimCode]?.text = '';
-                              });
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: Icon(
-                                Icons.close_rounded,
-                                size: 16,
-                                color: Colors.grey.shade500,
-                              ),
-                            ),
-                          )
-                        else
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 14,
-                            color: Colors.grey.shade400,
-                          ),
-                      ],
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: Colors.grey.shade400,
                     ),
-                  ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      }).toList(),
+        ],
+      ),
     );
   }
 
   void _openHeaderDimensionPicker(Map<String, dynamic> dim) {
-    _openDimensionPickerCommon(dim, isHeader: true);
-  }
-
-  void _openDimensionPicker(Map<String, dynamic> dim) {
-    _openDimensionPickerCommon(dim, isHeader: false);
-  }
-
-  void _openDimensionPickerCommon(Map<String, dynamic> dim, {required bool isHeader}) {
     final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
-    final dimName = dim['DimensionDescription']?.toString() ?? 'Dimension $dimCode';
-    final rules = (dim['rules'] as List<dynamic>?) ?? [];
+    _openDimensionPicker(
+      dim: dim,
+      currentCode: _headerCostingCodes[dimCode]?.text ?? '',
+      subtitle: 'Document Header (applies to all line items)',
+      onSelect: (code, desc) {
+        onHeaderDimensionChange(dimCode, code, desc);
+      },
+    );
+  }
 
+  void _openLineDimensionPicker(Map<String, dynamic> dim) {
+    final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
+    _openDimensionPicker(
+      dim: dim,
+      currentCode: _lineCostingCodes[dimCode]?.text ?? '',
+      subtitle:
+          'Line Item (${itemCode.text.isNotEmpty ? itemCode.text : "Editing Row #${isEdit + 1}"})',
+      onSelect: (code, desc) {
+        setState(() {
+          _lineCostingCodes[dimCode]?.text = code;
+          _lineCostingCodeNames[dimCode]?.text = desc;
+        });
+      },
+    );
+  }
+
+  void _openGenericPickerModal<T>({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required List<T> items,
+    required String currentCode,
+    required String Function(T item) getCode,
+    required String Function(T item) getName,
+    String Function(T item)? getExtraInfo,
+    bool showCode = true,
+    bool allowClear = false,
+    String clearLabel = 'None (Blank / Unselect)',
+    required void Function(T? selectedItem) onSelected,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -2055,249 +2468,342 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
 
         return StatefulBuilder(
           builder: (context, setModalState) {
-            final filteredRules = rules.where((r) {
-              final code = r['FactorCode']?.toString().toLowerCase() ?? '';
-              final desc = r['FactorDescription']?.toString().toLowerCase() ?? '';
-              final q = query.trim().toLowerCase();
-              return q.isEmpty || code.contains(q) || desc.contains(q);
+            final q = query.trim().toLowerCase();
+            final filteredList = items.where((item) {
+              if (q.isEmpty) return true;
+              final code = getCode(item).toLowerCase();
+              final name = getName(item).toLowerCase();
+              final extra =
+                  getExtraInfo != null ? getExtraInfo(item).toLowerCase() : '';
+              return code.contains(q) || name.contains(q) || extra.contains(q);
             }).toList();
 
-            final currentCode = isHeader
-                ? (_headerCostingCodes[dimCode]?.text ?? '')
-                : (_costingCodes[dimCode]?.text ?? '');
-
-            return Container(
-              height: MediaQuery.of(context).size.height * 0.75,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(bottomCtx).viewInsets.bottom,
               ),
-              child: Column(
-                children: [
-                  Container(
-                    margin: const EdgeInsets.only(top: 10, bottom: 8),
-                    width: 36,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: PRIMARY_COLOR.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.account_tree_outlined,
-                            size: 20,
-                            color: PRIMARY_COLOR,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Select $dimName',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF0F172A),
-                                ),
-                              ),
-                              Text(
-                                isHeader
-                                    ? 'Document Header (applies to all line items)'
-                                    : 'Line Item Entry',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close_rounded, size: 20),
-                          color: Colors.grey.shade600,
-                          onPressed: () => Navigator.of(bottomCtx).pop(),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: TextField(
-                        controller: searchCtrl,
-                        onChanged: (val) {
-                          setModalState(() {
-                            query = val;
-                          });
-                        },
-                        style: const TextStyle(fontSize: 14),
-                        decoration: InputDecoration(
-                          hintText: 'Search by code or description...',
-                          hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade500),
-                          prefixIcon: Icon(Icons.search_rounded, size: 20, color: Colors.grey.shade500),
-                          suffixIcon: query.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear_rounded, size: 18),
-                                  onPressed: () {
-                                    searchCtrl.clear();
-                                    setModalState(() {
-                                      query = '';
-                                    });
-                                  },
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              child: Material(
+                color: Colors.white,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox(
+                  height: MediaQuery.of(bottomCtx).size.height * 0.75,
+                  child: Column(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(top: 10, bottom: 8),
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Divider(height: 1, thickness: 0.5),
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      children: [
-                        ListTile(
-                          dense: true,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          leading: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: PRIMARY_COLOR.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                icon,
+                                size: 20,
+                                color: PRIMARY_COLOR,
+                              ),
                             ),
-                            child: Icon(Icons.block_rounded, size: 16, color: Colors.grey.shade600),
-                          ),
-                          title: const Text(
-                            '- None - (Clear selection)',
-                            style: TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w500,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                          trailing: currentCode.isEmpty
-                              ? const Icon(Icons.check_circle_rounded, color: PRIMARY_COLOR, size: 20)
-                              : null,
-                          onTap: () {
-                            if (isHeader) {
-                              onHeaderDimensionChange(dimCode, '', '');
-                            } else {
-                              setState(() {
-                                _costingCodes[dimCode]?.text = '';
-                                _costingCodeNames[dimCode]?.text = '';
-                              });
-                            }
-                            Navigator.of(bottomCtx).pop();
-                            _unfocusAll();
-                          },
-                        ),
-                        const Divider(height: 1, thickness: 0.5),
-                        if (filteredRules.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 40),
-                            child: Center(
+                            const SizedBox(width: 10),
+                            Expanded(
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.search_off_rounded, size: 40, color: Colors.grey.shade300),
-                                  const SizedBox(height: 8),
                                   Text(
-                                    query.isEmpty
-                                        ? 'No distribution rules loaded yet'
-                                        : 'No rules matching "$query"',
-                                    style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                                    title,
+                                    style: TextStyle(
+                                      fontSize: AppFontSize.dialogTitle,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF0F172A),
+                                    ),
                                   ),
-                                  const SizedBox(height: 12),
-                                  OutlinedButton.icon(
-                                    icon: const Icon(Icons.sync_rounded, size: 16),
-                                    label: const Text('Fetch Rules from SAP'),
-                                    onPressed: () async {
-                                      await _loadDimensions();
-                                      setModalState(() {});
-                                      setState(() {});
-                                    },
-                                  ),
+                                  if (subtitle.isNotEmpty)
+                                    Text(
+                                      subtitle,
+                                      style: TextStyle(
+                                        fontSize: AppFontSize.md,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                 ],
                               ),
                             ),
-                          )
-                        else
-                          ...filteredRules.map((rule) {
-                            final code = rule['FactorCode']?.toString() ?? '';
-                            final desc = rule['FactorDescription']?.toString() ?? '';
-                            final isSelected = currentCode == code;
-
-                            return ListTile(
-                              dense: true,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              tileColor: isSelected ? PRIMARY_COLOR.withValues(alpha: 0.06) : null,
-                              leading: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: isSelected ? PRIMARY_COLOR : const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  code,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: isSelected ? Colors.white : const Color(0xFF1E293B),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              color: Colors.grey.shade600,
+                              onPressed: () => Navigator.of(bottomCtx).pop(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        child: Container(
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: TextField(
+                            controller: searchCtrl,
+                            onChanged: (val) {
+                              setModalState(() {
+                                query = val;
+                              });
+                            },
+                            style: TextStyle(fontSize: AppFontSize.input),
+                            decoration: InputDecoration(
+                              hintText: 'Search by code or description...',
+                              hintStyle: TextStyle(
+                                  fontSize: AppFontSize.hint,
+                                  color: Colors.grey.shade500),
+                              prefixIcon: Icon(Icons.search_rounded,
+                                  size: 20, color: Colors.grey.shade500),
+                              suffixIcon: query.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear_rounded,
+                                          size: 18),
+                                      onPressed: () {
+                                        searchCtrl.clear();
+                                        setModalState(() {
+                                          query = '';
+                                        });
+                                      },
+                                    )
+                                  : null,
+                              border: InputBorder.none,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Divider(height: 1, thickness: 0.5),
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          children: [
+                            if (allowClear &&
+                                (q.isEmpty ||
+                                    'none'.contains(q) ||
+                                    'blank'.contains(q) ||
+                                    'clear'.contains(q))) ...[
+                              ListTile(
+                                dense: true,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                                tileColor: currentCode.isEmpty
+                                    ? PRIMARY_COLOR.withValues(alpha: 0.06)
+                                    : null,
+                                leading: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: currentCode.isEmpty
+                                        ? PRIMARY_COLOR
+                                        : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(
+                                    Icons.block_rounded,
+                                    size: 16,
+                                    color: currentCode.isEmpty
+                                        ? Colors.white
+                                        : Colors.grey.shade500,
                                   ),
                                 ),
-                              ),
-                              title: Text(
-                                desc.isNotEmpty ? desc : code,
-                                style: TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? PRIMARY_COLOR : const Color(0xFF0F172A),
+                                title: Text(
+                                  clearLabel,
+                                  style: TextStyle(
+                                    fontSize: AppFontSize.value,
+                                    fontWeight: currentCode.isEmpty
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: currentCode.isEmpty
+                                        ? PRIMARY_COLOR
+                                        : const Color(0xFF334155),
+                                  ),
                                 ),
+                                trailing: currentCode.isEmpty
+                                    ? const Icon(Icons.check_circle_rounded,
+                                        color: PRIMARY_COLOR, size: 20)
+                                    : null,
+                                onTap: () {
+                                  onSelected(null);
+                                  Navigator.of(bottomCtx).pop();
+                                  _unfocusAll();
+                                },
                               ),
-                              trailing: isSelected
-                                  ? const Icon(Icons.check_circle_rounded, color: PRIMARY_COLOR, size: 20)
-                                  : null,
-                              onTap: () {
-                                if (isHeader) {
-                                  onHeaderDimensionChange(dimCode, code, desc);
-                                } else {
-                                  setState(() {
-                                    _costingCodes[dimCode]?.text = code;
-                                    _costingCodeNames[dimCode]?.text = desc.isNotEmpty ? desc : code;
-                                  });
-                                }
-                                Navigator.of(bottomCtx).pop();
-                                _unfocusAll();
-                              },
-                            );
-                          }).toList(),
-                      ],
-                    ),
+                              const Divider(height: 8, thickness: 0.5),
+                            ],
+                            if (filteredList.isEmpty)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 40),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(Icons.search_off_rounded,
+                                          size: 40,
+                                          color: Colors.grey.shade300),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        q.isEmpty
+                                            ? 'No items found'
+                                            : 'No items matching "$query"',
+                                        style: TextStyle(
+                                            fontSize: AppFontSize.label,
+                                            color: Colors.grey.shade500),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              ...filteredList.map((item) {
+                                final code = getCode(item);
+                                final name = getName(item);
+                                final extra = getExtraInfo != null
+                                    ? getExtraInfo(item)
+                                    : '';
+                                final isSelected = currentCode.isNotEmpty &&
+                                    currentCode == code;
+
+                                return ListTile(
+                                  dense: true,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  tileColor: isSelected
+                                      ? PRIMARY_COLOR.withValues(alpha: 0.06)
+                                      : null,
+                                  leading: showCode && code.isNotEmpty
+                                      ? Container(
+                                          constraints: const BoxConstraints(
+                                              maxWidth: 90),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? PRIMARY_COLOR
+                                                : const Color(0xFFF1F5F9),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            code,
+                                            style: TextStyle(
+                                              fontSize: AppFontSize.badge,
+                                              fontWeight: FontWeight.bold,
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : const Color(0xFF1E293B),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        )
+                                      : null,
+                                  title: Text(
+                                    name.isNotEmpty ? name : code,
+                                    style: TextStyle(
+                                      fontSize: AppFontSize.value,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? PRIMARY_COLOR
+                                          : const Color(0xFF0F172A),
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: extra.isNotEmpty
+                                      ? Text(
+                                          extra,
+                                          style: TextStyle(
+                                            fontSize: AppFontSize.md,
+                                            color: const Color(0xFF64748B),
+                                          ),
+                                        )
+                                      : null,
+                                  trailing: isSelected
+                                      ? const Icon(Icons.check_circle_rounded,
+                                          color: PRIMARY_COLOR, size: 20)
+                                      : null,
+                                  onTap: () {
+                                    onSelected(item);
+                                    Navigator.of(bottomCtx).pop();
+                                    _unfocusAll();
+                                  },
+                                );
+                              }),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             );
           },
         );
+      },
+    );
+  }
+
+  void _openDimensionPicker({
+    required Map<String, dynamic> dim,
+    required String currentCode,
+    required String subtitle,
+    required void Function(String code, String desc) onSelect,
+  }) {
+    final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
+    final dimName =
+        (dim['DimensionDescription']?.toString().trim().isNotEmpty ?? false)
+            ? dim['DimensionDescription'].toString()
+            : ((dim['DimensionName']?.toString().trim().isNotEmpty ?? false)
+                ? dim['DimensionName'].toString()
+                : 'Dimension $dimCode');
+    final rules = (dim['rules'] as List<dynamic>?) ?? [];
+
+    _openGenericPickerModal<dynamic>(
+      title: 'Select $dimName',
+      subtitle: subtitle,
+      icon: Icons.account_tree_outlined,
+      items: rules,
+      currentCode: currentCode,
+      getCode: (rule) => getDataFromDynamic(rule['FactorCode']),
+      getName: (rule) => getDataFromDynamic(rule['FactorDescription']),
+      showCode: true,
+      allowClear: true,
+      clearLabel: 'None (Blank / Unselect)',
+      onSelected: (item) {
+        if (item == null) {
+          onSelect('', '');
+        } else {
+          onSelect(
+            getDataFromDynamic(item['FactorCode']),
+            getDataFromDynamic(item['FactorDescription']),
+          );
+        }
       },
     );
   }
@@ -2309,33 +2815,35 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
         Text(
           'Remark',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: AppFontSize.label,
             fontWeight: FontWeight.w600,
             color: Colors.grey.shade700,
           ),
         ),
         const SizedBox(height: 6),
         Container(
-          height: 48,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade300),
           ),
-          alignment: Alignment.centerLeft,
           child: TextFormField(
             controller: remark,
-            style: const TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF0F172A),
+            maxLines: 3,
+            minLines: 3,
+            keyboardType: TextInputType.multiline,
+            style: TextStyle(
+              fontSize: AppFontSize.input,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF0F172A),
             ),
             decoration: InputDecoration(
               isDense: true,
-              hintText: 'Enter optional remark or notes...',
+              contentPadding: EdgeInsets.zero,
+              hintText: 'Enter remark...',
               hintStyle: TextStyle(
-                fontSize: 13,
+                fontSize: AppFontSize.hint,
                 color: Colors.grey.shade400,
                 fontWeight: FontWeight.normal,
               ),
@@ -2364,15 +2872,15 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
             ),
           ),
           onPressed: onAddItem,
-          child: const Row(
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.add_rounded, size: 20),
-              SizedBox(width: 6),
+              const Icon(Icons.add_rounded, size: 20),
+              const SizedBox(width: 6),
               Text(
                 'Add Item',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: AppFontSize.button,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.2,
                 ),
@@ -2399,15 +2907,15 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 ),
               ),
               onPressed: onAddItem,
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_rounded, size: 18),
-                  SizedBox(width: 6),
+                  const Icon(Icons.check_rounded, size: 18),
+                  const SizedBox(width: 6),
                   Text(
                     'Update Item',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: AppFontSize.button,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0.2,
                     ),
@@ -2437,15 +2945,15 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                   isSerialOrBatch = false;
                 });
               },
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.close_rounded, size: 16),
-                  SizedBox(width: 4),
+                  const Icon(Icons.close_rounded, size: 16),
+                  const SizedBox(width: 4),
                   Text(
                     'Cancel',
                     style: TextStyle(
-                      fontSize: 13.5,
+                      fontSize: AppFontSize.buttonSmall,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -2487,6 +2995,10 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                       decoration: BoxDecoration(
                         color: PRIMARY_COLOR.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: PRIMARY_COLOR.withValues(alpha: 0.15),
+                          width: 0.8,
+                        ),
                       ),
                       child: const Icon(
                         Icons.table_chart_outlined,
@@ -2495,25 +3007,27 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Text(
+                    Text(
                       'Receipt Items',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: AppFontSize.sectionTitle,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E293B),
+                        color: const Color(0xFF0F172A),
+                        letterSpacing: 0.2,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: PRIMARY_COLOR.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '${items.length}',
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: TextStyle(
+                          fontSize: AppFontSize.badge,
                           fontWeight: FontWeight.w700,
                           color: PRIMARY_COLOR,
                         ),
@@ -2523,7 +3037,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 ),
                 if (items.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(8),
@@ -2531,15 +3046,20 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                     ),
                     child: Text(
                       'Total Qty: ${_calculateTotalQuantity()}',
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: TextStyle(
+                        fontSize: AppFontSize.badge,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1E293B),
+                        color: const Color(0xFF1E293B),
                       ),
                     ),
                   ),
               ],
             ),
+          ),
+          const Divider(
+            height: 1,
+            thickness: 0.8,
+            color: Color(0xFFE2E8F0),
           ),
           ClipRRect(
             borderRadius: const BorderRadius.only(
@@ -2554,21 +3074,22 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                     ContentHeader(isPhone: isPhone),
                     if (items.isEmpty)
                       Container(
-                        padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 36, horizontal: 20),
                         alignment: Alignment.center,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.inventory_2_outlined,
-                              size: 44,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 10),
+                            // Icon(
+                            //   Icons.inventory_2_outlined,
+                            //   size: 44,
+                            //   color: Colors.grey.shade400,
+                            // ),
+                            // const SizedBox(height: 10),
                             Text(
                               "No Items Added Yet",
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: AppFontSize.sectionTitle,
                                 fontWeight: FontWeight.w600,
                                 color: Colors.grey.shade700,
                               ),
@@ -2577,7 +3098,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                             Text(
                               "Scan or select an item above to add to this goods receipt",
                               style: TextStyle(
-                                fontSize: 12.5,
+                                fontSize: AppFontSize.md,
                                 color: Colors.grey.shade500,
                               ),
                               textAlign: TextAlign.center,
@@ -2637,14 +3158,22 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
       appBar: AppBar(
         backgroundColor: PRIMARY_COLOR,
         foregroundColor: Colors.white,
-        elevation: 0.5,
+        elevation: 0,
         centerTitle: true,
         title: Text(
           widget.isEdit != null ? 'Edit Goods Receipt' : 'Create Goods Receipt',
-          style: const TextStyle(
+          style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: AppFontSize.appBarTitle,
             color: Colors.white,
+            letterSpacing: 0.3,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: Colors.white.withValues(alpha: 0.15),
+            height: 1,
           ),
         ),
       ),
@@ -2653,331 +3182,460 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
         onTap: _unfocusAll,
         child: SingleChildScrollView(
           controller: _scrollController,
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Card 1: Document Header Card
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Card 1: Document Header Card
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOutCubic,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isHeaderCollapsed
+                        ? const Color(0xFFCBD5E1)
+                        : const Color(0xFFE2E8F0),
                   ),
-                ],
-              ),
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: PRIMARY_COLOR.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.receipt_long_rounded,
-                          size: 18,
-                          color: PRIMARY_COLOR,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Document Header',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1E293B),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSelectorTile(
-                    label: 'Goods Receipt Type',
-                    value: grTypeName.text.isEmpty
-                        ? 'Select Goods Receipt Type'
-                        : grTypeName.text,
-                    isEmpty: grTypeName.text.isEmpty,
-                    icon: Icons.category_outlined,
-                    onTap: onChangeGrt,
-                  ),
-                  const SizedBox(height: 10),
-                  _buildSelectorTile(
-                    label: 'Warehouse',
-                    value: warehouseNameUI.text.isEmpty
-                        ? 'Select Warehouse'
-                        : warehouseNameUI.text,
-                    isEmpty: warehouseNameUI.text.isEmpty,
-                    icon: Icons.warehouse_outlined,
-                    onTap: onChangeWhs,
-                  ),
-                  if (activeDimensions.isNotEmpty) ...[
-                    ...activeDimensions.map((dim) => _buildHeaderDimensionTile(dim)),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-
-            // Card 2: Item Entry & Scanner Card
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: isEdit != -1 ? Colors.amber.shade400 : const Color(0xFFE2E8F0),
-                  width: isEdit != -1 ? 1.5 : 1.0,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: PRIMARY_COLOR.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.playlist_add_rounded,
-                              size: 18,
-                              color: PRIMARY_COLOR,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          const Text(
-                            'Line Item Entry',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (isEdit != -1)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.amber.shade400),
-                          ),
-                          child: Text(
-                            'Editing Row #${isEdit + 1}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.amber.shade900,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Bin Location
-                  _buildScannerField(
-                    label: 'Bin Location',
-                    placeholder: 'Choose or scan bin location',
-                    controller: binCode,
-                    focusNode: _bin,
-                    isScanning: isClickScanBin,
-                    onStartScan: () {
-                      setState(() {
-                        isClickScanBin = true;
-                        isClickScanItem = false;
-                        binCode.clear();
-                        binId.clear();
-                      });
-                      FocusScope.of(context).unfocus();
-                      Future.delayed(const Duration(milliseconds: 100), () {
-                        _requestFocus(_bin);
-                      });
-                    },
-                    onManualPick: onChangeBin,
-                    onSubmitted: (value) {
-                      _handleScanSubmitted(value, _bin);
-                    },
-                    onTapField: () {
-                      setState(() {
-                        isClickScanBin = false;
-                      });
-                      FocusScope.of(context).unfocus();
-                    },
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Item Code
-                  _buildScannerField(
-                    label: 'Item Code',
-                    placeholder: 'Select or scan item code',
-                    controller: itemCode,
-                    focusNode: _itemCode,
-                    isScanning: isClickScanItem,
-                    onStartScan: () {
-                      setState(() {
-                        isClickScanItem = true;
-                        isClickScanBin = false;
-                        itemCode.clear();
-                      });
-                      FocusScope.of(context).unfocus();
-                      Future.delayed(const Duration(milliseconds: 100), () {
-                        _requestFocus(_itemCode);
-                      });
-                    },
-                    onManualPick: onSelectItem,
-                    onSubmitted: (value) {
-                      _handleScanSubmitted(value, _itemCode);
-                    },
-                    onTapField: () {
-                      setState(() {
-                        isClickScanItem = false;
-                      });
-                      FocusScope.of(context).unfocus();
-                    },
-                  ),
-
-                  // Item details banner if item is selected
-                  if (itemCode.text.isNotEmpty && itemName.text.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.inventory_2_outlined, size: 16, color: PRIMARY_COLOR),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  itemName.text,
-                                  style: const TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF1E293B),
-                                  ),
-                                ),
-                                if (baseUoM.text.isNotEmpty ||
-                                    isBatch.text == 'tYES' ||
-                                    isSerial.text == 'tYES') ...[
-                                  const SizedBox(height: 4),
-                                  Wrap(
-                                    spacing: 6,
-                                    runSpacing: 4,
-                                    children: [
-                                      if (baseUoM.text.isNotEmpty)
-                                        Text(
-                                          'Base UoM: ${baseUoM.text}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                        ),
-                                      if (isBatch.text == 'tYES')
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue.shade50,
-                                            borderRadius: BorderRadius.circular(4),
-                                            border: Border.all(color: Colors.blue.shade200, width: 0.5),
-                                          ),
-                                          child: Text(
-                                            'BATCH',
-                                            style: TextStyle(
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.blue.shade800,
-                                            ),
-                                          ),
-                                        ),
-                                      if (isSerial.text == 'tYES')
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: Colors.purple.shade50,
-                                            borderRadius: BorderRadius.circular(4),
-                                            border: Border.all(color: Colors.purple.shade200, width: 0.5),
-                                          ),
-                                          child: Text(
-                                            'SERIAL',
-                                            style: TextStyle(
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.w700,
-                                              color: Colors.purple.shade800,
-                                            ),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black
+                          .withValues(alpha: _isHeaderCollapsed ? 0.02 : 0.03),
+                      blurRadius: _isHeaderCollapsed ? 4 : 6,
+                      offset: const Offset(0, 2),
                     ),
                   ],
-
-                  const SizedBox(height: 12),
-
-                  // Quantity & UoM
-                  _buildQuantityAndUomRow(),
-                  const SizedBox(height: 12),
-
-                  // Account
-                  _buildAccountField(),
-                  const SizedBox(height: 12),
-
-                  // Dynamic Dimensions (Cost Centers)
-                  _buildDimensionFields(),
-
-                  // Remark
-                  _buildRemarkField(),
-                  const SizedBox(height: 16),
-
-                  // Add / Update item action buttons
-                  _buildItemActionButtons(),
-                ],
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: _isHeaderCollapsed ? 10 : 14,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          _isHeaderCollapsed = !_isHeaderCollapsed;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: PRIMARY_COLOR.withValues(alpha: 0.15),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.receipt_long_rounded,
+                                size: 18,
+                                color: PRIMARY_COLOR,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'General Information',
+                              style: TextStyle(
+                                fontSize: AppFontSize.cardTitle,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0F172A),
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                            const Spacer(),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: _isHeaderCollapsed &&
+                                      (warehouseNameUI.text.isNotEmpty ||
+                                          grTypeName.text.isNotEmpty)
+                                  ? Container(
+                                      key: const ValueKey('hdr_chip'),
+                                      margin: const EdgeInsets.only(right: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2.5),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                            color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      child: Text(
+                                        warehouseNameUI.text.isNotEmpty
+                                            ? warehouseNameUI.text
+                                            : grTypeName.text,
+                                        style: TextStyle(
+                                          fontSize: AppFontSize.badge,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF475569),
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(
+                                      key: ValueKey('hdr_none')),
+                            ),
+                            AnimatedRotation(
+                              turns: _isHeaderCollapsed ? 0.0 : 0.5,
+                              duration: const Duration(milliseconds: 280),
+                              curve: Curves.easeInOutCubic,
+                              child: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: Color(0xFF64748B),
+                                size: 22,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    AnimatedCrossFade(
+                      firstChild:
+                          const SizedBox(width: double.infinity, height: 0),
+                      secondChild: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          const Divider(
+                            height: 1,
+                            thickness: 0.8,
+                            color: Color(0xFFE2E8F0),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildSelectorTile(
+                            label: 'Goods Receipt Type',
+                            value: grTypeName.text.isEmpty
+                                ? 'Select Goods Receipt Type'
+                                : grTypeName.text,
+                            isEmpty: grTypeName.text.isEmpty,
+                            icon: Icons.category_outlined,
+                            onTap: onChangeGrt,
+                          ),
+                          const SizedBox(height: 10),
+                          _buildSelectorTile(
+                            label: 'Warehouse',
+                            value: warehouseNameUI.text.isEmpty
+                                ? 'Select Warehouse'
+                                : warehouseNameUI.text,
+                            isEmpty: warehouseNameUI.text.isEmpty,
+                            icon: Icons.warehouse_outlined,
+                            onTap: onChangeWhs,
+                          ),
+                          if (isEdit == -1 && activeDimensions.isNotEmpty) ...[
+                            ...activeDimensions
+                                .map((dim) => _buildHeaderDimensionTile(dim)),
+                          ],
+                        ],
+                      ),
+                      crossFadeState: _isHeaderCollapsed
+                          ? CrossFadeState.showFirst
+                          : CrossFadeState.showSecond,
+                      duration: const Duration(milliseconds: 280),
+                      sizeCurve: Curves.easeInOutCubic,
+                      firstCurve: Curves.easeInOutCubic,
+                      secondCurve: Curves.easeInOutCubic,
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 14),
+              const SizedBox(height: 14),
 
-            // Card 3: Render Table Card
-            _buildRenderTable(),
-          ],
+              // Card 2: Item Entry & Scanner Card
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOutCubic,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isEdit != -1
+                        ? Colors.amber.shade400
+                        : (_isLineItemCollapsed
+                            ? const Color(0xFFCBD5E1)
+                            : const Color(0xFFE2E8F0)),
+                    width: isEdit != -1 ? 1.5 : 1.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                          alpha: isEdit != -1
+                              ? 0.05
+                              : (_isLineItemCollapsed ? 0.02 : 0.03)),
+                      blurRadius: isEdit != -1 ? 8 : 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: _isLineItemCollapsed ? 10 : 14,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          _isLineItemCollapsed = !_isLineItemCollapsed;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: isEdit != -1
+                                        ? Colors.amber.shade100
+                                        : PRIMARY_COLOR.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isEdit != -1
+                                          ? Colors.amber.shade400
+                                          : PRIMARY_COLOR.withValues(
+                                              alpha: 0.15),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    isEdit != -1
+                                        ? Icons.edit_note_rounded
+                                        : Icons.playlist_add_rounded,
+                                    size: 18,
+                                    color: isEdit != -1
+                                        ? Colors.amber.shade900
+                                        : PRIMARY_COLOR,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  isEdit != -1 ? 'Edit Line Item' : 'Line Item',
+                                  style: TextStyle(
+                                    fontSize: AppFontSize.cardTitle,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0F172A),
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  child: isEdit != -1
+                                      ? Container(
+                                          key: const ValueKey('edit_badge'),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color: Colors.amber.shade400),
+                                          ),
+                                          child: Text(
+                                            'Editing Row #${isEdit + 1}',
+                                            style: TextStyle(
+                                              fontSize: AppFontSize.badge,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.amber.shade900,
+                                            ),
+                                          ),
+                                        )
+                                      : (_isLineItemCollapsed &&
+                                              itemCode.text.isNotEmpty)
+                                          ? Container(
+                                              key: const ValueKey('item_chip'),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 2.5),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF1F5F9),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                border: Border.all(
+                                                    color: const Color(
+                                                        0xFFE2E8F0)),
+                                              ),
+                                              child: Text(
+                                                itemCode.text,
+                                                style: TextStyle(
+                                                  fontSize: AppFontSize.badge,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      const Color(0xFF475569),
+                                                ),
+                                              ),
+                                            )
+                                          : const SizedBox.shrink(
+                                              key: ValueKey('none')),
+                                ),
+                                const SizedBox(width: 6),
+                                AnimatedRotation(
+                                  turns: _isLineItemCollapsed ? 0.0 : 0.5,
+                                  duration: const Duration(milliseconds: 280),
+                                  curve: Curves.easeInOutCubic,
+                                  child: const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: Color(0xFF64748B),
+                                    size: 22,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    AnimatedCrossFade(
+                      firstChild:
+                          const SizedBox(width: double.infinity, height: 0),
+                      secondChild: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          const Divider(
+                            height: 1,
+                            thickness: 0.8,
+                            color: Color(0xFFE2E8F0),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Bin Location
+                          _buildScannerField(
+                            label: 'Bin Location',
+                            placeholder: 'Choose or scan bin location',
+                            controller: binCode,
+                            focusNode: _bin,
+                            isScanning: isClickScanBin,
+                            onStartScan: () {
+                              setState(() {
+                                isClickScanBin = true;
+                                isClickScanItem = false;
+                                binCode.clear();
+                                binId.clear();
+                              });
+                              FocusScope.of(context).unfocus();
+                              Future.delayed(const Duration(milliseconds: 100),
+                                  () {
+                                _requestFocus(_bin);
+                              });
+                            },
+                            onCancelScan: () {
+                              setState(() {
+                                isClickScanBin = false;
+                              });
+                              FocusScope.of(context).unfocus();
+                            },
+                            onManualPick: onChangeBin,
+                            onSubmitted: (value) {
+                              _handleScanSubmitted(value, _bin);
+                            },
+                            onTapField: () {
+                              setState(() {
+                                isClickScanBin = false;
+                              });
+                              FocusScope.of(context).unfocus();
+                            },
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Item Code
+                          _buildScannerField(
+                            label: 'Item Code',
+                            placeholder: 'Select or scan item code',
+                            controller: itemCode,
+                            focusNode: _itemCode,
+                            isScanning: isClickScanItem,
+                            onStartScan: () {
+                              setState(() {
+                                isClickScanItem = true;
+                                isClickScanBin = false;
+                                itemCode.clear();
+                              });
+                              FocusScope.of(context).unfocus();
+                              Future.delayed(const Duration(milliseconds: 100),
+                                  () {
+                                _requestFocus(_itemCode);
+                              });
+                            },
+                            onCancelScan: () {
+                              setState(() {
+                                isClickScanItem = false;
+                              });
+                              FocusScope.of(context).unfocus();
+                            },
+                            onManualPick: onSelectItem,
+                            onSubmitted: (value) {
+                              _handleScanSubmitted(value, _itemCode);
+                            },
+                            onTapField: () {
+                              setState(() {
+                                isClickScanItem = false;
+                              });
+                              FocusScope.of(context).unfocus();
+                            },
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Quantity & UoM
+                          _buildQuantityAndUomRow(),
+                          const SizedBox(height: 12),
+
+                          // Account
+                          _buildAccountField(),
+                          if (isEdit != -1 && activeDimensions.isNotEmpty) ...[
+                            ...activeDimensions
+                                .map((dim) => _buildLineDimensionTile(dim)),
+                          ],
+                          const SizedBox(height: 12),
+
+                          // Remark
+                          _buildRemarkField(),
+                          const SizedBox(height: 16),
+
+                          // Add / Update item action buttons
+                          _buildItemActionButtons(),
+                        ],
+                      ),
+                      crossFadeState: _isLineItemCollapsed
+                          ? CrossFadeState.showFirst
+                          : CrossFadeState.showSecond,
+                      duration: const Duration(milliseconds: 280),
+                      sizeCurve: Curves.easeInOutCubic,
+                      firstCurve: Curves.easeInOutCubic,
+                      secondCurve: Curves.easeInOutCubic,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Card 3: Render Table Card
+              _buildRenderTable(),
+            ],
+          ),
         ),
       ),
-    ),
       bottomNavigationBar: Container(
         height: 72,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -3003,14 +3661,15 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.cloud_upload_outlined, size: 20, color: Colors.white),
+                    const Icon(Icons.cloud_upload_outlined,
+                        size: 20, color: Colors.white),
                     const SizedBox(width: 8),
                     Text(
                       items.isNotEmpty ? 'Save (${items.length})' : 'Save',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: AppFontSize.button,
                       ),
                     ),
                   ],
@@ -3026,7 +3685,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                     MaterialDialog.warning(
                       context,
                       title: 'Warning',
-                      body: 'Are you sure you want to leave? Once you leave, unsaved data will be erased.',
+                      body:
+                          'Are you sure you want to leave? Once you leave, unsaved data will be erased.',
                       confirmLabel: 'Leave',
                       cancelLabel: 'Stay',
                       onConfirm: () {
@@ -3038,17 +3698,18 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                     Navigator.of(context).pop();
                   }
                 },
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.close_rounded, size: 18, color: PRIMARY_COLOR),
-                    SizedBox(width: 6),
+                    const Icon(Icons.close_rounded,
+                        size: 18, color: PRIMARY_COLOR),
+                    const SizedBox(width: 6),
                     Text(
                       'Cancel',
                       style: TextStyle(
                         color: PRIMARY_COLOR,
                         fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                        fontSize: AppFontSize.button,
                       ),
                     ),
                   ],
@@ -3067,7 +3728,8 @@ class ContentHeader extends StatelessWidget {
   final dynamic hideOpenQty;
   final bool isPhone;
 
-  Widget _buildColumn(Widget child, int flex, double fixedWidth, {Alignment alignment = Alignment.center}) {
+  Widget _buildColumn(Widget child, int flex, double fixedWidth,
+      {Alignment alignment = Alignment.center}) {
     if (isPhone) {
       return Container(
         width: fixedWidth,
@@ -3086,10 +3748,10 @@ class ContentHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const textStyle = TextStyle(
+    final textStyle = TextStyle(
       color: Colors.white,
       fontWeight: FontWeight.w700,
-      fontSize: 12,
+      fontSize: AppFontSize.tableHeader,
       letterSpacing: 0.3,
     );
 
@@ -3105,34 +3767,28 @@ class ContentHeader extends StatelessWidget {
       child: Row(
         children: [
           _buildColumn(
-            const Text('#', style: textStyle),
+            Text('#', style: textStyle),
             1,
             34,
             alignment: Alignment.center,
           ),
           const SizedBox(width: 8),
           _buildColumn(
-            const Text('Item No / Description', style: textStyle),
-            5,
+            Text('Item No / Description', style: textStyle),
+            6,
             200,
             alignment: Alignment.centerLeft,
           ),
           _buildColumn(
-            const Text('UoM', style: textStyle),
+            Text('UoM', style: textStyle),
             2,
-            65,
+            70,
             alignment: Alignment.center,
           ),
           _buildColumn(
-            const Text('Account', style: textStyle),
-            2,
-            85,
-            alignment: Alignment.center,
-          ),
-          _buildColumn(
-            const Text('QTY Received', style: textStyle),
-            2,
-            95,
+            Text('QTY Received', style: textStyle),
+            3,
+            110,
             alignment: Alignment.centerRight,
           ),
         ],
@@ -3164,7 +3820,8 @@ class ItemRow extends StatelessWidget {
     return value.toString();
   }
 
-  Widget _buildColumn(Widget child, int flex, double fixedWidth, {Alignment alignment = Alignment.center}) {
+  Widget _buildColumn(Widget child, int flex, double fixedWidth,
+      {Alignment alignment = Alignment.center}) {
     if (isPhone) {
       return Container(
         width: fixedWidth,
@@ -3186,11 +3843,9 @@ class ItemRow extends StatelessWidget {
     final itemCodeStr = getDataFromDynamic(item['ItemCode']);
     final itemDescStr = getDataFromDynamic(item['ItemDescription']);
     final uomStr = getDataFromDynamic(item['UoMCode']);
-    final accountStr = getDataFromDynamic(item['AccountCode']);
     final qtyStr = formatQuantity(getDataFromDynamic(item['Quantity']));
     final isBatch = getDataFromDynamic(item['ManageBatchNumbers']) == 'tYES';
     final isSerial = getDataFromDynamic(item['ManageSerialNumbers']) == 'tYES';
-    final costingCode1 = getDataFromDynamic(item['CostingCode']);
 
     final isEven = index % 2 == 0;
     final rowBgColor = isBeingEdited
@@ -3210,15 +3865,19 @@ class ItemRow extends StatelessWidget {
               height: 22,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isBeingEdited ? Colors.amber.shade200 : const Color(0xFFE2E8F0),
+                color: isBeingEdited
+                    ? Colors.amber.shade200
+                    : const Color(0xFFE2E8F0),
                 shape: BoxShape.circle,
               ),
               child: Text(
                 '${index + 1}',
                 style: TextStyle(
-                  fontSize: 10.5,
+                  fontSize: AppFontSize.badge,
                   fontWeight: FontWeight.w700,
-                  color: isBeingEdited ? Colors.amber.shade900 : const Color(0xFF475569),
+                  color: isBeingEdited
+                      ? Colors.amber.shade900
+                      : const Color(0xFF475569),
                 ),
               ),
             ),
@@ -3236,10 +3895,10 @@ class ItemRow extends StatelessWidget {
               children: [
                 Text(
                   itemCodeStr.isEmpty ? '-' : itemCodeStr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                    color: Color(0xFF0F172A),
+                    fontSize: AppFontSize.tableItemTitle,
+                    color: const Color(0xFF0F172A),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -3248,31 +3907,33 @@ class ItemRow extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     itemDescStr,
-                    style: const TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 11.5,
+                    style: TextStyle(
+                      color: const Color(0xFF64748B),
+                      fontSize: AppFontSize.tableItemDesc,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-                if (isBatch || isSerial || costingCode1.isNotEmpty) ...[
+                if (isBatch || isSerial) ...[
                   const SizedBox(height: 3),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (isBatch)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
                           decoration: BoxDecoration(
                             color: Colors.blue.shade50,
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.blue.shade200, width: 0.5),
+                            border: Border.all(
+                                color: Colors.blue.shade200, width: 0.5),
                           ),
                           child: Text(
                             'BATCH',
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: AppFontSize.badgeSmall,
                               fontWeight: FontWeight.w700,
                               color: Colors.blue.shade800,
                             ),
@@ -3281,53 +3942,30 @@ class ItemRow extends StatelessWidget {
                       if (isSerial) ...[
                         if (isBatch) const SizedBox(width: 4),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
                           decoration: BoxDecoration(
                             color: Colors.purple.shade50,
                             borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: Colors.purple.shade200, width: 0.5),
+                            border: Border.all(
+                                color: Colors.purple.shade200, width: 0.5),
                           ),
                           child: Text(
                             'SERIAL',
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: AppFontSize.badgeSmall,
                               fontWeight: FontWeight.w700,
                               color: Colors.purple.shade800,
                             ),
                           ),
                         ),
                       ],
-                      ...List.generate(5, (i) {
-                        final d = i + 1;
-                        final codeKey = d == 1 ? 'CostingCode' : 'CostingCode$d';
-                        final code = getDataFromDynamic(item[codeKey]);
-                        if (code.isEmpty) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.teal.shade50,
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: Colors.teal.shade200, width: 0.5),
-                            ),
-                            child: Text(
-                              'D$d: $code',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.teal.shade800,
-                              ),
-                            ),
-                          ),
-                        );
-                      }),
                     ],
                   ),
                 ],
               ],
             ),
-            5,
+            6,
             200,
             alignment: Alignment.centerLeft,
           ),
@@ -3337,31 +3975,14 @@ class ItemRow extends StatelessWidget {
             Text(
               uomStr.isEmpty ? '-' : uomStr,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
+              style: TextStyle(
+                fontSize: AppFontSize.tableCell,
                 fontWeight: FontWeight.w500,
-                color: Color(0xFF334155),
+                color: const Color(0xFF334155),
               ),
             ),
             2,
-            65,
-            alignment: Alignment.center,
-          ),
-
-          // Account
-          _buildColumn(
-            Text(
-              accountStr.isEmpty ? '-' : accountStr,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF475569),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            2,
-            85,
+            70,
             alignment: Alignment.center,
           ),
 
@@ -3370,14 +3991,14 @@ class ItemRow extends StatelessWidget {
             Text(
               qtyStr.isEmpty ? '0' : qtyStr,
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 13.5,
+              style: TextStyle(
+                fontSize: AppFontSize.tableCell,
                 fontWeight: FontWeight.w700,
                 color: PRIMARY_COLOR,
               ),
             ),
-            2,
-            95,
+            3,
+            110,
             alignment: Alignment.centerRight,
           ),
         ],
@@ -3385,4 +4006,3 @@ class ItemRow extends StatelessWidget {
     );
   }
 }
-

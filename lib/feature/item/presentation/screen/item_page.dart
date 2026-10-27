@@ -1,276 +1,3 @@
-// import 'package:flutter/material.dart';
-// import 'package:flutter_bloc/flutter_bloc.dart';
-// import 'package:wms_mobile/utilies/dio_client.dart';
-// import '../../../../core/enum/global.dart';
-// import '../../../../utilies/dialog/dialog.dart';
-// import '/helper/helper.dart';
-// import '../cubit/item_cubit.dart';
-// import '/constant/style.dart';
-
-// class ItemPage extends StatefulWidget {
-//   const ItemPage({super.key, required this.type});
-
-//   final ItemType type;
-
-//   @override
-//   State<ItemPage> createState() => _ItemPageState();
-// }
-
-// class _ItemPageState extends State<ItemPage> {
-//   final ScrollController _scrollController = ScrollController();
-
-//   String query =
-//       "?\$top=10&\$skip=0&\$select=ItemCode,ItemName,PurchaseItem,InventoryItem,SalesItem,InventoryUOM,UoMGroupEntry,InventoryUoMEntry,DefaultPurchasingUoMEntry,DefaultSalesUoMEntry, ManageSerialNumbers, ManageBatchNumbers";
-
-//   final int _skip = 0;
-//   final DioClient dio = DioClient();
-
-//   int check = 1;
-//   TextEditingController filter = TextEditingController();
-//   List<dynamic> data = [];
-//   late ItemCubit _bloc;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     if (mounted) {
-//       _bloc = context.read<ItemCubit>();
-//       final state = context.read<ItemCubit>().state;
-
-//       if (state is ItemData) {
-//         data = state.entities;
-//       }
-
-//       if (data.length == 0) {
-//         query = "$query&\$filter=${getItemTypeQueryString(widget.type)}";
-//         _bloc.get(query).then((value) {
-//           setState(() => data = value);
-//           _bloc.set(value);
-//         });
-//       }
-
-//       setState(() {
-//         data;
-//       });
-
-//       _scrollController.addListener(() {
-//         if (_scrollController.position.pixels ==
-//             _scrollController.position.maxScrollExtent) {
-//           final state = BlocProvider.of<ItemCubit>(context).state;
-//           if (state is ItemData && data.length > 0) {
-//             _bloc
-//                 .next(
-//                     "?\$top=10&\$skip=${data.length}&\$filter=${getItemTypeQueryString(widget.type)} and contains(ItemCode,'${filter.text}')")
-//                 .then((value) {
-//               if (!mounted) return;
-//               _bloc.set([...data, ...value]);
-//               setState(() => data = [...data, ...value]);
-//             });
-//           }
-//         }
-//       });
-//     }
-//   }
-
-//   @override
-//   void dispose() {
-//     _scrollController.dispose();
-//     filter.dispose();
-
-//     super.dispose();
-//   }
-
-//   void onFilter() async {
-//     setState(() {
-//       data = [];
-//     });
-//     _bloc
-//         .get(
-//             "$query&\$filter=${getItemTypeQueryString(widget.type)} and contains(ItemCode, '${filter.text}')",
-//             cache: false)
-//         .then((value) {
-//       if (!mounted) return;
-
-//       setState(() => data = value);
-//     });
-//   }
-
-//   void onFind(dynamic item) async {
-//     try {
-//       if (!mounted) return;
-//       // print("geting..");
-//       MaterialDialog.loading(context);
-//       // final response = await _bloc.find("('$code')");
-//       if (mounted) {
-//         final uomGroup = await dio.get(
-//           '/UnitOfMeasurementGroups(${item['UoMGroupEntry']})',
-//         );
-//         final itemMappde = {
-//           ...item,
-//           "BaseUoM": uomGroup.data['BaseUoM'],
-//           "UoMGroupDefinitionCollection":
-//               uomGroup.data['UoMGroupDefinitionCollection'],
-//         };
-//         MaterialDialog.close(context);
-
-//         Navigator.pop(context, itemMappde);
-//       }
-//     } catch (e) {
-//       if (mounted) {
-//         MaterialDialog.success(context,
-//             title: 'Invalid', body: 'Item not found ');
-//       }
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         backgroundColor: PRIMARY_COLOR,
-//         iconTheme: IconThemeData(color: Colors.white),
-//         title: Center(
-//           child: Padding(
-//             padding: const EdgeInsets.only(right: 70),
-//             child: Text(
-//               "Item Lists",
-//               style: TextStyle(
-//                   fontWeight: FontWeight.bold,
-//                   fontSize: 18,
-//                   color: Colors.white),
-//             ),
-//           ),
-//         ),
-//       ),
-//       // bottomNavigationBar: MyBottomSheet(),
-//       body: Container(
-//         width: double.infinity,
-//         height: double.infinity,
-//         color: Colors.white,
-//         child: Column(
-//           children: [
-//             SizedBox(
-//               height: 10,
-//             ),
-//             Container(
-//               padding: const EdgeInsets.all(8),
-//               width: double.infinity,
-//               child: Row(
-//                 children: [
-//                   Expanded(
-//                     child: TextFormField(
-//                       controller: filter,
-//                       decoration: InputDecoration(
-//                         hintText: 'Search Item Lists',
-//                         filled: true,
-//                         fillColor:
-//                             Color.fromARGB(255, 243, 243, 243), // bg-slate
-//                         prefixIcon: Icon(Icons.search,
-//                             color: PRIMARY_COLOR), // left icon
-//                         border: OutlineInputBorder(
-//                           borderRadius: BorderRadius.circular(12),
-//                           borderSide:
-//                               BorderSide(color: Colors.grey.shade300, width: 1),
-//                         ),
-//                         enabledBorder: OutlineInputBorder(
-//                           borderRadius: BorderRadius.circular(12),
-//                           borderSide:
-//                               BorderSide(color: Colors.grey.shade300, width: 1),
-//                         ),
-//                         focusedBorder: OutlineInputBorder(
-//                           borderRadius: BorderRadius.circular(12),
-//                           borderSide:
-//                               BorderSide(color: PRIMARY_COLOR, width: 0.2),
-//                         ),
-//                         contentPadding: const EdgeInsets.symmetric(
-//                             vertical: 14, horizontal: 10),
-//                       ),
-//                     ),
-//                   ),
-//                   const SizedBox(width: 8),
-//                   Container(
-//                     height: 48,
-//                     width: 48,
-//                     decoration: BoxDecoration(
-//                       color: PRIMARY_COLOR, // search button background
-//                       borderRadius: BorderRadius.circular(12),
-//                     ),
-//                     child: IconButton(
-//                       icon:
-//                           const Icon(Icons.arrow_forward, color: Colors.white),
-//                       onPressed: onFilter,
-//                     ),
-//                   ),
-//                 ],
-//               ),
-//             ),
-
-//             const SizedBox(height: 10),
-//             // const Divider(thickness: 0.1, height: 15),
-//             Expanded(
-//               child: BlocConsumer<ItemCubit, ItemState>(
-//                 listener: (context, state) {},
-//                 builder: (context, state) {
-//                   if (state is RequestingItem) {
-//                     return Center(child: CircularProgressIndicator());
-//                   }
-
-//                   return ListView(
-//                     controller: _scrollController,
-//                     children: [
-//                       ...data
-//                           .map(
-//                             (item) => GestureDetector(
-//                               onTap: () => onFind(item),
-//                               child: Container(
-//                                 padding: const EdgeInsets.all(15),
-//                                 decoration: BoxDecoration(
-//                                   borderRadius: BorderRadius.circular(10),
-//                                   color: Color.fromARGB(255, 243, 243, 243),
-//                                 ),
-//                                 margin: const EdgeInsets.only(
-//                                     bottom: 8, left: 15, right: 15),
-//                                 child: Column(
-//                                   crossAxisAlignment: CrossAxisAlignment.start,
-//                                   children: [
-//                                     Text(
-//                                       getDataFromDynamic(item['ItemCode']),
-//                                       style: TextStyle(
-//                                         fontWeight: FontWeight.w800,
-//                                       ),
-//                                     ),
-//                                     const SizedBox(height: 6),
-//                                     Text(getDataFromDynamic(item['ItemName'])),
-//                                   ],
-//                                 ),
-//                               ),
-//                             ),
-//                           )
-//                           .toList(),
-//                       if (state is RequestingPaginationItem)
-//                         Container(
-//                           margin: const EdgeInsets.symmetric(vertical: 20),
-//                           child: Center(
-//                             child: SizedBox(
-//                               width: 30,
-//                               height: 30,
-//                               child: CircularProgressIndicator(
-//                                 strokeWidth: 3,
-//                               ),
-//                             ),
-//                           ),
-//                         )
-//                     ],
-//                   );
-//                 },
-//               ),
-//             )
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
@@ -290,7 +17,7 @@ class ItemPage extends StatefulWidget {
 
 class _ItemPageState extends State<ItemPage> {
   final ScrollController _scrollController = ScrollController();
-  TextEditingController filter = TextEditingController();
+  final TextEditingController filter = TextEditingController();
 
   List<dynamic> data = [];
   List<dynamic> filteredData = [];
@@ -299,46 +26,63 @@ class _ItemPageState extends State<ItemPage> {
   void initState() {
     super.initState();
 
-    // Load data from offline cubit
+    // Load initial data from offline cubit
     final offlineCubit = context.read<ItemOfflineCubit>();
     final offlineData = offlineCubit.state
         .where((item) => getItemType(item))
-        .toList(); // dynamic
-    setState(() {
-      data = offlineData;
-      filteredData = data;
-    });
+        .toList();
+    data = offlineData;
+    filteredData = offlineData;
+
     // Listen to search/filter changes
-    filter.addListener(() {
-      final text = filter.text.toLowerCase();
-      setState(() {
-        filteredData = data
-            .where((item) =>
-                item['ItemCode'].toString().toLowerCase().contains(text) ||
-                item['ItemName'].toString().toLowerCase().contains(text))
-            .toList();
-      });
-    });
+    filter.addListener(_onFilterChanged);
   }
 
   @override
   void dispose() {
+    filter.removeListener(_onFilterChanged);
     _scrollController.dispose();
     filter.dispose();
     super.dispose();
   }
 
-  dynamic getItemType(dynamic item) {
+  void _onFilterChanged() {
+    final text = filter.text.trim().toLowerCase();
+    setState(() {
+      if (text.isEmpty) {
+        filteredData = data;
+      } else {
+        filteredData = data.where((item) {
+          final code = (item['ItemCode'] ?? '').toString().toLowerCase();
+          final name = (item['ItemName'] ?? '').toString().toLowerCase();
+          return code.contains(text) || name.contains(text);
+        }).toList();
+      }
+    });
+  }
+
+  bool getItemType(dynamic item) {
     if (widget.type == ItemType.purchase) {
-      return item['PurchaseItem'] == "tYES";
+      return item['PurchaseItem'] == 'tYES';
     }
     if (widget.type == ItemType.sale) {
-      return item['SalesItem'] == "tYES";
+      return item['SalesItem'] == 'tYES';
     }
     if (widget.type == ItemType.inventory) {
-      return item['InventoryItem'] == "tYES";
+      return item['InventoryItem'] == 'tYES';
     }
-    return '';
+    return true;
+  }
+
+  String get _typeLabel {
+    switch (widget.type) {
+      case ItemType.purchase:
+        return 'Purchase';
+      case ItemType.sale:
+        return 'Sales';
+      case ItemType.inventory:
+        return 'Inventory';
+    }
   }
 
   void onFind(dynamic item) async {
@@ -353,19 +97,25 @@ class _ItemPageState extends State<ItemPage> {
         (u) => u['AbsEntry'] == item['UoMGroupEntry'],
         orElse: () => {},
       );
-      print(uomGroup);
+
       final itemMapped = {
         ...item,
-        "BaseUoM": uomGroup['BaseUoM'],
-        "UoMGroupDefinitionCollection": uomGroup['UoMGroupDefinitionCollection']
+        'BaseUoM': uomGroup['BaseUoM'],
+        'UoMGroupDefinitionCollection': uomGroup['UoMGroupDefinitionCollection'],
       };
 
-      MaterialDialog.close(context);
-      Navigator.pop(context, itemMapped);
+      if (mounted) {
+        MaterialDialog.close(context);
+        Navigator.pop(context, itemMapped);
+      }
     } catch (e) {
       if (mounted) {
-        MaterialDialog.success(context,
-            title: 'Invalid', body: 'Item not found');
+        MaterialDialog.close(context);
+        MaterialDialog.success(
+          context,
+          title: 'Invalid',
+          body: 'Item not found',
+        );
       }
     }
   }
@@ -373,112 +123,499 @@ class _ItemPageState extends State<ItemPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
         backgroundColor: PRIMARY_COLOR,
-        iconTheme: IconThemeData(color: Colors.white),
-        title: Center(
+        foregroundColor: Colors.white,
+        elevation: 0.5,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            size: 20,
+            color: Colors.white,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Select Item',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            color: Colors.white,
+          ),
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.25),
+                width: 0.8,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.inventory_2_outlined,
+                  size: 14,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '${filteredData.length}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      body: BlocListener<ItemOfflineCubit, List<dynamic>>(
+        listener: (context, state) {
+          final offlineData = state.where((item) => getItemType(item)).toList();
+          setState(() {
+            data = offlineData;
+            _onFilterChanged();
+          });
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Column(
+            children: [
+              // Search & Filter Header
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                child: Column(
+                  children: [
+                    // Search bar
+                    Container(
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: filter.text.isNotEmpty
+                              ? PRIMARY_COLOR.withValues(alpha: 0.35)
+                              : const Color(0xFFE2E8F0),
+                          width: 1,
+                        ),
+                      ),
+                      child: TextField(
+                        controller: filter,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF0F172A),
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Search by item code or name...',
+                          hintStyle: TextStyle(
+                            fontSize: 13.5,
+                            color: Colors.grey.shade400,
+                            fontWeight: FontWeight.normal,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            size: 22,
+                            color: PRIMARY_COLOR,
+                          ),
+                          suffixIcon: filter.text.isNotEmpty
+                              ? IconButton(
+                                  splashRadius: 18,
+                                  icon: const Icon(
+                                    Icons.cancel_rounded,
+                                    size: 18,
+                                    color: Color(0xFF94A3B8),
+                                  ),
+                                  onPressed: () {
+                                    filter.clear();
+                                    FocusScope.of(context).unfocus();
+                                  },
+                                )
+                              : null,
+                          border: InputBorder.none,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Results Count & Type Pill
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          filter.text.isEmpty
+                              ? 'Total items: ${filteredData.length}'
+                              : 'Results found: ${filteredData.length}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(0xFFE2E8F0),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: const BoxDecoration(
+                                  color: PRIMARY_COLOR,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                _typeLabel,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF334155),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+
+              // Item List
+              Expanded(
+                child: filteredData.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        controller: _scrollController,
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
+                        itemCount: filteredData.length,
+                        itemBuilder: (context, index) {
+                          return _buildItemCard(filteredData[index]);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemCard(dynamic item) {
+    final String itemCode = (item['ItemCode'] ?? '').toString();
+    final String itemName = (item['ItemName'] ?? '').toString();
+    final bool isBatch =
+        (item['ManageBatchNumbers'] ?? '').toString() == 'tYES';
+    final bool isSerial =
+        (item['ManageSerialNumbers'] ?? '').toString() == 'tYES';
+    final String uom = (item['InventoryUOM'] ?? '').toString();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFE2E8F0),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => onFind(item),
+          splashColor: PRIMARY_COLOR.withValues(alpha: 0.08),
+          highlightColor: PRIMARY_COLOR.withValues(alpha: 0.04),
           child: Padding(
-            padding: const EdgeInsets.only(right: 70),
-            child: Text(
-              "Item Lists",
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Colors.white),
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Item Icon Box
+                Container(
+                  width: 38,
+                  height: 38,
+                  margin: const EdgeInsets.only(top: 2),
+                  decoration: BoxDecoration(
+                    color: PRIMARY_COLOR.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: PRIMARY_COLOR.withValues(alpha: 0.15),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.inventory_2_outlined,
+                    size: 20,
+                    color: PRIMARY_COLOR,
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // Main Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Item Code & Badges
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              itemCode.isEmpty ? '-' : itemCode,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0F172A),
+                                letterSpacing: 0.2,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isBatch) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: Colors.blue.shade200,
+                                  width: 0.6,
+                                ),
+                              ),
+                              child: Text(
+                                'BATCH',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.blue.shade800,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                          if (isSerial) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade50,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(
+                                  color: Colors.purple.shade200,
+                                  width: 0.6,
+                                ),
+                              ),
+                              child: Text(
+                                'SERIAL',
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.purple.shade800,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+
+                      // Item Name / Description
+                      if (itemName.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          itemName,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            color: Color(0xFF475569),
+                            fontWeight: FontWeight.w400,
+                            height: 1.35,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+
+                      // UoM Chip
+                      if (uom.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: const Color(0xFFCBD5E1),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.straighten_rounded,
+                                size: 11,
+                                color: Color(0xFF64748B),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'UoM: $uom',
+                                style: const TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF475569),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                // Trailing Arrow
+                Container(
+                  margin: const EdgeInsets.only(left: 8, top: 8),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 13,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.white,
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(32),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.all(8),
-              width: double.infinity,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: filter,
-                      decoration: InputDecoration(
-                        hintText: 'Search Item Lists',
-                        filled: true,
-                        fillColor: Color.fromARGB(255, 243, 243, 243),
-                        prefixIcon: Icon(Icons.search, color: PRIMARY_COLOR),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              BorderSide(color: Colors.grey.shade300, width: 1),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              BorderSide(color: Colors.grey.shade300, width: 1),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              BorderSide(color: PRIMARY_COLOR, width: 0.2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 14, horizontal: 10),
-                      ),
-                    ),
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: BlocBuilder<ItemOfflineCubit, List<dynamic>>(
-                builder: (context, state) {
-                  final displayList = filteredData;
-
-                  if (displayList.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        "No Item Found",
-                        style: TextStyle(color: Colors.grey),
-                      ),
-                    );
-                  }
-
-                  return ListView(
-                    controller: _scrollController,
-                    children: displayList.map((item) {
-                      return GestureDetector(
-                        onTap: () => onFind(item),
-                        child: Container(
-                          padding: const EdgeInsets.all(15),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: Color.fromARGB(255, 243, 243, 243),
-                          ),
-                          margin: const EdgeInsets.only(
-                              bottom: 8, left: 15, right: 15),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item['ItemCode'] ?? '',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(item['ItemName'] ?? ''),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  );
-                },
+              child: Icon(
+                Icons.search_off_rounded,
+                size: 44,
+                color: Colors.grey.shade400,
               ),
             ),
+            const SizedBox(height: 16),
+            const Text(
+              'No Items Found',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF1E293B),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              filter.text.isNotEmpty
+                  ? 'No items match "${filter.text}".\nTry searching with a different item code or keyword.'
+                  : 'No offline items found for this module.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: Color(0xFF64748B),
+                height: 1.4,
+              ),
+            ),
+            if (filter.text.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: () {
+                  filter.clear();
+                  FocusScope.of(context).unfocus();
+                },
+                icon: const Icon(Icons.clear_rounded, size: 16),
+                label: const Text('Clear Search'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: PRIMARY_COLOR,
+                  side: const BorderSide(color: PRIMARY_COLOR, width: 1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),

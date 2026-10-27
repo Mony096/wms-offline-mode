@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+export 'font_size.dart';
+
 // color
 const PRIMARY_COLOR = Color.fromARGB(255, 10, 13, 85);
 const PRIMARY_BG_COLOR = Color.fromARGB(255, 241, 241, 241);
