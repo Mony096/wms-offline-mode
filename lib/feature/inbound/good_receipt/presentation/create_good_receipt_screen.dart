@@ -760,8 +760,8 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                 }
               });
             },
-            child: Text('Remove',
-                style: TextStyle(fontSize: AppFontSize.button)),
+            child:
+                Text('Remove', style: TextStyle(fontSize: AppFontSize.button)),
           ),
         ],
       ),
@@ -1003,8 +1003,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
               label: Text(
                 'Edit Item',
                 style: TextStyle(
-                    fontSize: AppFontSize.button,
-                    fontWeight: FontWeight.bold),
+                    fontSize: AppFontSize.button, fontWeight: FontWeight.bold),
               ),
             ),
             const SizedBox(height: 8),
@@ -1025,8 +1024,7 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
               label: Text(
                 'Delete Item',
                 style: TextStyle(
-                    fontSize: AppFontSize.button,
-                    fontWeight: FontWeight.w600),
+                    fontSize: AppFontSize.button, fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(height: 4),
@@ -3242,48 +3240,18 @@ class _CreateGoodReceiptScreenState extends State<CreateGoodReceiptScreen> {
                               ),
                             ),
                             const SizedBox(width: 10),
-                            Text(
+                            Expanded(
+                                child: Text(
                               'General Information',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: AppFontSize.cardTitle,
                                 fontWeight: FontWeight.w700,
                                 color: const Color(0xFF0F172A),
                                 letterSpacing: 0.2,
                               ),
-                            ),
-                            const Spacer(),
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              child: _isHeaderCollapsed &&
-                                      (warehouseNameUI.text.isNotEmpty ||
-                                          grTypeName.text.isNotEmpty)
-                                  ? Container(
-                                      key: const ValueKey('hdr_chip'),
-                                      margin: const EdgeInsets.only(right: 6),
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 2.5),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFF1F5F9),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                            color: const Color(0xFFE2E8F0)),
-                                      ),
-                                      child: Text(
-                                        warehouseNameUI.text.isNotEmpty
-                                            ? warehouseNameUI.text
-                                            : grTypeName.text,
-                                        style: TextStyle(
-                                          fontSize: AppFontSize.badge,
-                                          fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF475569),
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                        maxLines: 1,
-                                      ),
-                                    )
-                                  : const SizedBox.shrink(
-                                      key: ValueKey('hdr_none')),
-                            ),
+                            )),
                             AnimatedRotation(
                               turns: _isHeaderCollapsed ? 0.0 : 0.5,
                               duration: const Duration(milliseconds: 280),

@@ -1,42 +1,31 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
-import 'package:wms_mobile/component/form/input_col.dart';
-import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_cubit.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
-import 'package:wms_mobile/feature/good_isuse_select/domain/entity/grt_entity.dart';
-import 'package:wms_mobile/feature/good_isuse_select/presentation/screen/grt_page.dart';
-import 'package:wms_mobile/feature/lk_act/presentation/screen/lk_act_page.dart';
+import 'package:wms_mobile/feature/good_isuse_select/presentation/cubit/isuse_type_offline_cubit.dart';
+import 'package:wms_mobile/feature/lk_act/presentation/cubit/lk_act_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/good_issue_failed_offline_cubit.dart';
+import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_barcode_offline_cubit.dart';
 import 'package:wms_mobile/feature/item/presentation/cubit/items_offline_cubit.dart';
 import 'package:wms_mobile/feature/item_by_code/presentation/screen/item_page.dart';
-import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/good_issue_failed_offline_cubit.dart';
-import 'package:wms_mobile/feature/outbounce/good_issue/presentation/cubit/goods_issue_offline_cubit.dart';
 import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_group_offline_cubit.dart';
-import 'package:wms_mobile/feature/warehouse/presentation/screen/warehouse_page.dart';
+import 'package:wms_mobile/feature/unit_of_measurement/presentation/cubit/uom_offline_cubit.dart';
 import 'package:wms_mobile/utilies/dio_client.dart';
-import '/feature/inbound/return_receipt_request/presentation/return_receipt_request_page.dart';
 import '/feature/batch/good_receip_batch_screen.dart';
 import '/feature/serial/good_receip_serial_screen.dart';
-import '/feature/bin_location/domain/entity/bin_entity.dart';
-import '/feature/bin_location/presentation/screen/bin_page.dart';
 import '/feature/business_partner/presentation/screen/business_partner_page.dart';
 import '../../../../core/error/failure.dart';
-import '../../../item/presentation/cubit/item_cubit.dart';
 import '/component/button/button.dart';
-import '/component/form/input.dart';
 import '/core/enum/global.dart';
 import '/feature/item/presentation/screen/item_page.dart';
-import '/feature/unit_of_measurement/domain/entity/unit_of_measurement_entity.dart';
-import '/feature/unit_of_measurement/presentation/screen/unit_of_measurement_page.dart';
 import '/helper/helper.dart';
 import '/utilies/dialog/dialog.dart';
 import '/utilies/storage/locale_storage.dart';
-// import 'package:iscan_data_plugin/iscan_data_plugin.dart';
 import '../../../../constant/style.dart';
-import 'cubit/good_issue_cubit.dart';
 
 class CreateGoodIssueScreen extends StatefulWidget {
   const CreateGoodIssueScreen({
@@ -53,7 +42,6 @@ class CreateGoodIssueScreen extends StatefulWidget {
 class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
   final cardCode = TextEditingController();
   final cardName = TextEditingController();
-  final remark = TextEditingController();
   final poText = TextEditingController();
   final uomText = TextEditingController();
   final quantity = TextEditingController();
@@ -61,56 +49,145 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
   final warehouseNameUI = TextEditingController();
   final uom = TextEditingController();
   final uomAbEntry = TextEditingController();
+  final uomName = TextEditingController();
   final itemCode = TextEditingController();
   final itemName = TextEditingController();
   final baseUoM = TextEditingController();
   final uoMGroupDefinitionCollection = TextEditingController();
   final binId = TextEditingController();
   final binCode = TextEditingController();
+  final accountCode = TextEditingController();
+  final giType = TextEditingController();
+  final giTypeName = TextEditingController();
+  final remark = TextEditingController();
+
   final serialsInput = TextEditingController();
   final batchesInput = TextEditingController();
   final docEntry = TextEditingController();
   final refLineNo = TextEditingController();
-  final accountCode = TextEditingController();
-  final giType = TextEditingController();
-  final giTypeName = TextEditingController();
-  List<dynamic> isBin = [{}];
+
   //
   final isBatch = TextEditingController();
   final isSerial = TextEditingController();
-
-  late GoodIssueCubit _bloc;
-  late ItemCubit _blocItem;
+  final saveId = TextEditingController();
+  List<dynamic> isBin = [{}];
+  int isEdit = -1;
+  bool isSerialOrBatch = false;
+  bool _isHeaderCollapsed = false;
+  bool _isLineItemCollapsed = false;
+  List<dynamic> items = [];
+  bool loading = false;
   final barCode = TextEditingController();
   final DioClient dio = DioClient();
   List<dynamic> itemCodeFilter = [];
-  int isEdit = -1;
-  bool isSerialOrBatch = false;
-  List<dynamic> items = [];
-  bool loading = false;
-  late BinCubit _blocBin;
   bool isClickScanItem = false;
   bool isClickScanBin = false;
   final FocusNode _itemCode = FocusNode();
   final FocusNode _quantity = FocusNode();
   final FocusNode _bin = FocusNode();
-  final saveId = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  List<Map<String, dynamic>> activeDimensions = [];
+  final Map<int, TextEditingController> _headerCostingCodes = {
+    1: TextEditingController(),
+    2: TextEditingController(),
+    3: TextEditingController(),
+    4: TextEditingController(),
+    5: TextEditingController(),
+  };
+  final Map<int, TextEditingController> _headerCostingCodeNames = {
+    1: TextEditingController(),
+    2: TextEditingController(),
+    3: TextEditingController(),
+    4: TextEditingController(),
+    5: TextEditingController(),
+  };
+  final Map<int, TextEditingController> _lineCostingCodes = {
+    1: TextEditingController(),
+    2: TextEditingController(),
+    3: TextEditingController(),
+    4: TextEditingController(),
+    5: TextEditingController(),
+  };
+  final Map<int, TextEditingController> _lineCostingCodeNames = {
+    1: TextEditingController(),
+    2: TextEditingController(),
+    3: TextEditingController(),
+    4: TextEditingController(),
+    5: TextEditingController(),
+  };
+
+  @override
+  void dispose() {
+    cardCode.dispose();
+    cardName.dispose();
+    poText.dispose();
+    uomText.dispose();
+    quantity.dispose();
+    warehouse.dispose();
+    warehouseNameUI.dispose();
+    uom.dispose();
+    uomAbEntry.dispose();
+    uomName.dispose();
+    itemCode.dispose();
+    itemName.dispose();
+    baseUoM.dispose();
+    uoMGroupDefinitionCollection.dispose();
+    binId.dispose();
+    binCode.dispose();
+    accountCode.dispose();
+    giType.dispose();
+    giTypeName.dispose();
+    remark.dispose();
+    serialsInput.dispose();
+    batchesInput.dispose();
+    docEntry.dispose();
+    refLineNo.dispose();
+    isBatch.dispose();
+    isSerial.dispose();
+    saveId.dispose();
+    barCode.dispose();
+    _scrollController.dispose();
+    _itemCode.dispose();
+    _quantity.dispose();
+    _bin.dispose();
+    for (final controllers in [
+      _headerCostingCodes,
+      _headerCostingCodeNames,
+      _lineCostingCodes,
+      _lineCostingCodeNames
+    ]) {
+      for (final controller in controllers.values) {
+        controller.dispose();
+      }
+    }
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
+
     init();
+
+    _loadDimensions();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       fromEdit();
     });
+    //
   }
 
   void fromEdit() async {
     try {
       if (widget.isEdit == null) return;
-      print(widget.isEdit);
+
       // ✅ Populate text fields safely
       giType.text = getDataFromDynamic(widget.isEdit['U_LK_Type']);
+      final type = IssueTypeOfflineCubit()
+          .state
+          .firstWhere((row) => row['Code'] == giType.text, orElse: () => {});
+      giTypeName.text = getDataFromDynamic(type['Name']);
       remark.text = getDataFromDynamic(widget.isEdit['Comments']);
       warehouse.text = getDataFromDynamic(widget.isEdit['U_lk_whsdesc']);
       warehouseNameUI.text = warehouse.text;
@@ -158,9 +235,10 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
           "UoMGroupDefinitionCollection":
               uomGroup['UoMGroupDefinitionCollection']
         };
-        final binID = element["DocumentLinesBinAllocations"].length > 0
-            ? element["DocumentLinesBinAllocations"][0]["BinAbsEntry"]
-            : -1;
+        final allocations =
+            List<dynamic>.from(element['DocumentLinesBinAllocations'] ?? []);
+        final binID =
+            allocations.isEmpty ? '' : allocations.first['BinAbsEntry'];
         final binCodeFind = binList.firstWhere(
           (u) => u['AbsEntry'] == int.tryParse(getDataFromDynamic(binID)),
           orElse: () => {},
@@ -176,7 +254,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
           "UoMGroupDefinitionCollection":
               itemMapped['UoMGroupDefinitionCollection'],
           "BaseUoM": itemMapped['BaseUoM'],
-          "BinId": binId.text,
+          "BinId": getDataFromDynamic(binID),
           "BinCode": binCodeFind["BinCode"],
           "BaseLine": element['BaseLine'],
           "ManageSerialNumbers": itemMapped["ManageSerialNumbers"],
@@ -184,6 +262,16 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
           "Serials": element["SerialNumbers"] ?? [],
           "Batches": element["BatchNumbers"] ?? [],
           "AccountCode": getDataFromDynamic(element["AccountCode"]),
+          "CostingCode": getDataFromDynamic(element["CostingCode"]),
+          "CostingCode2": getDataFromDynamic(element["CostingCode2"]),
+          "CostingCode3": getDataFromDynamic(element["CostingCode3"]),
+          "CostingCode4": getDataFromDynamic(element["CostingCode4"]),
+          "CostingCode5": getDataFromDynamic(element["CostingCode5"]),
+          "CostingCodeName": getDataFromDynamic(element["CostingCodeName"]),
+          "CostingCode2Name": getDataFromDynamic(element["CostingCode2Name"]),
+          "CostingCode3Name": getDataFromDynamic(element["CostingCode3Name"]),
+          "CostingCode4Name": getDataFromDynamic(element["CostingCode4Name"]),
+          "CostingCode5Name": getDataFromDynamic(element["CostingCode5Name"]),
           if (matchedBarcode.isNotEmpty) "BarCode": matchedBarcode['BarCode'],
         });
 
@@ -191,6 +279,19 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
       }
       // ✅ Update items
       items = rawItems;
+
+      for (int d = 1; d <= 5; d++) {
+        final codeKey = d == 1 ? 'CostingCode' : 'CostingCode$d';
+        final nameKey = d == 1 ? 'CostingCodeName' : 'CostingCode${d}Name';
+        String headerCode = getDataFromDynamic(widget.isEdit[codeKey]);
+        String headerName = getDataFromDynamic(widget.isEdit[nameKey]);
+        if (headerCode.isEmpty && rawItems.isNotEmpty) {
+          headerCode = getDataFromDynamic(rawItems[0][codeKey]);
+          headerName = getDataFromDynamic(rawItems[0][nameKey]);
+        }
+        _headerCostingCodes[d]?.text = headerCode;
+        _headerCostingCodeNames[d]?.text = headerName;
+      }
 
       // Debug
       // debugPrint("✅ Processed ${items.length} item(s)");
@@ -208,10 +309,144 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
   }
 
   void init() async {
+    if (widget.isEdit != null) return;
     final whs = await LocalStorageManger.getString('warehouse');
-    warehouse.text = whs;
     final whsName = await LocalStorageManger.getString('warehouseName');
-    warehouseNameUI.text = whsName.isNotEmpty ? whsName : warehouse.text;
+    if (!mounted) return;
+    setState(() {
+      warehouse.text = whs;
+      warehouseNameUI.text = whsName.isNotEmpty ? whsName : warehouse.text;
+    });
+  }
+
+  Future<void> _loadDimensions() async {
+    try {
+      // 1. Try local cache from master data storage
+      final cachedMetaStr =
+          await LocalStorageManger.getString('dimensions_meta');
+      List<dynamic> cachedMeta = [];
+      if (cachedMetaStr.isNotEmpty) {
+        try {
+          cachedMeta = jsonDecode(cachedMetaStr) as List<dynamic>;
+        } catch (_) {}
+      }
+
+      final cachedStr = await LocalStorageManger.getString('dimension_v2');
+      if (cachedStr.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(cachedStr) as List<dynamic>;
+          if (decoded.isNotEmpty) {
+            final list = List<Map<String, dynamic>>.from(
+              decoded.map((e) => Map<String, dynamic>.from(e)),
+            );
+
+            // Repair cached descriptions if metadata is present
+            for (var d in list) {
+              final code =
+                  int.tryParse(d['DimensionCode']?.toString() ?? '') ?? 0;
+              final metaMatch = cachedMeta.firstWhere(
+                (m) =>
+                    (int.tryParse(m['DimensionCode']?.toString() ?? '') ?? 0) ==
+                    code,
+                orElse: () => null,
+              );
+              if (metaMatch != null) {
+                final mDesc = metaMatch['DimensionDescription']?.toString();
+                if (mDesc != null && mDesc.trim().isNotEmpty) {
+                  d['DimensionDescription'] = mDesc.trim();
+                  d['DimensionName'] =
+                      metaMatch['DimensionName'] ?? d['DimensionDescription'];
+                  d['IsActive'] = metaMatch['IsActive'] ?? 'tYES';
+                }
+              } else {
+                if (d['DimensionDescription'] == 'Cost Center' ||
+                    d['DimensionDescription'] == 'Dimension $code') {
+                  if (code == 1) d['DimensionDescription'] = 'Line of Business';
+                  if (code == 2) d['DimensionDescription'] = 'Department';
+                  if (code == 3) d['DimensionDescription'] = 'Region';
+                }
+              }
+            }
+
+            // Filter to only active dimensions
+            final activeOnly = list.where((d) {
+              final active = d['IsActive']?.toString();
+              return active == null ||
+                  active == 'tYES' ||
+                  active == 'Y' ||
+                  active == 'true';
+            }).toList();
+
+            if (activeOnly.isNotEmpty && mounted) {
+              setState(() {
+                activeDimensions = activeOnly;
+              });
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 2. If dimension_v2 is empty, construct from distribution_rules
+      final rulesCachedStr =
+          await LocalStorageManger.getString('distribution_rules');
+      if (rulesCachedStr.isNotEmpty) {
+        try {
+          final decodedRules = jsonDecode(rulesCachedStr) as List<dynamic>;
+          final List<Map<String, dynamic>> fallbackDims = [];
+          final Set<int> dimCodes = {};
+          for (var r in decodedRules) {
+            final code =
+                int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
+            if (code >= 1 && code <= 5) dimCodes.add(code);
+          }
+          final sortedCodes = dimCodes.toList()..sort();
+          for (var dimCode in sortedCodes) {
+            final dimRules = decodedRules.where((r) {
+              final ruleDim =
+                  int.tryParse(r['InWhichDimension']?.toString() ?? '') ?? 0;
+              return ruleDim == dimCode;
+            }).toList();
+
+            final matchedMeta = cachedMeta.firstWhere(
+              (m) =>
+                  (int.tryParse(m['DimensionCode']?.toString() ?? '') ?? 0) ==
+                  dimCode,
+              orElse: () => null,
+            );
+
+            String desc = 'Dimension $dimCode';
+            if (matchedMeta != null &&
+                matchedMeta['DimensionDescription']
+                        ?.toString()
+                        .trim()
+                        .isNotEmpty ==
+                    true) {
+              desc = matchedMeta['DimensionDescription'].toString().trim();
+            } else {
+              if (dimCode == 1) desc = 'Line of Business';
+              if (dimCode == 2) desc = 'Department';
+              if (dimCode == 3) desc = 'Region';
+            }
+
+            fallbackDims.add({
+              'DimensionCode': dimCode,
+              'DimensionName': matchedMeta?['DimensionName'] ?? desc,
+              'DimensionDescription': desc,
+              'IsActive': 'tYES',
+              'rules': dimRules,
+            });
+          }
+          if (fallbackDims.isNotEmpty && mounted) {
+            setState(() {
+              activeDimensions = fallbackDims;
+            });
+          }
+        } catch (_) {}
+      }
+    } catch (e) {
+      debugPrint("Error loading dimensions from local storage: $e");
+    }
   }
 
   void onSelectItem() async {
@@ -226,51 +461,67 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
   }
 
   void onChangeUoM() async {
-    try {
-      final data =
-          jsonDecode(uoMGroupDefinitionCollection.text) as List<dynamic>;
-
-      goTo(
-              context,
-              UnitOfMeasurementPage(
-                  ids: data.map((e) => e['AlternateUoM'] as int).toList()))
-          .then((value) {
-        if (value == null) return;
-
-        uom.text = value["Code"];
-        uomAbEntry.text = value["AbsEntry"].toString();
-      });
-    } catch (e) {
-      print(e);
-    }
-  }
-
-  void onChangeGit() async {
-    goTo(context, GoodIssueSelectPage()).then((value) {
-      if (value == null) return;
-
-      giType.text = getDataFromDynamic(value["Code"]);
-      giTypeName.text = getDataFromDynamic(value["Name"]);
-
-      accountCode.clear();
-      
-      setState(() {
-        items.clear();
-      });
-    });
-  }
-
-  void onChangeAccount() async {
-    if (giType.text.isEmpty) {
-      MaterialDialog.warning(context,
-          title: 'Warning', body: "Please select Goods Issue Type first.");
+    _unfocusAll();
+    if (itemCode.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Please select an item first to choose its Unit of Measure.'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
       return;
     }
 
-    goTo(context, LkActPage(typeCode: giType.text)).then((value) {
-      if (value == null) return;
-      accountCode.text = getDataFromDynamic(value['U_LK_Acct']);
-    });
+    try {
+      List<int> validUomIds = [];
+      if (uoMGroupDefinitionCollection.text.isNotEmpty) {
+        try {
+          final data =
+              jsonDecode(uoMGroupDefinitionCollection.text) as List<dynamic>;
+          validUomIds = data
+              .map((e) =>
+                  int.tryParse(e['AlternateUoM']?.toString() ?? '') ?? -1)
+              .where((id) => id > 0)
+              .toList();
+        } catch (_) {}
+      }
+
+      final offlineUoms = context.read<UOMOfflineCubit>().state;
+      List<dynamic> itemsToSelect = [];
+      if (validUomIds.isNotEmpty) {
+        itemsToSelect = offlineUoms
+            .where((u) => validUomIds.contains(u['AbsEntry']))
+            .toList();
+      }
+      if (itemsToSelect.isEmpty) {
+        itemsToSelect = offlineUoms;
+      }
+
+      _openGenericPickerModal<dynamic>(
+        title: 'Select Unit of Measure',
+        subtitle: 'Item: ${itemCode.text}',
+        icon: Icons.straighten_rounded,
+        items: itemsToSelect,
+        currentCode: uom.text,
+        getCode: (item) => getDataFromDynamic(item['Code']),
+        getName: (item) => getDataFromDynamic(item['Name']),
+        showCode: true,
+        allowClear: false,
+        onSelected: (selected) {
+          if (selected == null) return;
+          setState(() {
+            uom.text = getDataFromDynamic(selected['Code']);
+            uomAbEntry.text = getDataFromDynamic(selected['AbsEntry']);
+            final name = getDataFromDynamic(selected['Name']);
+            uomName.text = name.isNotEmpty ? name : uom.text;
+          });
+        },
+      );
+    } catch (e) {
+      debugPrint("Error selecting UoM: $e");
+    }
   }
 
   void onAddItem({bool force = false}) {
@@ -286,7 +537,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
       //   throw Exception('Bin Location is missing.');
       // }
 
-      if (quantity.text == '' || quantity.text == '0') {
+      if ((double.tryParse(quantity.text.replaceAll(',', '')) ?? 0) <= 0) {
         throw Exception('Quantity must be greater than zero.');
       }
 
@@ -297,6 +548,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
         "WarehouseCode": warehouse.text,
         "UoMEntry": uomAbEntry.text,
         "UoMCode": uom.text,
+        "UoMName": uomName.text,
         "BaseEntry": docEntry.text,
         "BaseLine": refLineNo.text,
         "UoMGroupDefinitionCollection":
@@ -311,6 +563,36 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
         "Batches":
             batchesInput.text == "" ? [] : jsonDecode(batchesInput.text) ?? [],
         "AccountCode": accountCode.text,
+        "CostingCode": isEdit != -1
+            ? (_lineCostingCodes[1]?.text ?? '')
+            : (_headerCostingCodes[1]?.text ?? ''),
+        "CostingCode2": isEdit != -1
+            ? (_lineCostingCodes[2]?.text ?? '')
+            : (_headerCostingCodes[2]?.text ?? ''),
+        "CostingCode3": isEdit != -1
+            ? (_lineCostingCodes[3]?.text ?? '')
+            : (_headerCostingCodes[3]?.text ?? ''),
+        "CostingCode4": isEdit != -1
+            ? (_lineCostingCodes[4]?.text ?? '')
+            : (_headerCostingCodes[4]?.text ?? ''),
+        "CostingCode5": isEdit != -1
+            ? (_lineCostingCodes[5]?.text ?? '')
+            : (_headerCostingCodes[5]?.text ?? ''),
+        "CostingCodeName": isEdit != -1
+            ? (_lineCostingCodeNames[1]?.text ?? '')
+            : (_headerCostingCodeNames[1]?.text ?? ''),
+        "CostingCode2Name": isEdit != -1
+            ? (_lineCostingCodeNames[2]?.text ?? '')
+            : (_headerCostingCodeNames[2]?.text ?? ''),
+        "CostingCode3Name": isEdit != -1
+            ? (_lineCostingCodeNames[3]?.text ?? '')
+            : (_headerCostingCodeNames[3]?.text ?? ''),
+        "CostingCode4Name": isEdit != -1
+            ? (_lineCostingCodeNames[4]?.text ?? '')
+            : (_headerCostingCodeNames[4]?.text ?? ''),
+        "CostingCode5Name": isEdit != -1
+            ? (_lineCostingCodeNames[5]?.text ?? '')
+            : (_headerCostingCodeNames[5]?.text ?? ''),
       };
       batchesInput.clear();
       serialsInput.clear();
@@ -346,53 +628,469 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
     }
   }
 
-  void onEdit(dynamic item, int index) {
-    // final index = items.indexWhere((e) => e['ItemCode'] == item['ItemCode']);
+  void _unfocusAll() {
+    _quantity.unfocus();
+    _itemCode.unfocus();
+    _bin.unfocus();
+    FocusScope.of(context).unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _quantity.unfocus();
+        _itemCode.unfocus();
+        _bin.unfocus();
+        FocusScope.of(context).unfocus();
+        FocusManager.instance.primaryFocus?.unfocus();
+      }
+    });
+  }
 
-    if (index < 0) return;
+  void _startEditItem(int targetIndex) {
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+    final item = items[targetIndex];
 
-    MaterialDialog.warning(
-      context,
-      title: 'Item (${item['ItemCode']})',
-      confirmLabel: "Edit",
-      cancelLabel: "Remove",
-      onConfirm: () {
-        itemCode.text = getDataFromDynamic(item['ItemCode']);
-        itemName.text = getDataFromDynamic(item['ItemDescription']);
-        quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
-        uom.text = getDataFromDynamic(item['UoMCode']);
-        uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
-        binCode.text = getDataFromDynamic(item['BinCode']);
-        binId.text = getDataFromDynamic(item['BinId']);
-        baseUoM.text = getDataFromDynamic(item['BaseUoM']);
-        docEntry.text = getDataFromDynamic(item['DocEntry']);
-        refLineNo.text = getDataFromDynamic(item['BaseLine']);
-        uoMGroupDefinitionCollection.text = jsonEncode(
-          item['UoMGroupDefinitionCollection'],
+    itemCode.text = getDataFromDynamic(item['ItemCode']);
+    itemName.text = getDataFromDynamic(item['ItemDescription']);
+    quantity.text = formatQuantity(getDataFromDynamic(item['Quantity']));
+    uom.text = getDataFromDynamic(item['UoMCode']);
+    uomAbEntry.text = getDataFromDynamic(item['UoMEntry']);
+    uomName.text = getDataFromDynamic(item['UoMName']);
+    if (uomName.text.isEmpty && uom.text.isNotEmpty) {
+      try {
+        final offlineUoms = context.read<UOMOfflineCubit>().state;
+        final matchedUom = offlineUoms.firstWhere(
+          (u) =>
+              getDataFromDynamic(u['Code']) == uom.text ||
+              getDataFromDynamic(u['AbsEntry']) == uomAbEntry.text,
+          orElse: () => null,
         );
-        isSerial.text = getDataFromDynamic(item['ManageSerialNumbers']);
-        isBatch.text = getDataFromDynamic(item['ManageBatchNumbers']);
-        batchesInput.text = jsonEncode(item['Batches'] ?? []);
-        serialsInput.text = jsonEncode(item['Serials'] ?? []);
-        accountCode.text = getDataFromDynamic(item['AccountCode']);
-
-        setState(() {
-          isEdit = index;
-
-          if (getDataFromDynamic(item['ManageSerialNumbers']) == 'tYES' ||
-              getDataFromDynamic(item['ManageBatchNumbers']) == 'tYES') {
-            isSerialOrBatch = true;
-          }
-        });
-      },
-      onCancel: () {
-        List<dynamic> data = [...items];
-        data.removeAt(index);
-        setState(() {
-          items = data;
-        });
-      },
+        if (matchedUom != null) {
+          final name = getDataFromDynamic(matchedUom['Name']);
+          uomName.text = name.isNotEmpty ? name : uom.text;
+        } else {
+          uomName.text = uom.text;
+        }
+      } catch (_) {
+        uomName.text = uom.text;
+      }
+    }
+    binCode.text = getDataFromDynamic(item['BinCode']);
+    binId.text = getDataFromDynamic(item['BinId']);
+    baseUoM.text = getDataFromDynamic(item['BaseUoM']);
+    docEntry.text = getDataFromDynamic(item['DocEntry']);
+    refLineNo.text = getDataFromDynamic(item['BaseLine']);
+    uoMGroupDefinitionCollection.text = jsonEncode(
+      item['UoMGroupDefinitionCollection'] ?? [],
     );
+    isSerial.text = getDataFromDynamic(item['ManageSerialNumbers']);
+    isBatch.text = getDataFromDynamic(item['ManageBatchNumbers']);
+    batchesInput.text = jsonEncode(item['Batches'] ?? []);
+    serialsInput.text = jsonEncode(item['Serials'] ?? []);
+    accountCode.text = getDataFromDynamic(item['AccountCode']);
+
+    // Pre-populate line item dimensions from item (or fallback to header)
+    for (int d = 1; d <= 5; d++) {
+      final codeKey = d == 1 ? 'CostingCode' : 'CostingCode$d';
+      final nameKey = d == 1 ? 'CostingCodeName' : 'CostingCode${d}Name';
+      String code = getDataFromDynamic(item[codeKey]);
+      String name = getDataFromDynamic(item[nameKey]);
+      if (name.isEmpty && code.isNotEmpty) {
+        final dim = activeDimensions.firstWhere(
+          (ad) =>
+              (int.tryParse(ad['DimensionCode']?.toString() ?? '') ?? 0) == d,
+          orElse: () => {},
+        );
+        final rules = (dim['rules'] as List<dynamic>?) ?? [];
+        final matchedRule = rules.firstWhere(
+          (r) => r['FactorCode']?.toString() == code,
+          orElse: () => null,
+        );
+        if (matchedRule != null) {
+          name = matchedRule['FactorDescription']?.toString() ?? '';
+        }
+      }
+      _lineCostingCodes[d]?.text = code;
+      _lineCostingCodeNames[d]?.text = name;
+    }
+
+    setState(() {
+      isEdit = targetIndex;
+      _isLineItemCollapsed = false;
+
+      if (getDataFromDynamic(item['ManageSerialNumbers']) == 'tYES' ||
+          getDataFromDynamic(item['ManageBatchNumbers']) == 'tYES') {
+        isSerialOrBatch = true;
+      } else {
+        isSerialOrBatch = false;
+      }
+    });
+
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        130,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  void _deleteItem(int targetIndex) async {
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+    final item = items[targetIndex];
+    final itemCodeStr = getDataFromDynamic(item['ItemCode']);
+
+    _unfocusAll();
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Row(
+          children: [
+            Icon(Icons.delete_outline_rounded,
+                color: Colors.red.shade600, size: 24),
+            const SizedBox(width: 8),
+            Text('Remove Item',
+                style: TextStyle(
+                    fontSize: AppFontSize.dialogTitle,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to remove "$itemCodeStr" from receipt list?',
+          style: TextStyle(fontSize: AppFontSize.base),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _unfocusAll();
+            },
+            child: Text('Cancel',
+                style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: AppFontSize.buttonSmall)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              setState(() {
+                final list = [...items];
+                list.removeAt(targetIndex);
+                items = list;
+                if (isEdit == targetIndex) {
+                  clear();
+                  isSerialOrBatch = false;
+                } else if (isEdit > targetIndex) {
+                  isEdit -= 1;
+                }
+              });
+            },
+            child:
+                Text('Remove', style: TextStyle(fontSize: AppFontSize.button)),
+          ),
+        ],
+      ),
+    );
+
+    if (mounted) {
+      _unfocusAll();
+    }
+  }
+
+  Widget _buildModalDetailRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 120,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: AppFontSize.detailItemLabel,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey.shade600,
+            ),
+          ),
+        ),
+        Text(
+          ' :  ',
+          style: TextStyle(
+            fontSize: AppFontSize.detailItemLabel,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade500,
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: AppFontSize.detailItemValue,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showItemActionDialog(dynamic item, int index) async {
+    _unfocusAll();
+
+    final itemCodeStr = getDataFromDynamic(item['ItemCode']);
+    final itemDescStr = getDataFromDynamic(item['ItemDescription']);
+    final qtyStr = formatQuantity(getDataFromDynamic(item['Quantity']));
+    final uomStr = getDataFromDynamic(item['UoMCode']);
+    final accountStr = getDataFromDynamic(item['AccountCode']);
+    final binCodeStr = getDataFromDynamic(item['BinCode']);
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.inventory_2_outlined,
+                  size: 20, color: PRIMARY_COLOR),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    itemCodeStr.isEmpty ? 'Item Details' : itemCodeStr,
+                    style: TextStyle(
+                      fontSize: AppFontSize.dialogTitle,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF0F172A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (itemDescStr.isNotEmpty)
+                    Text(
+                      itemDescStr,
+                      style: TextStyle(
+                          fontSize: AppFontSize.md,
+                          color: Colors.grey.shade600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+            child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.format_list_bulleted_rounded,
+                              size: 15, color: PRIMARY_COLOR),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Item Details',
+                            style: TextStyle(
+                              fontSize: AppFontSize.sectionTitle,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: PRIMARY_COLOR.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Row #${index + 1}',
+                          style: TextStyle(
+                            fontSize: AppFontSize.badge,
+                            fontWeight: FontWeight.w700,
+                            color: PRIMARY_COLOR,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Divider(
+                      height: 1,
+                      thickness: 0.6,
+                      color: Color(0xFFCBD5E1),
+                    ),
+                  ),
+                  _buildModalDetailRow(
+                      'Quantity', '$qtyStr ${uomStr.isNotEmpty ? uomStr : ''}'),
+                  if (accountStr.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _buildModalDetailRow('Account', accountStr),
+                  ],
+                  if (binCodeStr.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _buildModalDetailRow('Bin Location', binCodeStr),
+                  ],
+                  ...List.generate(5, (i) {
+                    final d = i + 1;
+                    final codeKey = d == 1 ? 'CostingCode' : 'CostingCode$d';
+                    final nameKey =
+                        d == 1 ? 'CostingCodeName' : 'CostingCode${d}Name';
+                    final code = getDataFromDynamic(item[codeKey]);
+                    if (code.isEmpty) return const SizedBox.shrink();
+
+                    final dim = activeDimensions.firstWhere(
+                      (e) =>
+                          (int.tryParse(e['DimensionCode']?.toString() ?? '') ??
+                              0) ==
+                          d,
+                      orElse: () => {},
+                    );
+                    final dimLabel = (dim['DimensionDescription']
+                                ?.toString()
+                                .trim()
+                                .isNotEmpty ??
+                            false)
+                        ? dim['DimensionDescription'].toString()
+                        : ((dim['DimensionName']
+                                    ?.toString()
+                                    .trim()
+                                    .isNotEmpty ??
+                                false)
+                            ? dim['DimensionName'].toString()
+                            : 'Dimension $d');
+                    String name = getDataFromDynamic(item[nameKey]);
+                    if (name.isEmpty && code.isNotEmpty) {
+                      final rules = (dim['rules'] as List<dynamic>?) ?? [];
+                      final matchedRule = rules.firstWhere(
+                        (r) => r['FactorCode']?.toString() == code,
+                        orElse: () => null,
+                      );
+                      if (matchedRule != null) {
+                        name =
+                            matchedRule['FactorDescription']?.toString() ?? '';
+                      }
+                    }
+                    final display = name.isNotEmpty ? name : code;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: _buildModalDetailRow(dimLabel, display),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: PRIMARY_COLOR,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _unfocusAll();
+                _startEditItem(index);
+              },
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              label: Text(
+                'Edit Item',
+                style: TextStyle(
+                    fontSize: AppFontSize.button, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red.shade700,
+                side: BorderSide(color: Colors.red.shade300),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _unfocusAll();
+                _deleteItem(index);
+              },
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: Text(
+                'Delete Item',
+                style: TextStyle(
+                    fontSize: AppFontSize.button, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _unfocusAll();
+              },
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: AppFontSize.buttonSmall),
+              ),
+            ),
+          ],
+        )),
+      ),
+    );
+
+    if (mounted) {
+      _unfocusAll();
+    }
+  }
+
+  void onEdit(dynamic item, int index) {
+    if (index >= 0 && index < items.length) {
+      _showItemActionDialog(item, index);
+    }
   }
 
   void onChangeCardCode() async {
@@ -405,14 +1103,225 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
     });
   }
 
-  void onChangeBin() async {
-    goTo(context, BinPage(warehouse: warehouse.text, itemCode: itemCode.text))
-        .then((value) {
-      if (value == null) return;
+  void onChangeBin() {
+    List<dynamic> allBins = [];
+    try {
+      allBins = context.read<BinOfflineCubit>().state;
+    } catch (_) {}
+    if (allBins.isEmpty) {
+      try {
+        final box = Hive.box('bin');
+        allBins = box.get('data', defaultValue: []).cast<dynamic>();
+      } catch (_) {}
+    }
 
-      binId.text = getDataFromDynamic((value as BinEntity).id);
-      binCode.text = getDataFromDynamic(value.code);
-    });
+    final filteredBins = warehouse.text.isNotEmpty
+        ? allBins
+            .where((b) => getDataFromDynamic(b['Warehouse']) == warehouse.text)
+            .toList()
+        : allBins;
+
+    _openGenericPickerModal<dynamic>(
+      title: 'Select Bin Location',
+      subtitle: warehouse.text.isNotEmpty
+          ? 'Warehouse: ${warehouseNameUI.text.isNotEmpty ? warehouseNameUI.text : warehouse.text}'
+          : 'All Bins',
+      icon: Icons.grid_view_rounded,
+      items: filteredBins,
+      currentCode: binCode.text,
+      getCode: (item) => getDataFromDynamic(item['BinCode']),
+      getName: (item) {
+        final sub = getDataFromDynamic(item['Sublevel1']);
+        return sub.isNotEmpty
+            ? 'Sublevel: $sub'
+            : getDataFromDynamic(item['BinCode']);
+      },
+      getExtraInfo: (item) {
+        final wh = getDataFromDynamic(item['Warehouse']);
+        return wh.isNotEmpty ? 'Whs: $wh' : '';
+      },
+      allowClear: true,
+      clearLabel: 'None (Clear Bin Location)',
+      onSelected: (item) {
+        if (item == null) {
+          binCode.clear();
+          binId.clear();
+        } else {
+          binCode.text = getDataFromDynamic(item['BinCode']);
+          binId.text = getDataFromDynamic(item['AbsEntry']);
+        }
+        setState(() {});
+      },
+    );
+  }
+
+  void onChangeGit() {
+    List<dynamic> grtItems = [];
+    try {
+      grtItems = context.read<IssueTypeOfflineCubit>().state;
+    } catch (_) {}
+    if (grtItems.isEmpty) {
+      grtItems = IssueTypeOfflineCubit().state;
+    }
+
+    _openGenericPickerModal<dynamic>(
+      title: 'Select Goods Issue Type',
+      subtitle: 'Transaction classification',
+      icon: Icons.category_outlined,
+      items: grtItems,
+      currentCode: giType.text,
+      getCode: (item) => getDataFromDynamic(item['Code']),
+      getName: (item) => getDataFromDynamic(item['Name']),
+      allowClear: false,
+      onSelected: (item) {
+        if (item == null) return;
+        final newCode = getDataFromDynamic(item['Code']);
+        final newName = getDataFromDynamic(item['Name']);
+        if (giType.text != newCode) {
+          giType.text = newCode;
+          giTypeName.text = newName;
+          accountCode.clear();
+          setState(() {
+            items.clear();
+            clear();
+            isSerialOrBatch = false;
+          });
+        }
+      },
+    );
+  }
+
+  void onChangeAccount() {
+    if (giType.text.isEmpty) {
+      MaterialDialog.warning(context,
+          title: 'Warning', body: "Please select Goods Issue Type first.");
+      return;
+    }
+
+    List<dynamic> lkActs = [];
+    try {
+      final cubit = context.read<LkActOfflineCubit>();
+      cubit.loadData();
+      lkActs = cubit.state;
+    } catch (_) {}
+    if (lkActs.isEmpty) {
+      try {
+        final box = Hive.box('lk_act');
+        lkActs = box.get('data', defaultValue: []).cast<dynamic>();
+      } catch (_) {}
+    }
+
+    final lkAct = lkActs.firstWhere(
+      (element) => getDataFromDynamic(element['Code']) == giType.text,
+      orElse: () => null,
+    );
+
+    List<dynamic> accounts = [];
+    if (lkAct != null) {
+      final collectionKey = (lkAct as Map).keys.firstWhere(
+            (key) =>
+                key.toString().contains('Collection') && lkAct[key] is List,
+            orElse: () => '',
+          );
+      if (collectionKey.isNotEmpty) {
+        accounts = lkAct[collectionKey] as List<dynamic>;
+      } else {
+        for (var value in lkAct.values) {
+          if (value is List) {
+            accounts = value;
+            break;
+          }
+        }
+      }
+    }
+
+    _openGenericPickerModal<dynamic>(
+      title: 'Select G/L Account',
+      subtitle:
+          'Type: ${giTypeName.text.isNotEmpty ? giTypeName.text : giType.text}',
+      icon: Icons.account_balance_outlined,
+      items: accounts,
+      currentCode: accountCode.text,
+      getCode: (item) {
+        if (item is Map) {
+          final a = getDataFromDynamic(item['U_LK_Acct']);
+          if (a.isNotEmpty) return a;
+          final c = getDataFromDynamic(item['AcctCode']);
+          if (c.isNotEmpty) return c;
+        }
+        return item.toString();
+      },
+      getName: (item) {
+        if (item is Map) {
+          final n = getDataFromDynamic(item['AcctName']);
+          if (n.isNotEmpty) return n;
+          final a = getDataFromDynamic(item['U_LK_Acct']);
+          if (a.isNotEmpty) return a;
+        }
+        return item.toString();
+      },
+      allowClear: true,
+      clearLabel: 'None (Clear Account)',
+      onSelected: (item) {
+        if (item == null) {
+          accountCode.clear();
+        } else {
+          String code = '';
+          if (item is Map) {
+            code = getDataFromDynamic(item['U_LK_Acct']).isNotEmpty
+                ? getDataFromDynamic(item['U_LK_Acct'])
+                : getDataFromDynamic(item['AcctCode']);
+          }
+          if (code.isEmpty) code = item.toString();
+          accountCode.text = code;
+        }
+        setState(() {});
+      },
+    );
+  }
+
+  void onChangeWhs() {
+    List<dynamic> whs = [];
+    try {
+      final cubit = context.read<WarehouseOfflineCubit>();
+      cubit.loadData();
+      whs = cubit.state;
+    } catch (_) {}
+    if (whs.isEmpty) {
+      try {
+        final box = Hive.box('warehouse');
+        whs = box.get('data', defaultValue: []).cast<dynamic>();
+      } catch (_) {}
+    }
+
+    _openGenericPickerModal<dynamic>(
+      title: 'Select Warehouse',
+      subtitle: 'Destination warehouse',
+      icon: Icons.warehouse_outlined,
+      items: whs,
+      currentCode: warehouse.text,
+      getCode: (item) {
+        final c = getDataFromDynamic(item['WarehouseCode']);
+        return c.isNotEmpty ? c : getDataFromDynamic(item['code']);
+      },
+      getName: (item) {
+        final n = getDataFromDynamic(item['WarehouseName']);
+        return n.isNotEmpty ? n : getDataFromDynamic(item['name']);
+      },
+      allowClear: false,
+      onSelected: (item) {
+        if (item == null) return;
+        final code = getDataFromDynamic(item['WarehouseCode']).isNotEmpty
+            ? getDataFromDynamic(item['WarehouseCode'])
+            : getDataFromDynamic(item['code']);
+        final name = getDataFromDynamic(item['WarehouseName']).isNotEmpty
+            ? getDataFromDynamic(item['WarehouseName'])
+            : getDataFromDynamic(item['name']);
+        warehouse.text = code;
+        warehouseNameUI.text = name.isNotEmpty ? name : code;
+        setState(() {});
+      },
+    );
   }
 
   void onPostToSAP() async {
@@ -421,10 +1330,9 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
           title: 'Error', body: "Opps, Items is required");
       return;
     }
+    bool showingLoading = false;
     try {
       var uuid = Uuid();
-
-      MaterialDialog.loading(context);
       Map<String, dynamic> data = {
         // "BPL_IDAssignedToInvoice": 1,
         // "CardCode": cardCode.text,
@@ -434,9 +1342,9 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
             : widget.isEdit != null
                 ? saveId.text
                 : uuid.v4(),
-        "U_lk_whsdesc": warehouse.text,
         "U_LK_Type": giType.text,
         "Comments": remark.text,
+        "U_lk_whsdesc": warehouse.text,
         "DocumentLines": items.asMap().entries.map((entry) {
           int parentIndex = entry.key;
           Map<String, dynamic> item = entry.value;
@@ -444,7 +1352,8 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
               item["UoMGroupDefinitionCollection"] ?? [];
 
           final alternativeUoM = uomCollections.firstWhere(
-            (row) => row['AlternateUoM'] == int.parse(item['UoMEntry']),
+            (row) =>
+                row['AlternateUoM'].toString() == item['UoMEntry'].toString(),
             orElse: () => null, // Provide a default value if not found
           );
 
@@ -456,9 +1365,12 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
           List<dynamic> binAllocations = [
             {
               "Quantity": convertQuantityUoM(
-                alternativeUoM['BaseQuantity'],
-                alternativeUoM['AlternateQuantity'],
-                double.tryParse(item['Quantity']) ?? 0.00,
+                double.tryParse(alternativeUoM['BaseQuantity'].toString()) ??
+                    1.0,
+                double.tryParse(
+                        alternativeUoM['AlternateQuantity'].toString()) ??
+                    1.0,
+                double.tryParse(item['Quantity'].toString()) ?? 0.00,
               ),
               "BinAbsEntry": item['BinId'],
               "BaseLineNumber": parentIndex,
@@ -475,7 +1387,6 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
 
             List<dynamic> batchOrSerialLines =
                 isSerial ? item['Serials'] : item['Batches'];
-
             int index = 0;
             for (var element in batchOrSerialLines) {
               binAllocations.add({
@@ -484,9 +1395,13 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
                 "BaseLineNumber": parentIndex,
                 "SerialAndBatchNumbersBaseLine": index,
                 "Quantity": convertQuantityUoM(
-                    alternativeUoM['BaseQuantity'],
-                    alternativeUoM['AlternateQuantity'],
-                    double.tryParse(element["Quantity"]) ?? 0.00),
+                    double.tryParse(
+                            alternativeUoM['BaseQuantity'].toString()) ??
+                        1.0,
+                    double.tryParse(
+                            alternativeUoM['AlternateQuantity'].toString()) ??
+                        1.0,
+                    double.tryParse(element["Quantity"].toString()) ?? 0.00),
               });
 
               index++;
@@ -502,16 +1417,33 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
             "WarehouseCode": warehouse.text,
             // "BaseType": 234000031,
             // "BaseEntry": item['BaseEntry'],
-            "UseBaseUnits": "tNO",
             // "BaseLine": item['BaseLine'],
+            "UseBaseUnits": "tNO",
             "SerialNumbers": item['Serials'] ?? [],
             "BatchNumbers": item['Batches'] ?? [],
             "AccountCode": item['AccountCode'],
+            if (item['CostingCode'] != null &&
+                item['CostingCode'].toString().isNotEmpty)
+              "CostingCode": item['CostingCode'],
+            if (item['CostingCode2'] != null &&
+                item['CostingCode2'].toString().isNotEmpty)
+              "CostingCode2": item['CostingCode2'],
+            if (item['CostingCode3'] != null &&
+                item['CostingCode3'].toString().isNotEmpty)
+              "CostingCode3": item['CostingCode3'],
+            if (item['CostingCode4'] != null &&
+                item['CostingCode4'].toString().isNotEmpty)
+              "CostingCode4": item['CostingCode4'],
+            if (item['CostingCode5'] != null &&
+                item['CostingCode5'].toString().isNotEmpty)
+              "CostingCode5": item['CostingCode5'],
             "DocumentLinesBinAllocations":
                 item['BinId'] != "" ? binAllocations : []
           };
         }).toList(),
       };
+      MaterialDialog.loading(context);
+      showingLoading = true;
       if (widget.isEdit != null && widget.isEditFaild == true) {
         context.read<GoodIssueFailedOfflineCubit>().removeByFailId(saveId.text);
         context.read<GoodsIssueOfflineCubit>().addData(data);
@@ -522,12 +1454,11 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
       } else {
         context.read<GoodsIssueOfflineCubit>().addData(data);
       }
-      // context.read<GoodsIssueOfflineCubit>().addData(data);
       if (mounted) {
         Navigator.of(context).pop();
         MaterialDialog.success(
           context,
-          title: 'Successfully',
+          title: 'Success',
           body: widget.isEdit != null && widget.isEditFaild == true
               ? "Edited Faild Goods Issue"
               : widget.isEdit != null
@@ -542,7 +1473,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
       });
     } catch (e) {
       if (mounted) {
-        Navigator.of(context).pop();
+        if (showingLoading) MaterialDialog.close(context);
         MaterialDialog.warning(context, title: 'Error', body: e.toString());
       }
     }
@@ -556,20 +1487,29 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
     binCode.text = '';
     uom.text = '';
     uomAbEntry.text = '';
+    uomName.text = '';
     isBatch.text = '';
     isSerial.text = '';
     accountCode.text = '';
     docEntry.text = '';
     refLineNo.text = '';
+    for (var ctrl in _lineCostingCodes.values) {
+      ctrl.clear();
+    }
+    for (var ctrl in _lineCostingCodeNames.values) {
+      ctrl.clear();
+    }
+    serialsInput.clear();
+    batchesInput.clear();
     isEdit = -1;
   }
 
   void onSetItemTemp(dynamic value) async {
     try {
+      if (value == null) return;
       setState(() {
         isSerialOrBatch = false;
       });
-      if (value == null) return;
       MaterialDialog.loading(context);
       FocusScope.of(context).requestFocus(FocusNode());
       // final state = _blocBin.state;
@@ -588,6 +1528,23 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
       uom.text = getDataFromDynamic(value['InventoryUOM'] ?? 'Manual');
       uomAbEntry.text = getDataFromDynamic(value['InventoryUoMEntry'] ?? '-1');
       baseUoM.text = jsonEncode(getDataFromDynamic(value['BaseUoM'] ?? '-1'));
+      try {
+        final offlineUoms = context.read<UOMOfflineCubit>().state;
+        final matchedUom = offlineUoms.firstWhere(
+          (u) =>
+              getDataFromDynamic(u['Code']) == uom.text ||
+              getDataFromDynamic(u['AbsEntry']) == uomAbEntry.text,
+          orElse: () => null,
+        );
+        if (matchedUom != null) {
+          final name = getDataFromDynamic(matchedUom['Name']);
+          uomName.text = name.isNotEmpty ? name : uom.text;
+        } else {
+          uomName.text = uom.text;
+        }
+      } catch (_) {
+        uomName.text = uom.text;
+      }
       // log(value.toString());
       uoMGroupDefinitionCollection.text = jsonEncode(
         value['UoMGroupDefinitionCollection'] ?? [],
@@ -606,35 +1563,9 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
         MaterialDialog.close(context);
       }
     } catch (e) {
-      print(e);
+      debugPrint(e.toString());
     }
   }
-
-  // void onCompleteTextEditItem() async {
-  //   try {
-  //     if (itemCode.text == '') return;
-
-  //     //
-  //     MaterialDialog.loading(context);
-  //     final item = await _blocItem.find("('${itemCode.text}')");
-  //     if (getDataFromDynamic(item['PurchaseItem']) == '' ||
-  //         getDataFromDynamic(item['PurchaseItem']) == 'tNO') {
-  //       throw Exception('${itemCode.text} is not purchase item.');
-  //     }
-  //     if (mounted) {
-  //       MaterialDialog.close(context);
-  //     }
-
-  //     onSetItemTemp(item);
-  //   } catch (e) {
-  //     if (mounted) {
-  //       MaterialDialog.close(context);
-  //       if (e is ServerFailure) {
-  //         MaterialDialog.success(context, title: 'Failed', body: e.message);
-  //       }
-  //     }
-  //   }
-  // }
 
   void onCompleteQuantiyInput() {
     FocusScope.of(context).requestFocus(FocusNode());
@@ -691,21 +1622,6 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
     }
   }
 
-  void onChangeWhs() async {
-    goTo(context, WarehousePage()).then((value) {
-      if (value == null) return;
-      if (value is Map) {
-        warehouse.text = getDataFromDynamic(value['code']);
-        warehouseNameUI.text = getDataFromDynamic(value['name']).isNotEmpty
-            ? getDataFromDynamic(value['name'])
-            : warehouse.text;
-      } else {
-        warehouse.text = getDataFromDynamic(value);
-        warehouseNameUI.text = warehouse.text;
-      }
-    });
-  }
-
   void onCompleteTextEditItem() async {
     try {
       if (barCode.text == '') return;
@@ -758,7 +1674,7 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
           orElse: () => null);
 
       if (matchedItem == null) {
-        MaterialDialog.success(context, title: 'Oops.', body: "Item not found");
+        MaterialDialog.warning(context, title: 'Oops.', body: "Item not found");
         return;
       }
       final uomGroupCubit = context.read<UOMGroupOfflineCubit>();
@@ -821,375 +1737,1935 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: PRIMARY_COLOR,
-        iconTheme: IconThemeData(color: Colors.white),
-        title: Padding(
-          padding: const EdgeInsets.only(right: 60),
-          child: Center(
-            child: const Text(
-              'Create Good Issue',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: Colors.white,
+  String _calculateTotalQuantity() {
+    double total = 0.0;
+    for (var item in items) {
+      final qStr = item['Quantity']?.toString().replaceAll(',', '') ?? '0';
+      final val = double.tryParse(qStr) ?? 0.0;
+      total += val;
+    }
+    return formatQuantity(total.toString());
+  }
+
+  Widget _buildSelectorTile({
+    required String label,
+    required String value,
+    required bool isEmpty,
+    IconData? icon,
+    required VoidCallback onTap,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: AppFontSize.label,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Material(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onTap,
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: AppFontSize.value,
+                        fontWeight:
+                            isEmpty ? FontWeight.normal : FontWeight.w600,
+                        color: isEmpty
+                            ? Colors.grey.shade400
+                            : const Color(0xFF0F172A),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: Colors.grey.shade400,
+                  ),
+                ],
               ),
             ),
           ),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(15),
-        child: SingleChildScrollView(
+      ],
+    );
+  }
+
+  Widget _buildScannerField({
+    required String label,
+    required String placeholder,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required bool isScanning,
+    required VoidCallback onStartScan,
+    VoidCallback? onCancelScan,
+    required VoidCallback onManualPick,
+    required Function(String) onSubmitted,
+    VoidCallback? onTapField,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: AppFontSize.label,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            if (isScanning)
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onCancelScan,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.only(
+                        left: 8, right: 4, top: 2, bottom: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      borderRadius: BorderRadius.circular(12),
+                      border:
+                          Border.all(color: Colors.green.shade400, width: 0.5),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade700,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Ready to Scan',
+                          style: TextStyle(
+                            fontSize: AppFontSize.badge,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.green.shade800,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color:
+                                Colors.green.shade800.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.close_rounded,
+                            size: 11,
+                            color: Colors.green.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isScanning
+                        ? Colors.green.shade600
+                        : Colors.grey.shade300,
+                    width: isScanning ? 1.5 : 1.0,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        keyboardType: TextInputType.none,
+                        style: TextStyle(
+                          fontSize: AppFontSize.input,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF0F172A),
+                        ),
+                        onTap: onTapField,
+                        onFieldSubmitted: onSubmitted,
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                          hintText: placeholder,
+                          hintStyle: TextStyle(
+                            fontSize: AppFontSize.hint,
+                            color: Colors.grey.shade400,
+                            fontWeight: FontWeight.normal,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: onManualPick,
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: PRIMARY_COLOR,
+                          size: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Material(
+              color: isScanning
+                  ? const Color(0xFFE8F5E9)
+                  : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: isScanning ? (onCancelScan ?? onStartScan) : onStartScan,
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isScanning
+                          ? Colors.green.shade600
+                          : Colors.grey.shade300,
+                      width: isScanning ? 1.5 : 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.qr_code_scanner_rounded,
+                        color:
+                            isScanning ? Colors.green.shade700 : PRIMARY_COLOR,
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuantityAndUomRow() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Quantity
+        Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
+              Text(
+                'Quantity',
+                style: TextStyle(
+                  fontSize: AppFontSize.label,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
                 ),
-                padding: const EdgeInsets.all(5),
-                child: Column(
+              ),
+              const SizedBox(height: 6),
+              Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
                   children: [
-                    Input(
-                      label: 'Goods Issue Type',
-                      placeholder: 'Type',
-                      controller: giTypeName,
-                      readOnly: true,
-                      onPressed: onChangeGit,
+                    Expanded(
+                      child: TextFormField(
+                        controller: quantity,
+                        focusNode: _quantity,
+                        readOnly: isSerialOrBatch,
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        inputFormatters: [ThousandsSeparatorInputFormatter()],
+                        style: TextStyle(
+                          fontSize: AppFontSize.input,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF0F172A),
+                        ),
+                        onTap: isSerialOrBatch
+                            ? () => onNavigateSerialOrBatch(force: true)
+                            : null,
+                        onEditingComplete: onCompleteQuantiyInput,
+                        onFieldSubmitted: (value) =>
+                            _handleScanSubmitted(value, _quantity),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                          hintText: '0.00',
+                          hintStyle: TextStyle(
+                              fontSize: AppFontSize.hint,
+                              color: Colors.grey.shade400),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                        ),
+                      ),
                     ),
-                    Input(
-                      label: 'Warehouse',
-                      placeholder: 'Warehouse',
-                      controller: warehouseNameUI,
-                      readOnly: true,
-                      onPressed: onChangeWhs,
-                    ),
+                    if (isSerialOrBatch)
+                      InkWell(
+                        onTap: () => onNavigateSerialOrBatch(force: true),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.format_list_bulleted_rounded,
+                                  size: 14, color: PRIMARY_COLOR),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Manage',
+                                style: TextStyle(
+                                  fontSize: AppFontSize.badgeSmall,
+                                  fontWeight: FontWeight.w600,
+                                  color: PRIMARY_COLOR,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
 
-                    // Divider(thickness: 1, color: Colors.grey.shade400),
+        // UoM
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Unit of Measure',
+                style: TextStyle(
+                  fontSize: AppFontSize.label,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Material(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: onChangeUoM,
+                  child: Container(
+                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            uom.text.isEmpty
+                                ? 'Select UoM'
+                                : (uomName.text.isNotEmpty
+                                    ? uomName.text
+                                    : uom.text),
+                            style: TextStyle(
+                              fontSize: AppFontSize.value,
+                              fontWeight: uom.text.isEmpty
+                                  ? FontWeight.normal
+                                  : FontWeight.w600,
+                              color: uom.text.isEmpty
+                                  ? Colors.grey.shade400
+                                  : const Color(0xFF0F172A),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 14,
+                          color: Colors.grey.shade400,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAccountField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Account',
+          style: TextStyle(
+            fontSize: AppFontSize.label,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Material(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTap: onChangeAccount,
+            child: Container(
+              height: 48,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      accountCode.text.isEmpty
+                          ? 'Select Account'
+                          : accountCode.text,
+                      style: TextStyle(
+                        fontSize: AppFontSize.value,
+                        fontWeight: accountCode.text.isEmpty
+                            ? FontWeight.normal
+                            : FontWeight.w600,
+                        color: accountCode.text.isEmpty
+                            ? Colors.grey.shade400
+                            : const Color(0xFF0F172A),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: Colors.grey.shade400,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void onHeaderDimensionChange(int dimCode, String code, String name) {
+    setState(() {
+      _headerCostingCodes[dimCode]?.text = code;
+      _headerCostingCodeNames[dimCode]?.text = name;
+
+      // Update all existing items in items list based on header
+      final key = dimCode == 1 ? 'CostingCode' : 'CostingCode$dimCode';
+      final nameKey =
+          dimCode == 1 ? 'CostingCodeName' : 'CostingCode${dimCode}Name';
+      for (var item in items) {
+        item[key] = code;
+        item[nameKey] = name;
+      }
+    });
+  }
+
+  Widget _buildHeaderDimensionTile(Map<String, dynamic> dim) {
+    final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
+    if (dimCode < 1 || dimCode > 5) return const SizedBox.shrink();
+
+    final dimName =
+        (dim['DimensionDescription']?.toString().trim().isNotEmpty ?? false)
+            ? dim['DimensionDescription'].toString()
+            : ((dim['DimensionName']?.toString().trim().isNotEmpty ?? false)
+                ? dim['DimensionName'].toString()
+                : 'Dimension $dimCode');
+    final selectedCode = _headerCostingCodes[dimCode]?.text ?? '';
+    String selectedName = _headerCostingCodeNames[dimCode]?.text ?? '';
+    if (selectedName.isEmpty && selectedCode.isNotEmpty) {
+      final rules = (dim['rules'] as List<dynamic>?) ?? [];
+      final matchedRule = rules.firstWhere(
+        (r) => r['FactorCode']?.toString() == selectedCode,
+        orElse: () => null,
+      );
+      if (matchedRule != null) {
+        selectedName = matchedRule['FactorDescription']?.toString() ?? '';
+        _headerCostingCodeNames[dimCode]?.text = selectedName;
+      }
+    }
+
+    String displayText = 'Select $dimName';
+    final bool isEmpty = selectedCode.isEmpty;
+    if (!isEmpty) {
+      displayText = selectedName.isNotEmpty ? selectedName : selectedCode;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            dimName,
+            style: TextStyle(
+              fontSize: AppFontSize.label,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Material(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _openHeaderDimensionPicker(dim),
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        displayText,
+                        style: TextStyle(
+                          fontSize: AppFontSize.value,
+                          fontWeight:
+                              isEmpty ? FontWeight.normal : FontWeight.w600,
+                          color: isEmpty
+                              ? Colors.grey.shade400
+                              : const Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: Colors.grey.shade400,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLineDimensionTile(Map<String, dynamic> dim) {
+    final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
+    if (dimCode < 1 || dimCode > 5) return const SizedBox.shrink();
+
+    final dimName =
+        (dim['DimensionDescription']?.toString().trim().isNotEmpty ?? false)
+            ? dim['DimensionDescription'].toString()
+            : ((dim['DimensionName']?.toString().trim().isNotEmpty ?? false)
+                ? dim['DimensionName'].toString()
+                : 'Dimension $dimCode');
+    final selectedCode = _lineCostingCodes[dimCode]?.text ?? '';
+    String selectedName = _lineCostingCodeNames[dimCode]?.text ?? '';
+    if (selectedName.isEmpty && selectedCode.isNotEmpty) {
+      final rules = (dim['rules'] as List<dynamic>?) ?? [];
+      final matchedRule = rules.firstWhere(
+        (r) => r['FactorCode']?.toString() == selectedCode,
+        orElse: () => null,
+      );
+      if (matchedRule != null) {
+        selectedName = matchedRule['FactorDescription']?.toString() ?? '';
+        _lineCostingCodeNames[dimCode]?.text = selectedName;
+      }
+    }
+
+    String displayText = 'Select $dimName';
+    final bool isEmpty = selectedCode.isEmpty;
+    if (!isEmpty) {
+      displayText = selectedName.isNotEmpty ? selectedName : selectedCode;
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            dimName,
+            style: TextStyle(
+              fontSize: AppFontSize.label,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Material(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              onTap: () => _openLineDimensionPicker(dim),
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        displayText,
+                        style: TextStyle(
+                          fontSize: AppFontSize.value,
+                          fontWeight:
+                              isEmpty ? FontWeight.normal : FontWeight.w600,
+                          color: isEmpty
+                              ? Colors.grey.shade400
+                              : const Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: Colors.grey.shade400,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openHeaderDimensionPicker(Map<String, dynamic> dim) {
+    final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
+    _openDimensionPicker(
+      dim: dim,
+      currentCode: _headerCostingCodes[dimCode]?.text ?? '',
+      subtitle: 'Document Header (applies to all line items)',
+      onSelect: (code, desc) {
+        onHeaderDimensionChange(dimCode, code, desc);
+      },
+    );
+  }
+
+  void _openLineDimensionPicker(Map<String, dynamic> dim) {
+    final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
+    _openDimensionPicker(
+      dim: dim,
+      currentCode: _lineCostingCodes[dimCode]?.text ?? '',
+      subtitle:
+          'Line Item (${itemCode.text.isNotEmpty ? itemCode.text : "Editing Row #${isEdit + 1}"})',
+      onSelect: (code, desc) {
+        setState(() {
+          _lineCostingCodes[dimCode]?.text = code;
+          _lineCostingCodeNames[dimCode]?.text = desc;
+        });
+      },
+    );
+  }
+
+  void _openGenericPickerModal<T>({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required List<T> items,
+    required String currentCode,
+    required String Function(T item) getCode,
+    required String Function(T item) getName,
+    String Function(T item)? getExtraInfo,
+    bool showCode = true,
+    bool allowClear = false,
+    String clearLabel = 'None (Blank / Unselect)',
+    required void Function(T? selectedItem) onSelected,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomCtx) {
+        String query = '';
+        final searchCtrl = TextEditingController();
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final q = query.trim().toLowerCase();
+            final filteredList = items.where((item) {
+              if (q.isEmpty) return true;
+              final code = getCode(item).toLowerCase();
+              final name = getName(item).toLowerCase();
+              final extra =
+                  getExtraInfo != null ? getExtraInfo(item).toLowerCase() : '';
+              return code.contains(q) || name.contains(q) || extra.contains(q);
+            }).toList();
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(bottomCtx).viewInsets.bottom,
+              ),
+              child: Material(
+                color: Colors.white,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(20)),
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox(
+                  height: MediaQuery.of(bottomCtx).size.height * 0.75,
+                  child: Column(
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(top: 10, bottom: 8),
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: PRIMARY_COLOR.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                icon,
+                                size: 20,
+                                color: PRIMARY_COLOR,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title,
+                                    style: TextStyle(
+                                      fontSize: AppFontSize.dialogTitle,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  if (subtitle.isNotEmpty)
+                                    Text(
+                                      subtitle,
+                                      style: TextStyle(
+                                        fontSize: AppFontSize.md,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              color: Colors.grey.shade600,
+                              onPressed: () => Navigator.of(bottomCtx).pop(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        child: Container(
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: TextField(
+                            controller: searchCtrl,
+                            onChanged: (val) {
+                              setModalState(() {
+                                query = val;
+                              });
+                            },
+                            style: TextStyle(fontSize: AppFontSize.input),
+                            decoration: InputDecoration(
+                              hintText: 'Search by code or description...',
+                              hintStyle: TextStyle(
+                                  fontSize: AppFontSize.hint,
+                                  color: Colors.grey.shade500),
+                              prefixIcon: Icon(Icons.search_rounded,
+                                  size: 20, color: Colors.grey.shade500),
+                              suffixIcon: query.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear_rounded,
+                                          size: 18),
+                                      onPressed: () {
+                                        searchCtrl.clear();
+                                        setModalState(() {
+                                          query = '';
+                                        });
+                                      },
+                                    )
+                                  : null,
+                              border: InputBorder.none,
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Divider(height: 1, thickness: 0.5),
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          children: [
+                            if (allowClear &&
+                                (q.isEmpty ||
+                                    'none'.contains(q) ||
+                                    'blank'.contains(q) ||
+                                    'clear'.contains(q))) ...[
+                              ListTile(
+                                dense: true,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8)),
+                                tileColor: currentCode.isEmpty
+                                    ? PRIMARY_COLOR.withValues(alpha: 0.06)
+                                    : null,
+                                leading: Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: currentCode.isEmpty
+                                        ? PRIMARY_COLOR
+                                        : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(
+                                    Icons.block_rounded,
+                                    size: 16,
+                                    color: currentCode.isEmpty
+                                        ? Colors.white
+                                        : Colors.grey.shade500,
+                                  ),
+                                ),
+                                title: Text(
+                                  clearLabel,
+                                  style: TextStyle(
+                                    fontSize: AppFontSize.value,
+                                    fontWeight: currentCode.isEmpty
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: currentCode.isEmpty
+                                        ? PRIMARY_COLOR
+                                        : const Color(0xFF334155),
+                                  ),
+                                ),
+                                trailing: currentCode.isEmpty
+                                    ? const Icon(Icons.check_circle_rounded,
+                                        color: PRIMARY_COLOR, size: 20)
+                                    : null,
+                                onTap: () {
+                                  onSelected(null);
+                                  Navigator.of(bottomCtx).pop();
+                                  _unfocusAll();
+                                },
+                              ),
+                              const Divider(height: 8, thickness: 0.5),
+                            ],
+                            if (filteredList.isEmpty)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 40),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(Icons.search_off_rounded,
+                                          size: 40,
+                                          color: Colors.grey.shade300),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        q.isEmpty
+                                            ? 'No items found'
+                                            : 'No items matching "$query"',
+                                        style: TextStyle(
+                                            fontSize: AppFontSize.label,
+                                            color: Colors.grey.shade500),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            else
+                              ...filteredList.map((item) {
+                                final code = getCode(item);
+                                final name = getName(item);
+                                final extra = getExtraInfo != null
+                                    ? getExtraInfo(item)
+                                    : '';
+                                final isSelected = currentCode.isNotEmpty &&
+                                    currentCode == code;
+
+                                return ListTile(
+                                  dense: true,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                  tileColor: isSelected
+                                      ? PRIMARY_COLOR.withValues(alpha: 0.06)
+                                      : null,
+                                  leading: showCode && code.isNotEmpty
+                                      ? Container(
+                                          constraints: const BoxConstraints(
+                                              maxWidth: 90),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? PRIMARY_COLOR
+                                                : const Color(0xFFF1F5F9),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            code,
+                                            style: TextStyle(
+                                              fontSize: AppFontSize.badge,
+                                              fontWeight: FontWeight.bold,
+                                              color: isSelected
+                                                  ? Colors.white
+                                                  : const Color(0xFF1E293B),
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                        )
+                                      : null,
+                                  title: Text(
+                                    name.isNotEmpty ? name : code,
+                                    style: TextStyle(
+                                      fontSize: AppFontSize.value,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? PRIMARY_COLOR
+                                          : const Color(0xFF0F172A),
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  subtitle: extra.isNotEmpty
+                                      ? Text(
+                                          extra,
+                                          style: TextStyle(
+                                            fontSize: AppFontSize.md,
+                                            color: const Color(0xFF64748B),
+                                          ),
+                                        )
+                                      : null,
+                                  trailing: isSelected
+                                      ? const Icon(Icons.check_circle_rounded,
+                                          color: PRIMARY_COLOR, size: 20)
+                                      : null,
+                                  onTap: () {
+                                    onSelected(item);
+                                    Navigator.of(bottomCtx).pop();
+                                    _unfocusAll();
+                                  },
+                                );
+                              }),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _openDimensionPicker({
+    required Map<String, dynamic> dim,
+    required String currentCode,
+    required String subtitle,
+    required void Function(String code, String desc) onSelect,
+  }) {
+    final dimCode = int.tryParse(dim['DimensionCode']?.toString() ?? '') ?? 0;
+    final dimName =
+        (dim['DimensionDescription']?.toString().trim().isNotEmpty ?? false)
+            ? dim['DimensionDescription'].toString()
+            : ((dim['DimensionName']?.toString().trim().isNotEmpty ?? false)
+                ? dim['DimensionName'].toString()
+                : 'Dimension $dimCode');
+    final rules = (dim['rules'] as List<dynamic>?) ?? [];
+
+    _openGenericPickerModal<dynamic>(
+      title: 'Select $dimName',
+      subtitle: subtitle,
+      icon: Icons.account_tree_outlined,
+      items: rules,
+      currentCode: currentCode,
+      getCode: (rule) => getDataFromDynamic(rule['FactorCode']),
+      getName: (rule) => getDataFromDynamic(rule['FactorDescription']),
+      showCode: true,
+      allowClear: true,
+      clearLabel: 'None (Blank / Unselect)',
+      onSelected: (item) {
+        if (item == null) {
+          onSelect('', '');
+        } else {
+          onSelect(
+            getDataFromDynamic(item['FactorCode']),
+            getDataFromDynamic(item['FactorDescription']),
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildRemarkField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Remark',
+          style: TextStyle(
+            fontSize: AppFontSize.label,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: TextFormField(
+            controller: remark,
+            maxLines: 3,
+            minLines: 3,
+            keyboardType: TextInputType.multiline,
+            style: TextStyle(
+              fontSize: AppFontSize.input,
+              fontWeight: FontWeight.w500,
+              color: const Color(0xFF0F172A),
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              hintText: 'Enter remark...',
+              hintStyle: TextStyle(
+                fontSize: AppFontSize.hint,
+                color: Colors.grey.shade400,
+                fontWeight: FontWeight.normal,
+              ),
+              border: InputBorder.none,
+              enabledBorder: InputBorder.none,
+              focusedBorder: InputBorder.none,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildItemActionButtons() {
+    if (isEdit == -1) {
+      return SizedBox(
+        width: double.infinity,
+        height: 46,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: PRIMARY_COLOR,
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          onPressed: onAddItem,
+          child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.add_rounded, size: 20),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Add Item',
+                    style: TextStyle(
+                      fontSize: AppFontSize.button,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ],
+              )),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: SizedBox(
+            height: 46,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: PRIMARY_COLOR,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: onAddItem,
+              child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check_rounded, size: 18),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Update Item',
+                        style: TextStyle(
+                          fontSize: AppFontSize.button,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ],
+                  )),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 2,
+          child: SizedBox(
+            height: 46,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF64748B),
+                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: () {
+                _unfocusAll();
+                setState(() {
+                  clear();
+                  isSerialOrBatch = false;
+                });
+              },
+              child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.close_rounded, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: AppFontSize.buttonSmall,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  )),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRenderTable() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 8,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: PRIMARY_COLOR.withValues(alpha: 0.15),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.table_chart_outlined,
+                        size: 18,
+                        color: PRIMARY_COLOR,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Goods Issue Items',
+                      style: TextStyle(
+                        fontSize: AppFontSize.sectionTitle,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF0F172A),
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${items.length}',
+                        style: TextStyle(
+                          fontSize: AppFontSize.badge,
+                          fontWeight: FontWeight.w700,
+                          color: PRIMARY_COLOR,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (items.isNotEmpty)
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Text(
+                      'Total Qty: ${_calculateTotalQuantity()}',
+                      style: TextStyle(
+                        fontSize: AppFontSize.badge,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF1E293B),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(
+            height: 1,
+            thickness: 0.8,
+            color: Color(0xFFE2E8F0),
+          ),
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(12),
+              bottomRight: Radius.circular(12),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isPhone = constraints.maxWidth < 600;
+                final content = Column(
+                  children: [
+                    ContentHeader(isPhone: isPhone, hideOpenQty: true),
+                    if (items.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 36, horizontal: 20),
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Icon(
+                            //   Icons.inventory_2_outlined,
+                            //   size: 44,
+                            //   color: Colors.grey.shade400,
+                            // ),
+                            // const SizedBox(height: 10),
+                            Text(
+                              "No Items Added Yet",
+                              style: TextStyle(
+                                fontSize: AppFontSize.sectionTitle,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Scan or select an item above to add to this put away",
+                              style: TextStyle(
+                                fontSize: AppFontSize.md,
+                                color: Colors.grey.shade500,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ...items.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final item = entry.value;
+                        return Column(
+                          children: [
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _showItemActionDialog(item, index),
+                                child: ItemRow(
+                                  item: item,
+                                  index: index,
+                                  hideOpenQty: true,
+                                  isPhone: isPhone,
+                                  isBeingEdited: isEdit == index,
+                                ),
+                              ),
+                            ),
+                            if (index < items.length - 1)
+                              Divider(
+                                height: 1,
+                                thickness: 0.5,
+                                color: Colors.grey.shade200,
+                              ),
+                          ],
+                        );
+                      }).toList(),
+                  ],
+                );
+
+                if (isPhone) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: content,
+                  );
+                }
+                return content;
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
+      appBar: AppBar(
+        backgroundColor: PRIMARY_COLOR,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        title: Text(
+          widget.isEdit != null ? 'Edit Goods Issue' : 'Create Goods Issue',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: AppFontSize.appBarTitle,
+            color: Colors.white,
+            letterSpacing: 0.3,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: Colors.white.withValues(alpha: 0.15),
+            height: 1,
+          ),
+        ),
+      ),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _unfocusAll,
+        child: SingleChildScrollView(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Card 1: Document Header Card
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOutCubic,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: _isHeaderCollapsed
+                        ? const Color(0xFFCBD5E1)
+                        : const Color(0xFFE2E8F0),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black
+                          .withValues(alpha: _isHeaderCollapsed ? 0.02 : 0.03),
+                      blurRadius: _isHeaderCollapsed ? 4 : 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: _isHeaderCollapsed ? 10 : 14,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          _isHeaderCollapsed = !_isHeaderCollapsed;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: PRIMARY_COLOR.withValues(alpha: 0.15),
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: const Icon(
+                                Icons.receipt_long_rounded,
+                                size: 18,
+                                color: PRIMARY_COLOR,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                                child: Text(
+                              'General Information',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: AppFontSize.cardTitle,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0F172A),
+                                letterSpacing: 0.2,
+                              ),
+                            )),
+                            AnimatedRotation(
+                              turns: _isHeaderCollapsed ? 0.0 : 0.5,
+                              duration: const Duration(milliseconds: 280),
+                              curve: Curves.easeInOutCubic,
+                              child: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: Color(0xFF64748B),
+                                size: 22,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    AnimatedCrossFade(
+                      firstChild:
+                          const SizedBox(width: double.infinity, height: 0),
+                      secondChild: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          const Divider(
+                            height: 1,
+                            thickness: 0.8,
+                            color: Color(0xFFE2E8F0),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildSelectorTile(
+                            label: 'Goods Issue Type',
+                            value: giTypeName.text.isEmpty
+                                ? 'Select Goods Issue Type'
+                                : giTypeName.text,
+                            isEmpty: giTypeName.text.isEmpty,
+                            icon: Icons.category_outlined,
+                            onTap: onChangeGit,
+                          ),
+                          const SizedBox(height: 10),
+                          _buildSelectorTile(
+                            label: 'Warehouse',
+                            value: warehouseNameUI.text.isEmpty
+                                ? 'Select Warehouse'
+                                : warehouseNameUI.text,
+                            isEmpty: warehouseNameUI.text.isEmpty,
+                            icon: Icons.warehouse_outlined,
+                            onTap: onChangeWhs,
+                          ),
+                          if (isEdit == -1 && activeDimensions.isNotEmpty) ...[
+                            ...activeDimensions
+                                .map((dim) => _buildHeaderDimensionTile(dim)),
+                          ],
+                        ],
+                      ),
+                      crossFadeState: _isHeaderCollapsed
+                          ? CrossFadeState.showFirst
+                          : CrossFadeState.showSecond,
+                      duration: const Duration(milliseconds: 280),
+                      sizeCurve: Curves.easeInOutCubic,
+                      firstCurve: Curves.easeInOutCubic,
+                      secondCurve: Curves.easeInOutCubic,
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 14),
-              Divider(thickness: 0.5, color: Colors.grey.shade500),
-              const SizedBox(height: 5),
 
-              // ====== Bin Location ======
-              Row(
-                children: [
-                  Expanded(
-                    child: InputCol(
-                      label: 'Bin Location',
-                      placeholder: 'Chose Bin Location',
-                      controller: binCode,
-                      focusNode: _bin,
-                      onTap: () => {
-                        setState(() {
-                          isClickScanBin = false; // turn on scan mode
-                          // itemCode.clear();
-                        }),
-                        // 2. Clear current focus before switching
-                        FocusScope.of(context).unfocus()
-                      },
-                      keyboardType: TextInputType.none,
-                      onPressed: onChangeBin,
-                      onFieldSubmitted: (value) {
-                        _handleScanSubmitted(value, _bin);
-                      },
-                    ),
-                  ),
-                  SizedBox(
-                    width: 15,
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      // 1. Switch to scan mode
-                      setState(() {
-                        isClickScanBin = true; // turn on scan mode
-                        isClickScanItem = false;
-                        binCode.clear();
-                        binId.clear();
-                      });
-
-                      // 2. Clear current focus before switching
-                      FocusScope.of(context).unfocus();
-
-                      // 3. Focus scanner input
-                      Future.delayed(const Duration(milliseconds: 100), () {
-                        _requestFocus(_bin);
-                      });
-                    },
-                    child: Container(
-                      margin: EdgeInsets.only(top: 30),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF2F3F4),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isClickScanBin
-                              ? Colors.green
-                              : Colors
-                                  .transparent, // ✅ green border when active
-                          width: 2,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.document_scanner_outlined,
-                        color: Color(0xFF12169D),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // ====== Scan & Select Items ======
-              Row(
-                children: [
-                  Expanded(
-                    child: InputCol(
-                      focusNode: _itemCode,
-                      label: 'Item Code',
-                      placeholder: 'Chose Item',
-                      controller: itemCode,
-                      onTap: () => {
-                        setState(() {
-                          isClickScanItem = false; // turn on scan mode
-                          // itemCode.clear();
-                        }),
-                        // 2. Clear current focus before switching
-                        FocusScope.of(context).unfocus()
-                      },
-                      keyboardType: TextInputType.none,
-                      onFieldSubmitted: (value) {
-                        _handleScanSubmitted(value, _itemCode);
-                      },
-                      onPressed: onSelectItem,
-                    ),
-                  ),
-                  SizedBox(
-                    width: 15,
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      // 1. Switch to scan mode
-                      setState(() {
-                        isClickScanItem = true; // turn on scan mode
-                        isClickScanBin = false; // turn on scan mode
-                        itemCode.clear();
-                      });
-
-                      // 2. Clear current focus before switching
-                      FocusScope.of(context).unfocus();
-
-                      // 3. Focus scanner input
-                      Future.delayed(const Duration(milliseconds: 100), () {
-                        _requestFocus(_itemCode);
-                      });
-                    },
-                    child: Container(
-                      margin: EdgeInsets.only(top: 30),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF2F3F4),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isClickScanItem
-                              ? Colors.green
-                              : Colors
-                                  .transparent, // ✅ green border when active
-                          width: 2,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.document_scanner_outlined,
-                        color: Color(0xFF12169D),
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-              ),
-
-              const SizedBox(height: 7),
-
-              // ====== Input Qty & UoM ======
-              Row(
-                children: [
-                  Expanded(
-                    child: InputCol(
-                      label: 'Input Qty',
-                      placeholder: 'Quantity',
-                      controller: quantity,
-
-                      inputFormatters: [ThousandsSeparatorInputFormatter()],
-                      focusNode: _quantity,
-                      onFieldSubmitted: (value) {
-                        _handleScanSubmitted(value, _quantity);
-                      },
-                      readOnly: isSerialOrBatch ? true : false, // simpler
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      onTap: isSerialOrBatch
-                          ? () {
-                              onNavigateSerialOrBatch(force: true);
-                            }
-                          : null,
-                      onEditingComplete: onCompleteQuantiyInput,
-                      onPressed: isSerialOrBatch
-                          ? () {
-                              onNavigateSerialOrBatch(force: true);
-                            }
-                          : null, // remove if icon not needed
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: InputCol(
-                      label: 'Input UoM',
-                      placeholder: 'UoM',
-                      controller: uom,
-                      readOnly: true,
-                      onPressed: onChangeUoM,
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 7),
-
-              // ====== Account ======
-              InputCol(
-                label: 'Account',
-                placeholder: 'Account',
-                controller: accountCode,
-                readOnly: true,
-                onPressed: onChangeAccount,
-              ),
-
-              const SizedBox(height: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Remark",
-                    style: TextStyle(
-                      fontSize: 14.3,
-                      fontWeight: FontWeight.w400,
-                      color: Colors.grey.shade700,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: TextFormField(
-                      controller: remark,
-                      maxLines: 3,
-                      style: const TextStyle(fontSize: 14),
-                      decoration: InputDecoration(
-                        hintText: 'Enter remark...',
-                        hintStyle:
-                            const TextStyle(fontSize: 14, color: Colors.grey),
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-              Container(
-                margin: EdgeInsets.fromLTRB(0, 0, 0, 20),
-                child: Button(
-                  bgColor: PRIMARY_COLOR,
-                  onPressed: onAddItem,
-                  child: Text(
-                    isEdit == -1 ? "Add Item" : "Update Item",
-                    style: TextStyle(
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              Container(
+              // Card 2: Item Entry & Scanner Card
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeInOutCubic,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.shade300, width: 0.5),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isEdit != -1
+                        ? Colors.amber.shade400
+                        : (_isLineItemCollapsed
+                            ? const Color(0xFFCBD5E1)
+                            : const Color(0xFFE2E8F0)),
+                    width: isEdit != -1 ? 1.5 : 1.0,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                          alpha: isEdit != -1
+                              ? 0.05
+                              : (_isLineItemCollapsed ? 0.02 : 0.03)),
+                      blurRadius: isEdit != -1 ? 8 : 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isPhone = constraints.maxWidth < 600;
-                    final content = Column(
-                      children: [
-                        ContentHeader(isPhone: isPhone),
-                        items.isEmpty
-                            ? Container(
-                                padding: EdgeInsets.all(20),
-                                child: Text(
-                                  "No Item available",
-                                  style: TextStyle(
-                                      fontSize: 15, color: Colors.grey),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: _isLineItemCollapsed ? 10 : 14,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          _isLineItemCollapsed = !_isLineItemCollapsed;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: isEdit != -1
+                                        ? Colors.amber.shade100
+                                        : PRIMARY_COLOR.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isEdit != -1
+                                          ? Colors.amber.shade400
+                                          : PRIMARY_COLOR.withValues(
+                                              alpha: 0.15),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    isEdit != -1
+                                        ? Icons.edit_note_rounded
+                                        : Icons.playlist_add_rounded,
+                                    size: 18,
+                                    color: isEdit != -1
+                                        ? Colors.amber.shade900
+                                        : PRIMARY_COLOR,
+                                  ),
                                 ),
-                              )
-                            : Container(),
-                        ...items.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final item = entry.value;
-                          return GestureDetector(
-                            onTap: () => onEdit(item, index),
-                            child: ItemRow(
-                              item: item,
-                              isPhone: isPhone,
+                                const SizedBox(width: 10),
+                                Text(
+                                  isEdit != -1 ? 'Edit Line Item' : 'Line Item',
+                                  style: TextStyle(
+                                    fontSize: AppFontSize.cardTitle,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFF0F172A),
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
+                              ],
                             ),
-                          );
-                        }).toList(),
-                      ],
-                    );
-                    if (isPhone) {
-                      return SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: content,
-                      );
-                    }
-                    return content;
-                  },
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  child: isEdit != -1
+                                      ? Container(
+                                          key: const ValueKey('edit_badge'),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.shade100,
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color: Colors.amber.shade400),
+                                          ),
+                                          child: Text(
+                                            'Editing Row #${isEdit + 1}',
+                                            style: TextStyle(
+                                              fontSize: AppFontSize.badge,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.amber.shade900,
+                                            ),
+                                          ),
+                                        )
+                                      : (_isLineItemCollapsed &&
+                                              itemCode.text.isNotEmpty)
+                                          ? Container(
+                                              key: const ValueKey('item_chip'),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 2.5),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF1F5F9),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                border: Border.all(
+                                                    color: const Color(
+                                                        0xFFE2E8F0)),
+                                              ),
+                                              child: Text(
+                                                itemCode.text,
+                                                style: TextStyle(
+                                                  fontSize: AppFontSize.badge,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      const Color(0xFF475569),
+                                                ),
+                                              ),
+                                            )
+                                          : const SizedBox.shrink(
+                                              key: ValueKey('none')),
+                                ),
+                                const SizedBox(width: 6),
+                                AnimatedRotation(
+                                  turns: _isLineItemCollapsed ? 0.0 : 0.5,
+                                  duration: const Duration(milliseconds: 280),
+                                  curve: Curves.easeInOutCubic,
+                                  child: const Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    color: Color(0xFF64748B),
+                                    size: 22,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    AnimatedCrossFade(
+                      firstChild:
+                          const SizedBox(width: double.infinity, height: 0),
+                      secondChild: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          const Divider(
+                            height: 1,
+                            thickness: 0.8,
+                            color: Color(0xFFE2E8F0),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Bin Location
+                          _buildScannerField(
+                            label: 'Bin Location',
+                            placeholder: 'Choose or scan bin location',
+                            controller: binCode,
+                            focusNode: _bin,
+                            isScanning: isClickScanBin,
+                            onStartScan: () {
+                              setState(() {
+                                isClickScanBin = true;
+                                isClickScanItem = false;
+                                binCode.clear();
+                                binId.clear();
+                              });
+                              FocusScope.of(context).unfocus();
+                              Future.delayed(const Duration(milliseconds: 100),
+                                  () {
+                                _requestFocus(_bin);
+                              });
+                            },
+                            onCancelScan: () {
+                              setState(() {
+                                isClickScanBin = false;
+                              });
+                              FocusScope.of(context).unfocus();
+                            },
+                            onManualPick: onChangeBin,
+                            onSubmitted: (value) {
+                              _handleScanSubmitted(value, _bin);
+                            },
+                            onTapField: () {
+                              setState(() {
+                                isClickScanBin = false;
+                              });
+                              FocusScope.of(context).unfocus();
+                            },
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Item Code
+                          _buildScannerField(
+                            label: 'Item Code',
+                            placeholder: 'Select or scan item code',
+                            controller: itemCode,
+                            focusNode: _itemCode,
+                            isScanning: isClickScanItem,
+                            onStartScan: () {
+                              setState(() {
+                                isClickScanItem = true;
+                                isClickScanBin = false;
+                                itemCode.clear();
+                              });
+                              FocusScope.of(context).unfocus();
+                              Future.delayed(const Duration(milliseconds: 100),
+                                  () {
+                                _requestFocus(_itemCode);
+                              });
+                            },
+                            onCancelScan: () {
+                              setState(() {
+                                isClickScanItem = false;
+                              });
+                              FocusScope.of(context).unfocus();
+                            },
+                            onManualPick: onSelectItem,
+                            onSubmitted: (value) {
+                              _handleScanSubmitted(value, _itemCode);
+                            },
+                            onTapField: () {
+                              setState(() {
+                                isClickScanItem = false;
+                              });
+                              FocusScope.of(context).unfocus();
+                            },
+                          ),
+
+                          const SizedBox(height: 12),
+
+                          // Quantity & UoM
+                          _buildQuantityAndUomRow(),
+                          const SizedBox(height: 12),
+
+                          // Account
+                          _buildAccountField(),
+                          if (isEdit != -1 && activeDimensions.isNotEmpty) ...[
+                            ...activeDimensions
+                                .map((dim) => _buildLineDimensionTile(dim)),
+                          ],
+                          const SizedBox(height: 12),
+
+                          // Remark
+                          _buildRemarkField(),
+                          const SizedBox(height: 16),
+
+                          // Add / Update item action buttons
+                          _buildItemActionButtons(),
+                        ],
+                      ),
+                      crossFadeState: _isLineItemCollapsed
+                          ? CrossFadeState.showFirst
+                          : CrossFadeState.showSecond,
+                      duration: const Duration(milliseconds: 280),
+                      sizeCurve: Curves.easeInOutCubic,
+                      firstCurve: Curves.easeInOutCubic,
+                      secondCurve: Curves.easeInOutCubic,
+                    ),
+                  ],
                 ),
-              )
+              ),
+              const SizedBox(height: 14),
+
+              // Card 3: Render Table Card
+              _buildRenderTable(),
             ],
           ),
         ),
       ),
       bottomNavigationBar: Container(
-        height: 70,
-        padding: const EdgeInsets.all(12),
+        height: 72,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Colors.grey.shade200)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
         child: Row(
           children: [
             Expanded(
               child: Button(
                 variant: ButtonVariant.primary,
-                disabled: isEdit != -1,
+                bgColor: PRIMARY_COLOR,
+                disabled: isEdit != -1 || items.isEmpty,
                 onPressed: onPostToSAP,
-                child: Text(
-                  'Save',
-                  style: TextStyle(color: Colors.white),
-                ),
+                child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.cloud_upload_outlined,
+                            size: 20, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(
+                          items.isNotEmpty ? 'Save (${items.length})' : 'Save',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: AppFontSize.button,
+                          ),
+                        ),
+                      ],
+                    )),
               ),
             ),
             const SizedBox(width: 12),
@@ -1197,14 +3673,14 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
               child: Button(
                 variant: ButtonVariant.outline,
                 onPressed: () {
-                  if (items.length > 0) {
+                  if (items.isNotEmpty) {
                     MaterialDialog.warning(
                       context,
                       title: 'Warning',
                       body:
-                          'Are you sure leave? once you pressed ok the data will be ereas.',
-                      confirmLabel: 'Ok',
-                      cancelLabel: 'Cancel',
+                          'Are you sure you want to leave? Once you leave, unsaved data will be erased.',
+                      confirmLabel: 'Leave',
+                      cancelLabel: 'Stay',
                       onConfirm: () {
                         Navigator.of(context).pop();
                       },
@@ -1214,14 +3690,27 @@ class _CreateGoodIssueScreenState extends State<CreateGoodIssueScreen> {
                     Navigator.of(context).pop();
                   }
                 },
-                child: Text(
-                  'Cancel',
-                  style: TextStyle(
-                    color: PRIMARY_COLOR,
-                  ),
-                ),
+                child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.close_rounded,
+                            size: 18, color: PRIMARY_COLOR),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: PRIMARY_COLOR,
+                            fontWeight: FontWeight.w600,
+                            fontSize: AppFontSize.button,
+                          ),
+                        ),
+                      ],
+                    )),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -1234,75 +3723,68 @@ class ContentHeader extends StatelessWidget {
   final dynamic hideOpenQty;
   final bool isPhone;
 
-  Widget _buildColumn(Widget child, int flex, double fixedWidth) {
-    if (isPhone) return SizedBox(width: fixedWidth, child: child);
-    return Expanded(flex: flex, child: child);
+  Widget _buildColumn(Widget child, int flex, double fixedWidth,
+      {Alignment alignment = Alignment.center}) {
+    if (isPhone) {
+      return Container(
+        width: fixedWidth,
+        alignment: alignment,
+        child: child,
+      );
+    }
+    return Expanded(
+      flex: flex,
+      child: Container(
+        alignment: alignment,
+        child: child,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final textStyle = TextStyle(
+      color: Colors.white,
+      fontWeight: FontWeight.w700,
+      fontSize: AppFontSize.tableHeader,
+      letterSpacing: 0.3,
+    );
+
     return Container(
-      decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 214, 214, 215), // Dark navy header
-        borderRadius: const BorderRadius.only(
+      decoration: const BoxDecoration(
+        color: PRIMARY_COLOR,
+        borderRadius: BorderRadius.only(
           topLeft: Radius.circular(8),
           topRight: Radius.circular(8),
         ),
       ),
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 12),
       child: Row(
         children: [
           _buildColumn(
-            const Text(
-              'Item No',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.black54,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-            3,
-            220,
+            Text('#', style: textStyle),
+            1,
+            34,
+            alignment: Alignment.center,
+          ),
+          const SizedBox(width: 8),
+          _buildColumn(
+            Text('Item No / Description', style: textStyle),
+            6,
+            200,
+            alignment: Alignment.centerLeft,
           ),
           _buildColumn(
-            const Text(
-              'UoM',
-              style: TextStyle(
-                color: Colors.black54,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            1,
-            60,
-          ),
-          _buildColumn(
-            const Text(
-              'Account',
-              style: TextStyle(
-                color: Colors.black54,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            1,
+            Text('UoM', style: textStyle),
+            2,
             70,
+            alignment: Alignment.center,
           ),
           _buildColumn(
-            const Text(
-              'QTY',
-              style: TextStyle(
-                color: Colors.black54,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            1,
-            90,
+            Text('QTY Issued', style: textStyle),
+            3,
+            110,
+            alignment: Alignment.centerRight,
           ),
         ],
       ),
@@ -1311,100 +3793,208 @@ class ContentHeader extends StatelessWidget {
 }
 
 class ItemRow extends StatelessWidget {
-  const ItemRow(
-      {super.key,
-      required this.item,
-      this.po,
-      this.hideOpenQty,
-      this.isPhone = false});
+  const ItemRow({
+    super.key,
+    required this.item,
+    required this.index,
+    this.po,
+    this.hideOpenQty,
+    this.isPhone = false,
+    this.isBeingEdited = false,
+  });
+
   final dynamic po;
   final dynamic item;
   final dynamic hideOpenQty;
+  final int index;
   final bool isPhone;
+  final bool isBeingEdited;
 
   String getDataFromDynamic(dynamic value) {
     if (value == null) return '';
     return value.toString();
   }
 
-  Widget _buildColumn(Widget child, int flex, double fixedWidth) {
-    if (isPhone) return SizedBox(width: fixedWidth, child: child);
-    return Expanded(flex: flex, child: child);
+  Widget _buildColumn(Widget child, int flex, double fixedWidth,
+      {Alignment alignment = Alignment.center}) {
+    if (isPhone) {
+      return Container(
+        width: fixedWidth,
+        alignment: alignment,
+        child: child,
+      );
+    }
+    return Expanded(
+      flex: flex,
+      child: Container(
+        alignment: alignment,
+        child: child,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final itemCodeStr = getDataFromDynamic(item['ItemCode']);
+    final itemDescStr = getDataFromDynamic(item['ItemDescription']);
+    final uomStr = getDataFromDynamic(item['UoMCode']);
+    final qtyStr = formatQuantity(getDataFromDynamic(item['Quantity']));
+    final isBatch = getDataFromDynamic(item['ManageBatchNumbers']) == 'tYES';
+    final isSerial = getDataFromDynamic(item['ManageSerialNumbers']) == 'tYES';
+
+    final isEven = index % 2 == 0;
+    final rowBgColor = isBeingEdited
+        ? const Color(0xFFFFFBEB)
+        : (isEven ? Colors.white : const Color(0xFFF8FAFC));
+
     return Container(
-      color: Colors.grey.shade50,
+      color: rowBgColor,
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              _buildColumn(
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      getDataFromDynamic(item['ItemCode']),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
+          // Index Badge
+          _buildColumn(
+            Container(
+              width: 22,
+              height: 22,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isBeingEdited
+                    ? Colors.amber.shade200
+                    : const Color(0xFFE2E8F0),
+                shape: BoxShape.circle,
+              ),
+              child: Text(
+                '${index + 1}',
+                style: TextStyle(
+                  fontSize: AppFontSize.badge,
+                  fontWeight: FontWeight.w700,
+                  color: isBeingEdited
+                      ? Colors.amber.shade900
+                      : const Color(0xFF475569),
+                ),
+              ),
+            ),
+            1,
+            34,
+            alignment: Alignment.center,
+          ),
+          const SizedBox(width: 8),
+
+          // Item Code & Description
+          _buildColumn(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  itemCodeStr.isEmpty ? '-' : itemCodeStr,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: AppFontSize.tableItemTitle,
+                    color: const Color(0xFF0F172A),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (itemDescStr.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    itemDescStr,
+                    style: TextStyle(
+                      color: const Color(0xFF64748B),
+                      fontSize: AppFontSize.tableItemDesc,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      getDataFromDynamic(item['ItemDescription']),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.black87,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-                3,
-                220,
-              ),
-              _buildColumn(
-                Text(
-                  getDataFromDynamic(item['UoMCode']),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13),
-                ),
-                1,
-                60,
-              ),
-              _buildColumn(
-                Text(
-                  getDataFromDynamic(item['AccountCode']),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13),
-                ),
-                1,
-                70,
-              ),
-              _buildColumn(
-                Text(
-                  formatQuantity(getDataFromDynamic(item['Quantity'])),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 13),
-                ),
-                1,
-                90,
-              ),
-            ],
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+                if (isBatch || isSerial) ...[
+                  const SizedBox(height: 3),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isBatch)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                                color: Colors.blue.shade200, width: 0.5),
+                          ),
+                          child: Text(
+                            'BATCH',
+                            style: TextStyle(
+                              fontSize: AppFontSize.badgeSmall,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.blue.shade800,
+                            ),
+                          ),
+                        ),
+                      if (isSerial) ...[
+                        if (isBatch) const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade50,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                                color: Colors.purple.shade200, width: 0.5),
+                          ),
+                          child: Text(
+                            'SERIAL',
+                            style: TextStyle(
+                              fontSize: AppFontSize.badgeSmall,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.purple.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ],
+            ),
+            6,
+            200,
+            alignment: Alignment.centerLeft,
           ),
 
-          // Divider
-          const SizedBox(height: 8),
-          Divider(
-            height: 1,
-            thickness: 0.6,
-            color: Colors.grey.shade300,
+          // UoM
+          _buildColumn(
+            Text(
+              uomStr.isEmpty ? '-' : uomStr,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: AppFontSize.tableCell,
+                fontWeight: FontWeight.w500,
+                color: const Color(0xFF334155),
+              ),
+            ),
+            2,
+            70,
+            alignment: Alignment.center,
+          ),
+
+          // Quantity Received
+          _buildColumn(
+            Text(
+              qtyStr.isEmpty ? '0' : qtyStr,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: AppFontSize.tableCell,
+                fontWeight: FontWeight.w700,
+                color: PRIMARY_COLOR,
+              ),
+            ),
+            3,
+            110,
+            alignment: Alignment.centerRight,
           ),
         ],
       ),
