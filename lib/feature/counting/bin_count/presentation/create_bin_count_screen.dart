@@ -1855,7 +1855,9 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label,
           style: TextStyle(
-              fontSize: AppFontSize.label, fontWeight: FontWeight.w600)),
+              fontSize: AppFontSize.label,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700)),
       const SizedBox(height: 6),
       TextFormField(
           controller: controller,
@@ -1874,13 +1876,42 @@ class _CreateBinCountScreenState extends State<CreateBinCountScreen> {
                 }
               : null,
           onEditingComplete: numeric ? onCompleteQuantiyInput : null,
-          style: TextStyle(fontSize: AppFontSize.input),
+          style: TextStyle(
+            fontSize: AppFontSize.input,
+            fontWeight: FontWeight.w500,
+            color: const Color(0xFF0F172A),
+          ),
           decoration: InputDecoration(
+              isDense: true,
               filled: true,
               fillColor: const Color(0xFFF8FAFC),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              hintText: numeric ? '0.00' : label)),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide:
+                    BorderSide(color: Colors.grey.shade300, width: 1.0),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide:
+                    BorderSide(color: Colors.grey.shade300, width: 1.0),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: PRIMARY_COLOR, width: 1.2),
+              ),
+              disabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide:
+                    BorderSide(color: Colors.grey.shade300, width: 1.0),
+              ),
+              hintText: numeric ? '0.00' : label,
+              hintStyle: TextStyle(
+                fontSize: AppFontSize.hint,
+                color: Colors.grey.shade400,
+                fontWeight: FontWeight.normal,
+              ))),
     ]);
   }
 

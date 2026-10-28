@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:wms_mobile/component/button/button.dart';
 import 'package:wms_mobile/constant/style.dart';
-import 'package:wms_mobile/feature/bin_location/domain/entity/bin_entity.dart';
 import 'package:wms_mobile/feature/bin_location/presentation/cubit/bin_offline_cubit.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/create_quick_count_screen.dart';
 import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/cycle_count_offline_cubit.dart';
-import 'package:wms_mobile/feature/counting/quick_count/presentation/cubit/quick_count_offline_cubit.dart';
+import 'package:wms_mobile/feature/warehouse/presentation/cubit/warhouse_offline_cubit.dart';
 import 'package:wms_mobile/helper/helper.dart';
 
 class CycleCountLists extends StatefulWidget {
@@ -19,669 +16,266 @@ class CycleCountLists extends StatefulWidget {
 }
 
 class _CycleCountListsState extends State<CycleCountLists> {
-  List<dynamic> data = [];
-  List<dynamic> filteredData = [];
-  final TextEditingController _filter = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Listen to filter changes
-    // _filter.addListener(() {
-    //   final text = _filter.text.toLowerCase();
-    //   setState(() {
-    //     filteredData = data
-    //         .where((bin) =>
-    //             bin.code.toLowerCase().contains(text) ||
-    //             bin.subLevel1.toLowerCase().contains(text))
-    //         .toList();
-    //   });
-    // });
-
-    // Load data from offline cubit
-    final offlineCubit = context.read<CycleCountOfflineCubit>();
-    final offlineData = offlineCubit.state;
-    print(offlineData);
-    //     .where((e) => e['Warehouse'] == widget.warehouse)
-    //     .map((e) => BinEntity(
-    //           code: e['BinCode'],
-    //           warehouse: e['Warehouse'],
-    //           subLevel1: e['Sublevel1'],
-    //           id: e['AbsEntry'],
-    //         ))
-    //     .toList();
-
-    setState(() {
-      // data = offlineCubit.state;
-      filteredData = offlineData;
-    });
-  }
-
-  @override
-  void dispose() {
-    _filter.dispose();
-    super.dispose();
-  }
-
-  Future<void> _removeById(BuildContext context, dynamic id) async {
-    // 1️⃣ Clear all Cubits
+  Future<void> _removeById(dynamic id) async {
     final confirm = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: const Text(
-          "Delete this data ?",
-          style: TextStyle(fontSize: 19),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: Text(
+          "Delete this record?",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: AppFontSize.dialogTitle,
+            color: const Color(0xFF0F172A),
+          ),
         ),
-        content: const Text(
-          "This will delete this offline data. Are you sure?",
-          style: TextStyle(fontSize: 14),
+        content: Text(
+          "This will delete this offline saved record. Are you sure?",
+          style: TextStyle(
+            fontSize: AppFontSize.md,
+            color: const Color(0xFF475569),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text("No"),
+            child: Text(
+              "No",
+              style: TextStyle(
+                fontSize: AppFontSize.buttonSmall,
+                color: const Color(0xFF64748B),
+              ),
+            ),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text(
-              "Ok",
-              style: TextStyle(color: Colors.white),
+            child: Text(
+              "Delete",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: AppFontSize.buttonSmall,
+              ),
             ),
           ),
         ],
       ),
     );
 
-    // User canceled
     if (confirm != true) return;
+    if (!mounted) return;
     context.read<CycleCountOfflineCubit>().removeByFailId(id);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
         elevation: 0,
-        iconTheme: const IconThemeData(
-          color: Colors.white, //change your color here
-        ),
         backgroundColor: PRIMARY_COLOR,
-        title: Center(
-          child: Padding(
-            padding: const EdgeInsets.only(right: 65),
-            child: const Text(
-              'Cycle Count Saved',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: Colors.white),
-            ),
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        title: Text(
+          'Cycle Count Saved',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: AppFontSize.appBarTitle,
+            color: Colors.white,
+            letterSpacing: 0.3,
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(
+            color: Colors.white.withValues(alpha: 0.15),
+            height: 1,
           ),
         ),
       ),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: const Color.fromRGBO(255, 255, 255, 1),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 10),
-            // Column(
-            //   children: [
-            //     Padding(
-            //       padding: const EdgeInsets.fromLTRB(15, 0, 15, 0),
-            //       child: Row(
-            //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            //         children: [
-            //           Row(
-            //             children: [
-            //               Icon(Icons.bookmark, color: PRIMARY_COLOR, size: 27),
-            //               SizedBox(
-            //                 width: 7,
-            //               ),
-            //               const Text(
-            //                 "Quick Count Saved",
-            //                 style: TextStyle(
-            //                     fontSize: 18, fontWeight: FontWeight.bold),
-            //               ),
-            //             ],
-            //           ),
-            //           const SizedBox(width: 20),
-            //           Container(
-            //             width: 120,
-            //             height: 40,
-            //             margin: EdgeInsets.fromLTRB(0, 15, 0, 20),
-            //             child: Button(
-            //               bgColor: PRIMARY_COLOR,
-            //               onPressed: () {
-            //                 goTo(context,
-            //                     CreateQuickCountScreen(isQuickCount: true));
-            //               },
-            //               child: Text(
-            //                 "New",
-            //                 style: TextStyle(
-            //                   color: Colors.white,
-            //                 ),
-            //               ),
-            //             ),
-            //           )
-
-            //         ],
-            //       ),
-            //     ),
-            //     Container(
-            //       margin: const EdgeInsets.only(left: 20,right: 20),
-            //       decoration: BoxDecoration(
-            //         color: Colors.grey[100],
-            //         borderRadius: BorderRadius.circular(12),
-            //         border: Border.all(color: Colors.grey[300]!),
-            //       ),
-            //       child: TextField(
-            //         controller: _filter,
-            //         decoration: InputDecoration(
-            //           prefixIcon: const Icon(Icons.search),
-            //           hintText: 'Search...',
-            //           suffixIcon: _filter.text.isNotEmpty
-            //               ? IconButton(
-            //                   icon: const Icon(Icons.clear),
-            //                   onPressed: () {
-            //                     _filter.clear();
-            //                     setState(() {
-            //                       filteredData = data;
-            //                     });
-            //                   },
-            //                 )
-            //               : null,
-            //           border: InputBorder.none,
-            //           contentPadding: const EdgeInsets.symmetric(vertical: 13),
-            //         ),
-            //       ),
-            //     ),
-            //   ],
-            // ),
-
-            Padding(
-              padding: const EdgeInsets.fromLTRB(15, 0, 15, 0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: BlocBuilder<CycleCountOfflineCubit, List<dynamic>>(
+        builder: (context, records) {
+          return Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 860),
+              child: Column(
                 children: [
-                  Row(
-                    children: const [
-                      Icon(Icons.bookmark, color: PRIMARY_COLOR, size: 27),
-                      SizedBox(
-                        width: 7,
-                      ),
-                      Text(
-                        "Data Listing",
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 20),
-                  Container(
-                    width: 110,
-                    height: 40,
-                    margin: EdgeInsets.fromLTRB(0, 15, 0, 20),
-                    child: Button(
-                      bgColor: PRIMARY_COLOR,
-                      onPressed: () {
-                        goTo(context,
-                            CreateQuickCountScreen(isQuickCount: false));
-                      },
-                      child: Row(
-                        children: const [
-                          Icon(Icons.add, color: Colors.white),
-                          SizedBox(width: 6),
-                          Text(
-                            "New",
-                            style: TextStyle(
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
+                  // 🔹 Header Action Bar (Data Listing + New Button)
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppFontSize.isTablet ? 24 : 14,
+                      vertical: 12,
                     ),
-                  )
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: BlocBuilder<CycleCountOfflineCubit, List<dynamic>>(
-                builder: (context, records) {
-                  if (records.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        "No saved records.",
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    itemCount: records.length,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemBuilder: (context, index) {
-                      final record = records[index];
-                      final lines = record['InventoryPostingLines'] ?? [];
-                      final timestamp = record["timestamp"];
-
-                      String formattedTime = '';
-                      if (timestamp != null &&
-                          timestamp.toString().isNotEmpty) {
-                        try {
-                          final parsedDate = DateTime.parse(timestamp);
-                          formattedTime = DateFormat("yyyy, MMM d • h:mma")
-                              .format(parsedDate);
-                        } catch (_) {
-                          formattedTime = timestamp.toString();
-                        }
-                      }
-
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        child: Stack(
-                          clipBehavior: Clip.none,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
-                            // 🔹 Card container
                             Container(
+                              padding: const EdgeInsets.all(7),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: PRIMARY_COLOR.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color:
-                                      const Color.fromARGB(255, 215, 212, 212),
-                                  width: 0.5,
-                                ),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 1),
-                                  )
-                                ],
                               ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // 🔹 Left border (fixed height now)
-                                  Container(
-                                    width: 3,
-                                    decoration: BoxDecoration(
-                                      color: PRIMARY_COLOR,
-                                      borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(8),
-                                        bottomLeft: Radius.circular(8),
-                                      ),
-                                    ),
-                                  ),
-
-                                  // 🔹 Main content
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(14.0),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          (() {
-                                            final code =
-                                                record['InventoryPostingLines']
-                                                            ?[0]
-                                                        ?["WarehouseCode"] ??
-                                                    '';
-                                            final whsList = context
-                                                .read<WarehouseOfflineCubit>()
-                                                .state;
-                                            final whs = whsList.firstWhere(
-                                              (w) => w['WarehouseCode'] == code,
-                                              orElse: () => null,
-                                            );
-                                            final name = (whs != null &&
-                                                    whs['WarehouseName'] !=
-                                                        null &&
-                                                    whs['WarehouseName']
-                                                        .toString()
-                                                        .trim()
-                                                        .isNotEmpty)
-                                                ? whs['WarehouseName']
-                                                    .toString()
-                                                    .trim()
-                                                : code;
-                                            return _buildRow("Warehouse", name);
-                                          })(),
-                                          const SizedBox(height: 5),
-                                          _buildRow("Reference",
-                                              record['Reference2'] ?? 'N/A'),
-                                          const Padding(
-                                            padding: EdgeInsets.only(
-                                                left: 0, top: 3, bottom: 12),
-                                            child: Divider(
-                                                height: 8,
-                                                color: Colors.black12),
-                                          ),
-                                          const Text(
-                                            "Items:",
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 15,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          ...lines.map<Widget>((line) {
-                                            final binCubit =
-                                                context.read<BinOfflineCubit>();
-
-                                            // Try to extract BinAbsEntry safely
-
-                                            final bin =
-                                                binCubit.state.firstWhere(
-                                              (u) =>
-                                                  u['AbsEntry'] ==
-                                                  int.tryParse(
-                                                      (line["BinEntry"] ?? -1)
-                                                          .toString()),
-                                              orElse: () =>
-                                                  {}, // return empty map if not found
-                                            );
-
-                                            final displayBin =
-                                                bin['BinCode'] ?? '';
-                                            return Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 4),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .spaceBetween,
-                                                    children: [
-                                                      Expanded(
-                                                        child: Text(
-                                                          line['ItemDescription'] ??
-                                                              line[
-                                                                  'ItemCode'] ??
-                                                              '-',
-                                                          style:
-                                                              const TextStyle(
-                                                                  fontSize: 14),
-                                                        ),
-                                                      ),
-                                                      Text(
-                                                        "Qty: ${formatQuantity(line['CountedQuantity'] ?? '0')}",
-                                                        style: const TextStyle(
-                                                          fontSize: 13,
-                                                          color: Colors.black87,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  if (line['UoMCode'] != null &&
-                                                      line['UoMCode']
-                                                          .toString()
-                                                          .isNotEmpty)
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                              top: 2, left: 2),
-                                                      child: Row(
-                                                        children: [
-                                                          Text(
-                                                            "UoM Code     :",
-                                                            style: const TextStyle(
-                                                                fontSize: 13,
-                                                                color: Colors
-                                                                    .black54),
-                                                          ),
-                                                          const SizedBox(
-                                                              width: 4),
-                                                          Expanded(
-                                                            child: Text(
-                                                              line['UoMCode'],
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                              style:
-                                                                  const TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w500,
-                                                                color: Colors
-                                                                    .black87,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  if (displayBin != "")
-                                                    Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                              top: 2, left: 2),
-                                                      child: Row(
-                                                        children: [
-                                                          Text(
-                                                            "Bin Location :",
-                                                            style: const TextStyle(
-                                                                fontSize: 13,
-                                                                color: Colors
-                                                                    .black54),
-                                                          ),
-                                                          const SizedBox(
-                                                              width: 4),
-                                                          Expanded(
-                                                            child: Text(
-                                                              displayBin,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                              style:
-                                                                  const TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w500,
-                                                                color: Colors
-                                                                    .black87,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  SizedBox(
-                                                    height: 2,
-                                                  ),
-                                                  const Divider(
-                                                      height: 8,
-                                                      color: Colors.black12),
-                                                ],
-                                              ),
-                                            );
-                                          }).toList(),
-                                          SizedBox(
-                                            height: 6,
-                                          ),
-                                          Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.end,
-                                            children: [
-                                              Align(
-                                                alignment: Alignment.topRight,
-                                                child: Material(
-                                                  color: Colors.transparent,
-                                                  child: InkWell(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            5),
-                                                    onTap: () {
-                                                      _removeById(context,
-                                                          record['SaveId']);
-                                                    },
-                                                    child: Ink(
-                                                      width: 90,
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 6),
-                                                      decoration: BoxDecoration(
-                                                        border: Border.all(
-                                                            color: Colors
-                                                                .redAccent,
-                                                            width: 1),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(5),
-                                                        color:
-                                                            Colors.transparent,
-                                                      ),
-                                                      child: Row(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .center,
-                                                        children: const [
-                                                          Icon(
-                                                            Icons.remove,
-                                                            size: 22,
-                                                            color: Colors
-                                                                .redAccent,
-                                                          ),
-                                                          SizedBox(width: 6),
-                                                          Text(
-                                                            "Delete",
-                                                            style: TextStyle(
-                                                              color: Colors
-                                                                  .redAccent,
-                                                              // fontWeight:
-                                                              //     FontWeight
-                                                              //         .bold,
-                                                              fontSize: 12,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                width: 10,
-                                              ),
-                                              Align(
-                                                alignment: Alignment.topRight,
-                                                child: Material(
-                                                  color: Colors.transparent,
-                                                  child: InkWell(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            5),
-                                                    onTap: () {
-                                                      goTo(
-                                                        context,
-                                                        CreateQuickCountScreen(
-                                                          isEdit: record,
-                                                          isQuickCount: false,
-                                                        ),
-                                                      );
-                                                    },
-                                                    child: Ink(
-                                                      width: 90,
-                                                      padding: const EdgeInsets
-                                                          .symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 6),
-                                                      decoration: BoxDecoration(
-                                                        border: Border.all(
-                                                            color:
-                                                                PRIMARY_COLOR,
-                                                            width: 1),
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(5),
-                                                        color:
-                                                            Colors.transparent,
-                                                      ),
-                                                      child: Row(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .center,
-                                                        children: const [
-                                                          Icon(
-                                                            Icons.edit,
-                                                            size: 22,
-                                                            color:
-                                                                PRIMARY_COLOR,
-                                                          ),
-                                                          SizedBox(width: 6),
-                                                          Text(
-                                                            "Edit",
-                                                            style: TextStyle(
-                                                              color:
-                                                                  PRIMARY_COLOR,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              fontSize: 12,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              )
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                              child: const Icon(
+                                Icons.bookmark_rounded,
+                                color: PRIMARY_COLOR,
+                                size: 18,
                               ),
                             ),
-
-                            // 🔹 Index Badge
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  // color: const Color.fromARGB(255, 195, 194, 194),
-                                  borderRadius: BorderRadius.circular(5),
-                                ),
-                                child: Text(
-                                  "No. ${index + 1}",
-                                  style: const TextStyle(
-                                    color: Color.fromARGB(255, 130, 126, 126),
-                                    // fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Data Listing",
+                              style: TextStyle(
+                                fontSize: AppFontSize.cardTitle,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                "${records.length}",
+                                style: TextStyle(
+                                  fontSize: AppFontSize.badgeSmall,
+                                  fontWeight: FontWeight.w700,
+                                  color: PRIMARY_COLOR,
                                 ),
                               ),
                             ),
                           ],
                         ),
-                      );
-                    },
-                  );
-                },
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: PRIMARY_COLOR,
+                            foregroundColor: Colors.white,
+                            elevation: 1,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 9),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () {
+                            goTo(
+                              context,
+                              CreateQuickCountScreen(isQuickCount: false),
+                            );
+                          },
+                          icon: const Icon(Icons.add_rounded, size: 18),
+                          label: Text(
+                            "New",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: AppFontSize.buttonSmall,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 🔹 List or Empty State
+                  Expanded(
+                    child: records.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            itemCount: records.length,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppFontSize.isTablet ? 24 : 14,
+                              vertical: 4,
+                            ),
+                            itemBuilder: (context, index) {
+                              final record = records[index];
+                              final lines = record['InventoryPostingLines']
+                                      as List<dynamic>? ??
+                                  [];
+                              final timestamp = record["timestamp"];
+
+                              String formattedTime = '';
+                              if (timestamp != null &&
+                                  timestamp.toString().isNotEmpty) {
+                                try {
+                                  final parsedDate = DateTime.parse(timestamp);
+                                  formattedTime = DateFormat(
+                                          "yyyy-MM-dd • hh:mm a")
+                                      .format(parsedDate);
+                                } catch (_) {
+                                  formattedTime = timestamp.toString();
+                                }
+                              }
+
+                              return _buildSavedCard(
+                                context: context,
+                                index: index,
+                                record: record,
+                                lines: lines,
+                                formattedTime: formattedTime,
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.bookmark_border_rounded,
+                size: 48,
+                color: PRIMARY_COLOR,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "No Saved Records",
+              style: TextStyle(
+                fontSize: AppFontSize.sectionTitle,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              "There are currently no offline cycle count records saved.",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: AppFontSize.md,
+                color: const Color(0xFF64748B),
+                height: 1.4,
               ),
             ),
           ],
@@ -690,33 +284,562 @@ class _CycleCountListsState extends State<CycleCountLists> {
     );
   }
 
-  Widget _buildRow(String label, String value) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 140,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 13.5, color: Colors.black54),
-              ),
-              const Text(":", style: TextStyle(color: Colors.black54)),
-            ],
+  Widget _buildSavedCard({
+    required BuildContext context,
+    required int index,
+    required dynamic record,
+    required List<dynamic> lines,
+    required String formattedTime,
+  }) {
+    final firstLine = lines.isNotEmpty ? lines[0] : null;
+    final whsCode = firstLine?['WarehouseCode']?.toString().trim() ?? '';
+    final whsList = context.read<WarehouseOfflineCubit>().state;
+    final whs = whsList.firstWhere(
+      (w) => w['WarehouseCode'] == whsCode,
+      orElse: () => null,
+    );
+    final warehouseName = (whs != null &&
+            whs['WarehouseName'] != null &&
+            whs['WarehouseName'].toString().trim().isNotEmpty)
+        ? whs['WarehouseName'].toString().trim()
+        : (whsCode.isNotEmpty ? getWarehouseName(context, whsCode) : '');
+
+    final reference = record['Reference2']?.toString().trim() ?? '';
+    final hasReference =
+        reference.isNotEmpty && reference != 'null' && reference != 'N/A';
+    final remark = record['Remarks']?.toString().trim() ?? '';
+    final hasRemark = remark.isNotEmpty && remark != 'null';
+
+    final displayName = warehouseName.isNotEmpty
+        ? warehouseName
+        : (whsCode.isNotEmpty ? 'Warehouse $whsCode' : 'Cycle Count');
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
-        ),
-        Expanded(
-          child: Text(
-            " $value",
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 🔹 Card Header: Record Index + Timestamp + Saved Offline Badge
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: PRIMARY_COLOR.withValues(alpha: 0.15),
+                      width: 0.8,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.sync_alt_rounded,
+                    size: 16,
+                    color: PRIMARY_COLOR,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Record #${index + 1}',
+                        style: TextStyle(
+                          fontSize: AppFontSize.cardTitle,
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF0F172A),
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      if (formattedTime.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.schedule_rounded,
+                              size: 11,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              formattedTime,
+                              style: TextStyle(
+                                fontSize: AppFontSize.badgeSmall,
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF3C7),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: Colors.amber.shade300,
+                      width: 0.7,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade800,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Saved Offline',
+                        style: TextStyle(
+                          fontSize: AppFontSize.badgeSmall,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.amber.shade900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ),
+
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10),
+              child: Divider(
+                height: 1,
+                thickness: 0.7,
+                color: Color(0xFFF1F5F9),
+              ),
+            ),
+
+            // 🔹 Warehouse Name
+            Text(
+              displayName,
+              style: TextStyle(
+                fontSize: AppFontSize.value,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF1E293B),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+
+            // 🔹 Badges (Warehouse Code & Reference)
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                if (whsCode.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.warehouse_outlined,
+                          size: 13,
+                          color: Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Whs: $whsCode',
+                          style: TextStyle(
+                            fontSize: AppFontSize.badgeSmall,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF475569),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (hasReference)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.tag_rounded,
+                          size: 13,
+                          color: Color(0xFF64748B),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'Ref: $reference',
+                          style: TextStyle(
+                            fontSize: AppFontSize.badgeSmall,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF475569),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+
+            // 🔹 Remark Banner
+            if (hasRemark) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.amber.shade200, width: 0.6),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 12,
+                      color: Colors.amber.shade800,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        remark,
+                        style: TextStyle(
+                          fontSize: AppFontSize.tableItemDesc,
+                          color: Colors.amber.shade900,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 12),
+
+            // 🔹 Items Section Header
+            Row(
+              children: [
+                Text(
+                  "Items",
+                  style: TextStyle(
+                    fontSize: AppFontSize.label,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF334155),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    "${lines.length} ${lines.length == 1 ? 'item' : 'items'}",
+                    style: TextStyle(
+                      fontSize: AppFontSize.badgeSmall,
+                      fontWeight: FontWeight.w700,
+                      color: PRIMARY_COLOR,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // 🔹 Line Items Cards
+            ...lines.map<Widget>((line) {
+              final binCubit = context.read<BinOfflineCubit>();
+              final binEntry = line["BinEntry"] ?? -1;
+              final bin = binCubit.state.firstWhere(
+                (u) => u['AbsEntry'] == int.tryParse(binEntry.toString()),
+                orElse: () => {},
+              );
+
+              final displayBin = bin['BinCode']?.toString() ?? '';
+              final itemDesc = line['ItemDescription']?.toString() ?? '';
+              final itemCode = line['ItemCode']?.toString() ?? '';
+              final uomCode = line['UoMCode']?.toString() ?? '';
+              final countedQty = formatQuantity(line['CountedQuantity'] ?? '0');
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            itemDesc.isNotEmpty
+                                ? itemDesc
+                                : (itemCode.isNotEmpty ? itemCode : '-'),
+                            style: TextStyle(
+                              fontSize: AppFontSize.value,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF1E293B),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2.5),
+                          decoration: BoxDecoration(
+                            color: PRIMARY_COLOR.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: PRIMARY_COLOR.withValues(alpha: 0.2),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Text(
+                            "Qty: $countedQty",
+                            style: TextStyle(
+                              fontSize: AppFontSize.badgeSmall,
+                              fontWeight: FontWeight.w700,
+                              color: PRIMARY_COLOR,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (itemCode.isNotEmpty && itemCode != itemDesc) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        itemCode,
+                        style: TextStyle(
+                          fontSize: AppFontSize.tableItemDesc,
+                          color: const Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                    if (uomCode.isNotEmpty || displayBin.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          if (uomCode.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(5),
+                                border: Border.all(
+                                    color: const Color(0xFFCBD5E1),
+                                    width: 0.7),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.straighten_rounded,
+                                    size: 11,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'UoM: $uomCode',
+                                    style: TextStyle(
+                                      fontSize: AppFontSize.badgeSmall,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          if (displayBin.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(5),
+                                border: Border.all(
+                                    color: const Color(0xFFCBD5E1),
+                                    width: 0.7),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.location_on_outlined,
+                                    size: 11,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Bin: $displayBin',
+                                    style: TextStyle(
+                                      fontSize: AppFontSize.badgeSmall,
+                                      fontWeight: FontWeight.w500,
+                                      color: const Color(0xFF475569),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+
+            const SizedBox(height: 10),
+
+            // 🔹 Action Footer Buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Delete Button
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      _removeById(record['SaveId']);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.red.shade200,
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.delete_outline_rounded,
+                            size: 16,
+                            color: Colors.red.shade700,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Delete",
+                            style: TextStyle(
+                              color: Colors.red.shade700,
+                              fontWeight: FontWeight.w700,
+                              fontSize: AppFontSize.buttonSmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+
+                // Edit Button
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      goTo(
+                        context,
+                        CreateQuickCountScreen(
+                          isEdit: record,
+                          isQuickCount: false,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: PRIMARY_COLOR,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: PRIMARY_COLOR.withValues(alpha: 0.25),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.edit_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            "Edit",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: AppFontSize.buttonSmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

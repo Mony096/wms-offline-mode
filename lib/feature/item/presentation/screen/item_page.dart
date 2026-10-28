@@ -28,9 +28,8 @@ class _ItemPageState extends State<ItemPage> {
 
     // Load initial data from offline cubit
     final offlineCubit = context.read<ItemOfflineCubit>();
-    final offlineData = offlineCubit.state
-        .where((item) => getItemType(item))
-        .toList();
+    final offlineData =
+        offlineCubit.state.where((item) => getItemType(item)).toList();
     data = offlineData;
     filteredData = offlineData;
 
@@ -101,7 +100,8 @@ class _ItemPageState extends State<ItemPage> {
       final itemMapped = {
         ...item,
         'BaseUoM': uomGroup['BaseUoM'],
-        'UoMGroupDefinitionCollection': uomGroup['UoMGroupDefinitionCollection'],
+        'UoMGroupDefinitionCollection':
+            uomGroup['UoMGroupDefinitionCollection'],
       };
 
       if (mounted) {
